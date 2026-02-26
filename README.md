@@ -1,5 +1,29 @@
 # tldraw sync server
 
+## Docker で起動（Next.js + Postgres）
+
+```powershell
+cd d:\whiteborad\whiteboard-multiplayer
+docker compose up --build
+```
+
+- **バックグラウンドで動かす（ターミナルを閉じても動き続ける）**
+  ```powershell
+  docker compose up -d --build
+  ```
+- **止めるとき**
+  ```powershell
+  docker compose down
+  ```
+- **ログを見るとき**
+  ```powershell
+  docker compose logs -f nextjs
+  ```
+
+起動できたらブラウザで **http://localhost:3000** を開く。
+
+---
+
 This is a production-ready backend for [tldraw sync](https://tldraw.dev/docs/sync).
 
 - Your client-side tldraw-based app can be served from anywhere you want.

@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String           @id @default(cuid())
+  name          String?
+  email         String?          @unique
+  emailVerified DateTime?
+  image         String?
+  discordId     String?          @unique
+  accounts      Account[]
+  sessions      Session[]
+  guildMembers  GuildMember[]
+  projects      Project[]        @relation("ProjectOwner")
+  uploadedAssets Asset[]
+  mediaComments MediaComment[]
+  reactions     ObjectReaction[]
+  auditLogs     AuditLog[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([sessionToken])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model Guild {
+  id        String        @id
+  name      String
+  icon      String?
+  members   GuildMember[]
+  projects  Project[]
+  boards    Board[]
+  assets    Asset[]
+  comments  MediaComment[]
+  reactions ObjectReaction[]
+  connectors Connector[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model GuildMember {
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  role      String?
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([guildId, userId])
+  @@index([userId])
+}
+
+model Project {
+  id          String         @id @default(cuid())
+  guildId     String
+  ownerUserId String
+  name        String
+  description String?
+  guild       Guild          @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  owner       User           @relation("ProjectOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  boards      Board[]
+  assets      Asset[]
+  connectors  Connector[]
+  reactions   ObjectReaction[]
+  comments    MediaComment[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([guildId, createdAt])
+}
+
+model Board {
+  id         String           @id @default(cuid())
+  projectId  String
+  guildId    String
+  name       String
+  project    Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  guild      Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  assets     Asset[]
+  connectors Connector[]
+  reactions  ObjectReaction[]
+  comments   MediaComment[]
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@index([projectId, createdAt])
+  @@index([guildId, createdAt])
+}
+
+model Asset {
+  id         String           @id @default(cuid())
+  guildId    String
+  projectId  String
+  boardId    String?
+  uploaderId String
+  kind       String
+  mimeType   String
+  fileName   String
+  sizeBytes  BigInt
+  storageKey String           @unique
+  deletedAt  DateTime?
+  guild      Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  project    Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  board      Board?           @relation(fields: [boardId], references: [id], onDelete: SetNull)
+  uploader   User             @relation(fields: [uploaderId], references: [id], onDelete: Restrict)
+  comments   MediaComment[]
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@index([guildId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([boardId, createdAt])
+  @@index([deletedAt])
+}
+
+model MediaComment {
+  id           String   @id @default(cuid())
+  guildId      String
+  projectId    String
+  boardId      String?
+  assetId      String
+  authorUserId String
+  timeSec      Float
+  body         String
+  deletedAt    DateTime?
+  guild        Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  board        Board?   @relation(fields: [boardId], references: [id], onDelete: SetNull)
+  asset        Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  author       User     @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([guildId, createdAt])
+  @@index([assetId, timeSec])
+  @@index([projectId, createdAt])
+}
+
+model ObjectReaction {
+  id        String   @id @default(cuid())
+  guildId   String
+  projectId String
+  boardId   String
+  shapeId   String
+  emoji     String
+  userId    String
+  deletedAt DateTime?
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([boardId, shapeId, emoji, userId])
+  @@index([guildId, createdAt])
+  @@index([projectId, boardId])
+}
+
+model Connector {
+  id            String   @id @default(cuid())
+  guildId       String
+  projectId     String
+  boardId       String
+  sourceShapeId String
+  sourceAnchor  String
+  targetShapeId String
+  targetAnchor  String
+  routingMode   String   @default("orthogonal")
+  waypoints     Json?
+  deletedAt     DateTime?
+  guild         Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  board         Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([guildId, createdAt])
+  @@index([projectId, boardId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  guildId   String?
+  action    String
+  target    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([guildId, createdAt])
+  @@index([action, createdAt])
+}
