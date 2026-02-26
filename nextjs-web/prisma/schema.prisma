@@ -60,22 +60,25 @@ model VerificationToken {
 }
 
 model Workspace {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   ownerUserId String
   name        String
   description String?
-  owner       User     @relation("WorkspaceOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  deletedAt   DateTime?
+  owner       User      @relation("WorkspaceOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
   boards      Board[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([ownerUserId, createdAt])
+  @@index([deletedAt])
 }
 
 model Board {
   id          String           @id @default(cuid())
   workspaceId String
   name        String
+  deletedAt   DateTime?
   workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   assets      Asset[]
   connectors  Connector[]
@@ -85,6 +88,7 @@ model Board {
   updatedAt   DateTime         @updatedAt
 
   @@index([workspaceId, createdAt])
+  @@index([deletedAt])
 }
 
 model Asset {

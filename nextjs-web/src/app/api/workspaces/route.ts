@@ -3,12 +3,17 @@ import { requireLogin, writeAuditLog } from "@/lib/authz";
 import { db } from "@/lib/db";
 
 /** GET /api/workspaces - 自分のワークスペース一覧 */
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await requireLogin();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const includeDeleted = req.nextUrl.searchParams.get("includeDeleted") === "1";
+
   const workspaces = await db.workspace.findMany({
-    where: { ownerUserId: session.user.id },
+    where: {
+      ownerUserId: session.user.id,
+      ...(includeDeleted ? {} : { deletedAt: null }),
+    },
     include: { _count: { select: { boards: true } } },
     orderBy: { createdAt: "desc" },
   });

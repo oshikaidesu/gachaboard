@@ -5,16 +5,21 @@ import { db } from "@/lib/db";
 type Params = { params: Promise<{ workspaceId: string }> };
 
 /** GET /api/workspaces/[workspaceId]/boards - ログイン済みなら誰でも取得可 */
-export async function GET(_req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, { params }: Params) {
   const { workspaceId } = await params;
   const session = await requireLogin();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const includeDeleted = req.nextUrl.searchParams.get("includeDeleted") === "1";
 
   const workspace = await db.workspace.findUnique({ where: { id: workspaceId } });
   if (!workspace) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const boards = await db.board.findMany({
-    where: { workspaceId },
+    where: {
+      workspaceId,
+      ...(includeDeleted ? {} : { deletedAt: null }),
+    },
     orderBy: { createdAt: "desc" },
   });
 
