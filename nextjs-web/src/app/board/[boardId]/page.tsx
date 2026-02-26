@@ -1,4 +1,7 @@
+"use client";
+
 import dynamic from "next/dynamic";
+import { useParams } from "next/navigation";
 
 const TldrawBoard = dynamic(() => import("@/app/components/TldrawBoard"), {
   ssr: false,
@@ -9,9 +12,7 @@ const TldrawBoard = dynamic(() => import("@/app/components/TldrawBoard"), {
   ),
 });
 
-type Props = { params: Promise<{ boardId: string }> };
-
-export default async function BoardPage({ params }: Props) {
-  const { boardId } = await params;
+export default function BoardPage() {
+  const { boardId } = useParams<{ boardId: string }>();
   return <TldrawBoard boardId={boardId} />;
 }

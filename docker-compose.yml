@@ -21,7 +21,7 @@ services:
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
       DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/whiteboard"
-      NEXTAUTH_URL: "http://localhost:3000"
+      NEXTAUTH_URL: "https://gachaboar.uk"
     command: >
       sh -c "
         echo 'Waiting for database...' &&
@@ -46,6 +46,16 @@ services:
       interval: 2s
       timeout: 5s
       retries: 5
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: gachaboard-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: "eyJhIjoiMDllYTk5OTZlMjAzMjkxMWQ1OWQyYTg5YjEwZTA3NzgiLCJ0IjoiMzQzOTI5Y2ItZjZjYy00YWQ3LWJkYjMtZGJlMTgzYjViYmYwIiwicyI6Ik1UUXlNREl5TmpRdE9EWXlaQzAwTlROaUxXRXdNek10TnpVeU56UTFNR0UwTkRrMSJ9"
+    depends_on:
+      - nextjs
 
 volumes:
   postgres_data:
