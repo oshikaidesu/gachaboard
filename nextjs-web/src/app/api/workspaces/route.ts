@@ -1,0 +1,39 @@
+import { NextRequest, NextResponse } from "next/server";
+import { requireLogin, writeAuditLog } from "@/lib/authz";
+import { db } from "@/lib/db";
+
+/** GET /api/workspaces - 自分のワークスペース一覧 */
+export async function GET() {
+  const session = await requireLogin();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const workspaces = await db.workspace.findMany({
+    where: { ownerUserId: session.user.id },
+    include: { _count: { select: { boards: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return NextResponse.json(workspaces);
+}
+
+/** POST /api/workspaces - ワークスペース作成 */
+export async function POST(req: NextRequest) {
+  const session = await requireLogin();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = await req.json() as { name: string; description?: string };
+  if (!body.name?.trim()) {
+    return NextResponse.json({ error: "name required" }, { status: 400 });
+  }
+
+  const workspace = await db.workspace.create({
+    data: {
+      ownerUserId: session.user.id,
+      name: body.name.trim(),
+      description: body.description?.trim() ?? null,
+    },
+  });
+
+  await writeAuditLog(session.user.id, workspace.id, "workspace.create", workspace.id);
+  return NextResponse.json(workspace, { status: 201 });
+}

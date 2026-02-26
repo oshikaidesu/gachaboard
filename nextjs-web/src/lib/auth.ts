@@ -7,24 +7,18 @@ import { db } from "@/lib/db";
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
   secret: process.env.NEXTAUTH_SECRET,
-  session: {
-    strategy: "jwt",
-  },
+  session: { strategy: "jwt" },
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID ?? "",
       clientSecret: process.env.DISCORD_CLIENT_SECRET ?? "",
-      authorization: {
-        params: {
-          scope: "identify guilds",
-        },
-      },
+      authorization: { params: { scope: "identify" } },
     }),
   ],
   callbacks: {
     async jwt({ token, account, profile }) {
       if (account?.provider === "discord" && profile) {
-        token.discordId = profile.id;
+        token.discordId = (profile as { id: string }).id;
       }
       return token;
     },
