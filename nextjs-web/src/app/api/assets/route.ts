@@ -77,10 +77,10 @@ export async function GET(req: NextRequest) {
 }
 
 function getKind(mimeType: string): string {
+  if (mimeType === "image/gif") return "gif";
   if (mimeType.startsWith("image/")) return "image";
   if (mimeType.startsWith("video/")) return "video";
   if (mimeType.startsWith("audio/")) return "audio";
-  if (mimeType === "image/gif") return "gif";
   return "file";
 }
 

@@ -22,12 +22,18 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (!existsSync(filePath)) return NextResponse.json({ error: "File not found" }, { status: 404 });
 
   const buffer = await readFile(filePath);
-  const mimeType = converted ? "audio/mpeg" : asset.mimeType;
+  const mimeType = converted ? "audio/mpeg" : (asset.mimeType || "application/octet-stream");
+
+  // 画像・動画・音声はインライン表示、それ以外はダウンロード
+  const isInline = mimeType.startsWith("image/") || mimeType.startsWith("video/") || mimeType.startsWith("audio/");
+  const disposition = isInline ? "inline" : "attachment";
+  const encodedName = encodeURIComponent(asset.fileName);
 
   return new NextResponse(buffer, {
     headers: {
       "Content-Type": mimeType,
-      "Content-Disposition": `inline; filename="${asset.fileName}"`,
+      "Content-Disposition": `${disposition}; filename*=UTF-8''${encodedName}`,
+      "Content-Length": buffer.byteLength.toString(),
       "Cache-Control": "private, max-age=3600",
     },
   });
