@@ -1,0 +1,151 @@
+"use client";
+
+import {
+  BaseBoxShapeUtil,
+  HTMLContainer,
+  Rectangle2d,
+  TLShape,
+} from "@tldraw/tldraw";
+
+const TEXT_FILE_TYPE = "text-file" as const;
+
+declare module "@tldraw/tldraw" {
+  interface TLGlobalShapePropsMap {
+    [TEXT_FILE_TYPE]: {
+      assetId: string;
+      fileName: string;
+      mimeType: string;
+      content: string;
+      w: number;
+      h: number;
+    };
+  }
+}
+
+export type TextFileShape = TLShape<typeof TEXT_FILE_TYPE>;
+
+const TEXT_EXTENSIONS = new Set([
+  "txt", "md", "log", "csv",
+  "json", "yaml", "yml", "toml", "xml",
+  "js", "ts", "jsx", "tsx", "py", "go", "rs", "cpp", "c", "java",
+  "html", "css", "sh", "bash", "zsh",
+]);
+
+export function isTextFile(fileName: string, mimeType: string): boolean {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  return TEXT_EXTENSIONS.has(ext) || mimeType.startsWith("text/");
+}
+
+export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
+  static override type = TEXT_FILE_TYPE;
+
+  getDefaultProps(): TextFileShape["props"] {
+    return {
+      assetId: "",
+      fileName: "file.txt",
+      mimeType: "text/plain",
+      content: "",
+      w: 320,
+      h: 240,
+    };
+  }
+
+  override getGeometry(shape: TextFileShape) {
+    return new Rectangle2d({
+      width: shape.props.w,
+      height: shape.props.h,
+      isFilled: true,
+    });
+  }
+
+  override component(shape: TextFileShape) {
+    const ext = shape.props.fileName.split(".").pop()?.toLowerCase() ?? "";
+    const isCode = ["js", "ts", "jsx", "tsx", "py", "go", "rs", "cpp", "c", "java", "sh", "bash", "zsh", "html", "css"].includes(ext);
+    const isJson = ["json", "yaml", "yml", "toml", "xml"].includes(ext);
+
+    let headerBg = "#f4f4f5";
+    let icon = "📄";
+    if (isCode) { headerBg = "#1e1e2e"; icon = "💻"; }
+    else if (isJson) { headerBg = "#fef3c7"; icon = "🔧"; }
+    else if (ext === "md") { headerBg = "#eff6ff"; icon = "📝"; }
+    else if (ext === "csv") { headerBg = "#f0fdf4"; icon = "📊"; }
+
+    const shortName = shape.props.fileName.length > 28
+      ? shape.props.fileName.slice(0, 26) + "…"
+      : shape.props.fileName;
+
+    return (
+      <HTMLContainer
+        id={shape.id}
+        style={{
+          width: shape.props.w,
+          height: shape.props.h,
+          display: "flex",
+          flexDirection: "column",
+          borderRadius: 8,
+          overflow: "hidden",
+          border: "1px solid #e4e4e7",
+          background: "#ffffff",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+          pointerEvents: "all",
+        }}
+      >
+        <div
+          style={{
+            background: headerBg,
+            padding: "6px 10px",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            borderBottom: "1px solid #e4e4e7",
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ fontSize: 14 }}>{icon}</span>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: isCode ? "#cdd6f4" : "#18181b",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              flex: 1,
+              fontFamily: "system-ui, sans-serif",
+            }}
+          >
+            {shortName}
+          </span>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            overflow: "auto",
+            padding: "8px 10px",
+            background: isCode ? "#1e1e2e" : "#ffffff",
+          }}
+        >
+          <pre
+            style={{
+              margin: 0,
+              fontSize: 11,
+              lineHeight: 1.6,
+              fontFamily: "'Fira Code', 'Cascadia Code', 'Consolas', monospace",
+              color: isCode ? "#cdd6f4" : "#3f3f46",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              pointerEvents: "none",
+              userSelect: "none",
+            }}
+          >
+            {shape.props.content || "(空のファイル)"}
+          </pre>
+        </div>
+      </HTMLContainer>
+    );
+  }
+
+  override indicator(shape: TextFileShape) {
+    return <rect width={shape.props.w} height={shape.props.h} rx={8} />;
+  }
+}
