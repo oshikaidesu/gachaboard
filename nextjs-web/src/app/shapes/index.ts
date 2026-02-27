@@ -19,6 +19,7 @@ import {
   WrappedNoteShapeUtil,
   WrappedGeoShapeUtil,
   WrappedTextShapeUtil,
+  WrappedArrowShapeUtil,
 } from "./NativeShapeWrappers";
 
 // ---- 型定義 ----------------------------------------------------------------
@@ -48,6 +49,7 @@ export const CUSTOM_SHAPE_UTILS = [
   WrappedNoteShapeUtil,
   WrappedGeoShapeUtil,
   WrappedTextShapeUtil,
+  WrappedArrowShapeUtil,
 ];
 
 // ---- ファイル振り分けロジック ------------------------------------------------
