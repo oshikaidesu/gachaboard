@@ -1,12 +1,20 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   Tldraw,
   Editor,
   StateNode,
   TLClickEventInfo,
   TLRecord,
+  TLShapeId,
+  TLComponents,
+  TLUiOverrides,
+  DefaultToolbar,
+  DefaultToolbarContent,
+  TldrawUiToolbarButton,
+  useValue,
+  GeoShapeGeoStyle,
 } from "@tldraw/tldraw";
 import "@tldraw/tldraw/tldraw.css";
 import Link from "next/link";
@@ -14,8 +22,70 @@ import { CUSTOM_SHAPE_UTILS, placeFile, type ApiAsset, getFileEmoji, type FileIc
 import MediaPlayer from "./MediaPlayer";
 import { ConnectHandles } from "./ConnectHandles";
 import { BoardContext } from "./BoardContext";
+import { SmartHandTool, brushModeAtom } from "@/app/tools/SmartHandTool";
 
 type Props = { boardId: string; workspaceId: string; userName: string; currentUserId: string };
+
+// 全ツールをトグル動作にする：同じツールを再押下すると select（SmartHand）に戻る
+const uiOverrides: TLUiOverrides = {
+  tools(editor, tools) {
+    delete tools["hand"];
+    delete tools["select"];
+
+    for (const key of Object.keys(tools)) {
+      const tool = tools[key];
+      if (!tool) continue;
+      const originalOnSelect = tool.onSelect?.bind(tool);
+
+      tool.onSelect = (source) => {
+        const activeToolId = editor.getCurrentToolId();
+
+        // geo 系ツールは activeToolId === 'geo' かつ meta.geo が現在値と一致したら再押下とみなす
+        if (tool.meta?.geo) {
+          const currentGeo = editor.getSharedStyles().getAsKnownValue(GeoShapeGeoStyle);
+          if (activeToolId === "geo" && currentGeo === tool.meta.geo) {
+            editor.setCurrentTool("select");
+            return;
+          }
+        } else {
+          // 通常ツール：activeToolId が同じなら再押下 → select に戻す
+          if (activeToolId === tool.id) {
+            editor.setCurrentTool("select");
+            return;
+          }
+        }
+
+        originalOnSelect?.(source);
+      };
+    }
+
+    return tools;
+  },
+};
+
+// 範囲選択トグルボタン付きツールバー
+function SmartHandToolbar(props: React.ComponentProps<typeof DefaultToolbar>) {
+  const isBrushMode = useValue("brushMode", () => brushModeAtom.get(), []);
+  return (
+    <DefaultToolbar {...props}>
+      {/* 範囲選択トグルボタン（tldraw 標準の isActive で青ハイライト） */}
+      <TldrawUiToolbarButton
+        type="tool"
+        isActive={isBrushMode}
+        title="範囲選択 (ドラッグで複数選択)"
+        onClick={() => brushModeAtom.set(!brushModeAtom.get())}
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" strokeDasharray="4 2" />
+          <polyline points="9 11 12 14 15 11" />
+        </svg>
+      </TldrawUiToolbarButton>
+      <DefaultToolbarContent />
+    </DefaultToolbar>
+  );
+}
+
+const CUSTOM_TOOLS = [SmartHandTool];
 
 async function uploadFile(file: File, boardId: string): Promise<ApiAsset> {
   const fd = new FormData();
@@ -35,9 +105,13 @@ export default function TldrawBoard({ boardId, workspaceId, userName, currentUse
 
   const handleMount = useCallback(
     (editor: Editor) => {
+      // ホイール → ズーム（tldraw の wheelBehavior を 'zoom' に設定）
+      // デフォルトは 'pan'（ホイール=スクロール、Ctrl+ホイール=ズーム）なので反転する
+      editor.setCameraOptions({ wheelBehavior: "zoom" });
+
       // ファイルドロップ → shapes/index.ts の placeFile() に委譲
       editor.registerExternalContentHandler("files", async ({ point, files }) => {
-        const pagePoint = point ?? editor.getViewportPageCenter();
+        const pagePoint = point ?? editor.getViewportScreenCenter();
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
           let data: ApiAsset;
@@ -69,13 +143,13 @@ export default function TldrawBoard({ boardId, workspaceId, userName, currentUse
 
           // 削除差分の中から「削除されたシェイプに接続していたアローバインディング」を拾う
           // ストア更新後に検索すると binding が消えて取り逃がすケースがあるため、差分ベースで判定する
-          const arrowIds = new Set<string>();
+          const arrowIds = new Set<TLShapeId>();
           for (const record of removedRecords) {
             if (record.typeName !== "binding") continue;
             if (!("type" in record) || record.type !== "arrow") continue;
             if (!("fromId" in record) || !("toId" in record)) continue;
-            if (removedShapeIds.has(record.toId as string)) {
-              arrowIds.add(record.fromId as string);
+            if (removedShapeIds.has(record.toId as TLShapeId)) {
+              arrowIds.add(record.fromId as TLShapeId);
             }
           }
 
@@ -114,10 +188,10 @@ export default function TldrawBoard({ boardId, workspaceId, userName, currentUse
       type IdleStateNode = StateNode & {
         onDoubleClick: (info: TLClickEventInfo) => void;
       };
-      const selectIdleState = editor.getStateDescendant<IdleStateNode>("select.idle");
-      if (selectIdleState) {
-        const originalOnDoubleClick = selectIdleState.onDoubleClick?.bind(selectIdleState);
-        selectIdleState.onDoubleClick = function (info) {
+      const smartHandIdleState = editor.getStateDescendant<IdleStateNode>("select.idle");
+      if (smartHandIdleState) {
+        const originalOnDoubleClick = smartHandIdleState.onDoubleClick?.bind(smartHandIdleState);
+        smartHandIdleState.onDoubleClick = function (info) {
           if (info.phase !== "up") {
             originalOnDoubleClick?.(info);
             return;
@@ -142,6 +216,13 @@ export default function TldrawBoard({ boardId, workspaceId, userName, currentUse
     [boardId, userName]
   );
 
+  const components = useMemo<TLComponents>(
+    () => ({
+      Toolbar: SmartHandToolbar,
+    }),
+    []
+  );
+
   return (
     <BoardContext.Provider value={{ boardId, workspaceId, currentUserId }}>
     <div className="flex h-screen flex-col">
@@ -164,6 +245,10 @@ export default function TldrawBoard({ boardId, workspaceId, userName, currentUse
         <Tldraw
           persistenceKey={`board-${boardId}`}
           shapeUtils={CUSTOM_SHAPE_UTILS}
+          tools={CUSTOM_TOOLS}
+          overrides={uiOverrides}
+          components={components}
+          initialState="select"
           onMount={handleMount}
         >
           {/* draw.io ライクな接続ハンドル */}
