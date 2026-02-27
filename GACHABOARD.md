@@ -82,6 +82,65 @@ https://gachaboard.dpdns.org/api/auth/callback/discord
 
 ---
 
+## アクセス方法
+
+### 外部URL（通常アクセス）
+```
+https://gachaboar.uk
+```
+- Cloudflare Tunnel 経由
+- **100MB 以下のファイルのみ**アップロード可能
+
+### P2P URL（大容量ファイル用）
+```
+http://desktop-hn7hdbv-1.tail16829c.ts.net:3000
+```
+- Tailscale ノード共有経由
+- **ファイルサイズ制限なし**（ディスク容量まで）
+- 30GB の stem ファイルなどはこちらを使用
+
+---
+
+## Tailscale ノード共有への参加手順（身内向け）
+
+大容量ファイルをやり取りするには Tailscale への参加が必要です。
+
+### 手順
+
+1. **Tailscale アプリをインストール**
+   - Windows/Mac: https://tailscale.com/download
+   - iOS: App Store で「Tailscale」を検索
+   - Android: Google Play で「Tailscale」を検索
+
+2. **無料アカウントを作成してログイン**
+   - Google / GitHub / Microsoft アカウントで登録可能
+
+3. **招待を受け取る**
+   - 管理者（サーバーオーナー）から招待メールが届く
+   - メール内のリンクをクリックして承認
+
+4. **アクセス確認**
+   - Tailscale アプリを起動した状態で以下にアクセス:
+   ```
+   http://desktop-hn7hdbv-1.tail16829c.ts.net:3000
+   ```
+
+### 注意事項
+- Tailscale アプリが起動・接続中の状態でないとアクセスできない
+- ファイルアップロード時は必ず P2P URL を使用すること
+- 通常の閲覧・編集は外部URL（gachaboar.uk）でも可能
+
+---
+
+## サーバー起動方法
+
+`start.ps1` をダブルクリック（または PowerShell で実行）するだけで以下が自動起動します：
+
+1. Docker Compose（postgres + nextjs + cloudflared）
+2. Tailscale Funnel
+
+---
+
 ## コンセプト
 
 - 音楽・映像・デザインファイルを**貼り付けて共有**するホワイトボード

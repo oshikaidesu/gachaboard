@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireLogin } from "@/lib/authz";
 import { db } from "@/lib/db";
-import { writeFile } from "fs/promises";
+import { createWriteStream } from "fs";
+import { pipeline } from "stream/promises";
+import { Readable } from "stream";
 import { randomUUID } from "crypto";
 import path from "path";
 import { UPLOAD_DIR, ensureUploadDirs } from "@/lib/storage";
-
-const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
 
 export async function POST(req: NextRequest) {
   const session = await requireLogin();
@@ -21,18 +21,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "file and workspaceId are required" }, { status: 400 });
   }
 
-  if (file.size > MAX_FILE_SIZE) {
-    return NextResponse.json({ error: "File too large (max 500MB)" }, { status: 413 });
-  }
-
   await ensureUploadDirs();
 
   const ext = path.extname(file.name);
   const storageKey = `${randomUUID()}${ext}`;
   const filePath = path.join(UPLOAD_DIR, storageKey);
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(filePath, buffer);
+  // ストリーミング書き込み（大容量ファイルでもメモリを消費しない）
+  const readable = Readable.fromWeb(file.stream() as Parameters<typeof Readable.fromWeb>[0]);
+  await pipeline(readable, createWriteStream(filePath));
 
   const asset = await db.asset.create({
     data: {

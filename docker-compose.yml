@@ -11,6 +11,7 @@ services:
       - D:/whiteborad/whiteboard-multiplayer/nextjs-web:/app
       - /app/node_modules
       - /app/.next
+      - D:/whiteborad/whiteboard-multiplayer/uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,8 +53,10 @@ services:
     container_name: gachaboard-tunnel
     restart: unless-stopped
     command: tunnel --no-autoupdate run
+    env_file:
+      - nextjs-web/.env.local
     environment:
-      TUNNEL_TOKEN: "eyJhIjoiMDllYTk5OTZlMjAzMjkxMWQ1OWQyYTg5YjEwZTA3NzgiLCJ0IjoiMzQzOTI5Y2ItZjZjYy00YWQ3LWJkYjMtZGJlMTgzYjViYmYwIiwicyI6Ik1UUXlNREl5TmpRdE9EWXlaQzAwTlROaUxXRXdNek10TnpVeU56UTFNR0UwTkRrMSJ9"
+      TUNNEL_TOKEN: "${CLOUDFLARE_TUNNEL_TOKEN}"
     depends_on:
       - nextjs
 
