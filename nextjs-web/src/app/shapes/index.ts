@@ -13,6 +13,13 @@ import { Editor, createShapeId, AssetRecordType, TLImageAsset, TLVideoAsset } fr
 import { FileIconShapeUtil, FileIconShape } from "./FileIconShape";
 import { TextFileShapeUtil, TextFileShape, isTextFile } from "./TextFileShape";
 import { AudioShapeUtil, AudioShape } from "./AudioShape";
+import {
+  WrappedImageShapeUtil,
+  WrappedVideoShapeUtil,
+  WrappedNoteShapeUtil,
+  WrappedGeoShapeUtil,
+  WrappedTextShapeUtil,
+} from "./NativeShapeWrappers";
 
 // ---- 型定義 ----------------------------------------------------------------
 
@@ -31,9 +38,16 @@ export type ApiAsset = {
  * 新しいシェイプを追加したらここに追記する。
  */
 export const CUSTOM_SHAPE_UTILS = [
+  // カスタムシェイプ
   FileIconShapeUtil,
   TextFileShapeUtil,
   AudioShapeUtil,
+  // 組み込みシェイプのラッパー（CreatorLabel 追加）
+  WrappedImageShapeUtil,
+  WrappedVideoShapeUtil,
+  WrappedNoteShapeUtil,
+  WrappedGeoShapeUtil,
+  WrappedTextShapeUtil,
 ];
 
 // ---- ファイル振り分けロジック ------------------------------------------------

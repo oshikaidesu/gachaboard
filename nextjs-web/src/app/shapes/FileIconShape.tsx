@@ -6,7 +6,7 @@ import {
   Rectangle2d,
   TLShape,
 } from "@tldraw/tldraw";
-import { CreatorLabel } from "./CreatorLabel";
+import { CreatorLabel, getCreatedBy } from "./CreatorLabel";
 
 const FILE_ICON_TYPE = "file-icon" as const;
 
@@ -69,8 +69,6 @@ export class FileIconShapeUtil extends BaseBoxShapeUtil<FileIconShape> {
     const emoji = getFileEmoji(shape.props.fileName, shape.props.kind);
     const name = shape.props.fileName;
     const shortName = name.length > 14 ? name.slice(0, 12) + "…" : name;
-    const createdBy = (shape.meta as Record<string, unknown>)?.createdBy as string | undefined;
-
     return (
       <HTMLContainer
         id={shape.id}
@@ -89,7 +87,7 @@ export class FileIconShapeUtil extends BaseBoxShapeUtil<FileIconShape> {
           overflow: "visible",
         }}
       >
-        <CreatorLabel name={createdBy ?? "Unknown"} />
+        <CreatorLabel name={getCreatedBy(shape)} />
         {shape.props.kind === "image" || shape.props.kind === "gif" ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

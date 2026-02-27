@@ -6,7 +6,7 @@ import {
   Rectangle2d,
   TLShape,
 } from "@tldraw/tldraw";
-import { CreatorLabel } from "./CreatorLabel";
+import { CreatorLabel, getCreatedBy } from "./CreatorLabel";
 
 const AUDIO_SHAPE_TYPE = "audio-player" as const;
 
@@ -58,8 +58,6 @@ export class AudioShapeUtil extends BaseBoxShapeUtil<AudioShape> {
         ? shape.props.fileName.slice(0, 28) + "…"
         : shape.props.fileName;
 
-    const createdBy = (shape.meta as Record<string, unknown>)?.createdBy as string | undefined;
-
     return (
       <HTMLContainer
         id={shape.id}
@@ -71,7 +69,7 @@ export class AudioShapeUtil extends BaseBoxShapeUtil<AudioShape> {
           pointerEvents: "all",
         }}
       >
-        <CreatorLabel name={createdBy ?? "Unknown"} />
+        <CreatorLabel name={getCreatedBy(shape)} />
         <div style={{
           width: "100%",
           height: "100%",

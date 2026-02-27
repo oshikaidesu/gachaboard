@@ -6,7 +6,7 @@ import {
   Rectangle2d,
   TLShape,
 } from "@tldraw/tldraw";
-import { CreatorLabel } from "./CreatorLabel";
+import { CreatorLabel, getCreatedBy } from "./CreatorLabel";
 
 const TEXT_FILE_TYPE = "text-file" as const;
 
@@ -75,8 +75,6 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
       ? shape.props.fileName.slice(0, 26) + "…"
       : shape.props.fileName;
 
-    const createdBy = (shape.meta as Record<string, unknown>)?.createdBy as string | undefined;
-
     return (
       <HTMLContainer
         id={shape.id}
@@ -88,7 +86,7 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
           pointerEvents: "all",
         }}
       >
-        <CreatorLabel name={createdBy ?? "Unknown"} />
+        <CreatorLabel name={getCreatedBy(shape)} />
         {/* カード本体: overflow hidden でコンテンツをクリップ */}
         <div
           style={{

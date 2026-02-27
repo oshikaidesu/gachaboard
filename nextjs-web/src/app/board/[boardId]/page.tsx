@@ -14,7 +14,8 @@ export default async function BoardPage({ params }: Props) {
   ]);
   if (!board) notFound();
 
-  const userName = session?.user?.name ?? "Unknown";
+  const rawName = session?.user?.name ?? "";
+  const userName = rawName.trim() || "Unknown";
 
   return (
     <BoardClient
