@@ -7,6 +7,7 @@ import {
   TLShape,
 } from "@tldraw/tldraw";
 import { CreatorLabel, getCreatedBy } from "./CreatorLabel";
+import { ShapeReactionPanel } from "./ShapeReactionPanel";
 
 const FILE_ICON_TYPE = "file-icon" as const;
 
@@ -119,6 +120,7 @@ export class FileIconShapeUtil extends BaseBoxShapeUtil<FileIconShape> {
         >
           {shortName}
         </span>
+        <ShapeReactionPanel shapeId={shape.id} />
       </HTMLContainer>
     );
   }

@@ -7,6 +7,7 @@ import {
   TLShape,
 } from "@tldraw/tldraw";
 import { CreatorLabel, getCreatedBy } from "./CreatorLabel";
+import { ShapeReactionPanel } from "./ShapeReactionPanel";
 
 const TEXT_FILE_TYPE = "text-file" as const;
 
@@ -153,6 +154,7 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
             </pre>
           </div>
         </div>
+        <ShapeReactionPanel shapeId={shape.id} />
       </HTMLContainer>
     );
   }

@@ -10,6 +10,7 @@
 
 import { HTMLContainer, ImageShapeUtil, VideoShapeUtil, NoteShapeUtil, GeoShapeUtil, TextShapeUtil, TLImageShape, TLVideoShape, TLNoteShape, TLGeoShape, TLTextShape } from "@tldraw/tldraw";
 import { CreatorLabel, getCreatedBy } from "./CreatorLabel";
+import { ShapeReactionPanel } from "./ShapeReactionPanel";
 
 // ---- Image ----------------------------------------------------------------
 
@@ -24,6 +25,7 @@ export class WrappedImageShapeUtil extends ImageShapeUtil {
       >
         <CreatorLabel name={createdBy} />
         {base}
+        <ShapeReactionPanel shapeId={shape.id} />
       </HTMLContainer>
     );
   }
@@ -42,6 +44,7 @@ export class WrappedVideoShapeUtil extends VideoShapeUtil {
       >
         <CreatorLabel name={createdBy} />
         {base}
+        <ShapeReactionPanel shapeId={shape.id} />
       </HTMLContainer>
     );
   }
@@ -57,6 +60,7 @@ export class WrappedNoteShapeUtil extends NoteShapeUtil {
       <div style={{ position: "relative", overflow: "visible", width: "100%", height: "100%" }}>
         <CreatorLabel name={createdBy} />
         {base}
+        <ShapeReactionPanel shapeId={shape.id} />
       </div>
     );
   }
@@ -72,6 +76,7 @@ export class WrappedTextShapeUtil extends TextShapeUtil {
       <div style={{ position: "relative", overflow: "visible", width: "100%", height: "100%" }}>
         <CreatorLabel name={createdBy} />
         {base}
+        <ShapeReactionPanel shapeId={shape.id} />
       </div>
     );
   }
@@ -90,6 +95,7 @@ export class WrappedGeoShapeUtil extends GeoShapeUtil {
       >
         <CreatorLabel name={createdBy} />
         {base}
+        <ShapeReactionPanel shapeId={shape.id} />
       </HTMLContainer>
     );
   }

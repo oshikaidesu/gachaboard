@@ -7,6 +7,7 @@ import {
   TLShape,
 } from "@tldraw/tldraw";
 import { CreatorLabel, getCreatedBy } from "./CreatorLabel";
+import { ShapeReactionPanel } from "./ShapeReactionPanel";
 
 const AUDIO_SHAPE_TYPE = "audio-player" as const;
 
@@ -108,6 +109,7 @@ export class AudioShapeUtil extends BaseBoxShapeUtil<AudioShape> {
           onPointerDown={(e) => e.stopPropagation()}
         />
         </div>
+        <ShapeReactionPanel shapeId={shape.id} />
       </HTMLContainer>
     );
   }

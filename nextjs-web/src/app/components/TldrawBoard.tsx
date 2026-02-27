@@ -13,8 +13,9 @@ import Link from "next/link";
 import { CUSTOM_SHAPE_UTILS, placeFile, type ApiAsset, getFileEmoji, type FileIconShape } from "@/app/shapes";
 import MediaPlayer from "./MediaPlayer";
 import { ConnectHandles } from "./ConnectHandles";
+import { BoardContext } from "./BoardContext";
 
-type Props = { boardId: string; workspaceId: string; userName: string };
+type Props = { boardId: string; workspaceId: string; userName: string; currentUserId: string };
 
 async function uploadFile(file: File, boardId: string): Promise<ApiAsset> {
   const fd = new FormData();
@@ -28,7 +29,7 @@ async function uploadFile(file: File, boardId: string): Promise<ApiAsset> {
   return res.json();
 }
 
-export default function TldrawBoard({ boardId, workspaceId, userName }: Props) {
+export default function TldrawBoard({ boardId, workspaceId, userName, currentUserId }: Props) {
   const [preview, setPreview] = useState<ApiAsset | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -142,6 +143,7 @@ export default function TldrawBoard({ boardId, workspaceId, userName }: Props) {
   );
 
   return (
+    <BoardContext.Provider value={{ boardId, workspaceId, currentUserId }}>
     <div className="flex h-screen flex-col">
       {/* ヘッダー */}
       <div className="flex items-center gap-3 border-b border-zinc-200 bg-white px-4 py-2 z-10">
@@ -233,5 +235,6 @@ export default function TldrawBoard({ boardId, workspaceId, userName }: Props) {
         </div>
       )}
     </div>
+    </BoardContext.Provider>
   );
 }

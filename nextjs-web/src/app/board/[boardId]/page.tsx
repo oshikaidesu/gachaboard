@@ -16,12 +16,14 @@ export default async function BoardPage({ params }: Props) {
 
   const rawName = session?.user?.name ?? "";
   const userName = rawName.trim() || "Unknown";
+  const currentUserId = session?.user?.id ?? "";
 
   return (
     <BoardClient
       boardId={boardId}
       workspaceId={board.workspaceId}
       userName={userName}
+      currentUserId={currentUserId}
     />
   );
 }
