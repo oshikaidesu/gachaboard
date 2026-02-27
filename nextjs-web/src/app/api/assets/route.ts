@@ -31,13 +31,15 @@ export async function POST(req: NextRequest) {
   const readable = Readable.fromWeb(file.stream() as Parameters<typeof Readable.fromWeb>[0]);
   await pipeline(readable, createWriteStream(filePath));
 
+  const mimeType = file.type || "application/octet-stream";
+
   const asset = await db.asset.create({
     data: {
       workspaceId,
       boardId: boardId || null,
       uploaderId: session.user.id,
-      kind: getKind(file.type),
-      mimeType: file.type,
+      kind: getKind(mimeType),
+      mimeType,
       fileName: file.name,
       sizeBytes: BigInt(file.size),
       storageKey,
@@ -45,7 +47,7 @@ export async function POST(req: NextRequest) {
   });
 
   // wav ファイルは非同期でmp3変換
-  if (file.type === "audio/wav" || file.name.endsWith(".wav")) {
+  if (mimeType === "audio/wav" || file.name.endsWith(".wav")) {
     convertWavToMp3(storageKey).catch(console.error);
   }
 

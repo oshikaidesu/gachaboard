@@ -35,7 +35,7 @@ export default function AssetsPage() {
   useEffect(() => { load(); }, [load]);
 
   const upload = async (files: FileList | File[]) => {
-    const fileArray = Array.from(files).filter((f) => f.size > 0 && f.type !== "");
+    const fileArray = Array.from(files).filter((f) => f.size > 0);
     if (fileArray.length === 0) return;
     setUploading(true);
     for (const file of fileArray) {
@@ -51,17 +51,7 @@ export default function AssetsPage() {
   const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (tab !== "active" || uploading) return;
-    const items = Array.from(e.dataTransfer.items);
-    const files: File[] = [];
-    for (const item of items) {
-      if (item.kind === "file") {
-        const entry = item.webkitGetAsEntry?.();
-        // ディレクトリは無視
-        if (entry?.isDirectory) continue;
-        const file = item.getAsFile();
-        if (file) files.push(file);
-      }
-    }
+    const files = Array.from(e.dataTransfer.files).filter((f) => f.size > 0);
     if (files.length > 0) await upload(files);
   };
 

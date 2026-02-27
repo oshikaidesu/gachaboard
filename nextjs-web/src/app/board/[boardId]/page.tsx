@@ -1,7 +1,6 @@
-"use client";
-
 import dynamic from "next/dynamic";
-import { useParams } from "next/navigation";
+import { db } from "@/lib/db";
+import { notFound } from "next/navigation";
 
 const TldrawBoard = dynamic(() => import("@/app/components/TldrawBoard"), {
   ssr: false,
@@ -12,7 +11,12 @@ const TldrawBoard = dynamic(() => import("@/app/components/TldrawBoard"), {
   ),
 });
 
-export default function BoardPage() {
-  const { boardId } = useParams<{ boardId: string }>();
-  return <TldrawBoard boardId={boardId} />;
+type Props = { params: Promise<{ boardId: string }> };
+
+export default async function BoardPage({ params }: Props) {
+  const { boardId } = await params;
+  const board = await db.board.findUnique({ where: { id: boardId } });
+  if (!board) notFound();
+
+  return <TldrawBoard boardId={boardId} workspaceId={board.workspaceId} />;
 }
