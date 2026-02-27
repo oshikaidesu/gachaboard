@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { Tldraw, useEditor, TLShapeId, createShapeId } from "@tldraw/tldraw";
+import {
+  Tldraw,
+  useEditor,
+  createShapeId,
+  TLAssetStore,
+  TLAsset,
+  AssetRecordType,
+  TLImageAsset,
+  TLVideoAsset,
+} from "@tldraw/tldraw";
 import "@tldraw/tldraw/tldraw.css";
 import Link from "next/link";
 import { FileIconShapeUtil, FileIconShape, getFileEmoji } from "./FileIconShape";
@@ -9,7 +18,7 @@ import MediaPlayer from "./MediaPlayer";
 
 type Props = { boardId: string; workspaceId: string };
 
-type AssetRecord = {
+type ApiAsset = {
   id: string;
   fileName: string;
   mimeType: string;
@@ -19,71 +28,137 @@ type AssetRecord = {
 
 const SHAPE_UTILS = [FileIconShapeUtil];
 
-// ドロップ座標→シェイプ配置を担うインナーコンポーネント（editorフックが使える）
+// TLAssetStore: tldraw が画像・動画を描画する際の URL 解決
+// upload は registerExternalContentHandler 側で行うため最小実装
+const ASSET_STORE: TLAssetStore = {
+  async upload(_asset: TLAsset, _file: File) {
+    // このパスは通らない（content handler 側でアップロード済み）
+    return { src: "" };
+  },
+  resolve(asset: TLAsset) {
+    return (asset.props as { src?: string }).src ?? null;
+  },
+};
+
+// tldraw コンテキスト内で動作するインナーコンポーネント
 function BoardInner({
   boardId,
-  workspaceId,
   onPreview,
 }: {
   boardId: string;
-  workspaceId: string;
-  onPreview: (asset: AssetRecord) => void;
+  onPreview: (asset: ApiAsset) => void;
 }) {
   const editor = useEditor();
+  const handlersRegistered = useRef(false);
 
-  const handleDrop = useCallback(
-    async (e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      const files = Array.from(e.dataTransfer.files).filter((f) => f.size > 0);
-      if (files.length === 0) return;
+  // ハンドラ登録（一度だけ）
+  if (!handlersRegistered.current) {
+    handlersRegistered.current = true;
 
-      // ドロップ座標をキャンバス座標に変換
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      const canvasPoint = editor.screenToPage({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      });
+    editor.registerExternalContentHandler("files", async ({ point, files }) => {
+      const pagePoint = point ?? editor.getViewportPageCenter();
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        const mime = file.type || "application/octet-stream";
+        const isImage = mime.startsWith("image/");
+        const isVideo = mime.startsWith("video/");
+
+        // サーバーにアップロード
         const fd = new FormData();
         fd.append("file", file);
-        fd.append("workspaceId", workspaceId);
         fd.append("boardId", boardId);
-
         const res = await fetch("/api/assets", { method: "POST", body: fd });
         if (!res.ok) continue;
-        const asset: AssetRecord = await res.json();
+        const data: ApiAsset = await res.json();
 
-        const shapeId: TLShapeId = createShapeId();
-        editor.createShape<FileIconShape>({
-          id: shapeId,
-          type: "file-icon",
-          x: canvasPoint.x + i * 110,
-          y: canvasPoint.y,
-          props: {
-            assetId: asset.id,
-            fileName: asset.fileName,
-            mimeType: asset.mimeType,
-            kind: asset.kind,
-            w: 96,
-            h: 96,
-          },
-        });
+        const x = pagePoint.x + i * 110;
+        const y = pagePoint.y;
+
+        if (isImage) {
+          // tldraw ネイティブの image シェイプとして配置
+          const assetId = AssetRecordType.createId();
+          const imageAsset: TLImageAsset = {
+            id: assetId,
+            typeName: "asset",
+            type: "image",
+            props: {
+              src: `/api/assets/${data.id}/file`,
+              w: 320,
+              h: 240,
+              name: data.fileName,
+              isAnimated: mime === "image/gif",
+              mimeType: mime,
+              fileSize: Number(data.sizeBytes),
+            },
+            meta: {},
+          };
+          editor.createAssets([imageAsset]);
+          editor.createShape({
+            type: "image",
+            x,
+            y,
+            props: { assetId, w: 320, h: 240 },
+          });
+        } else if (isVideo) {
+          // tldraw ネイティブの video シェイプとして配置
+          const assetId = AssetRecordType.createId();
+          const videoAsset: TLVideoAsset = {
+            id: assetId,
+            typeName: "asset",
+            type: "video",
+            props: {
+              src: `/api/assets/${data.id}/file`,
+              w: 320,
+              h: 240,
+              name: data.fileName,
+              isAnimated: true,
+              mimeType: mime,
+              fileSize: Number(data.sizeBytes),
+            },
+            meta: {},
+          };
+          editor.createAssets([videoAsset]);
+          editor.createShape({
+            type: "video",
+            x,
+            y,
+            props: { assetId, w: 320, h: 240 },
+          });
+        } else {
+          // その他ファイル → FileIconShape として配置
+          editor.createShape<FileIconShape>({
+            id: createShapeId(),
+            type: "file-icon",
+            x,
+            y,
+            props: {
+              assetId: data.id,
+              fileName: data.fileName,
+              mimeType: data.mimeType,
+              kind: data.kind,
+              w: 96,
+              h: 96,
+            },
+          });
+        }
       }
-    },
-    [editor, boardId, workspaceId]
-  );
+    });
+  }
 
-  // シェイプダブルクリックでプレビュー
+  // FileIconShape のダブルクリックでプレビューを開く
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       const target = e.target as HTMLElement;
       const container = target.closest("[data-shape-id]") as HTMLElement | null;
       if (!container) return;
-      const shapeId = container.dataset.shapeId as TLShapeId;
-      const shape = editor.getShape(shapeId) as FileIconShape | undefined;
+      const shapeId = container.dataset.shapeId;
+      if (!shapeId) return;
+      const shape = editor.getShape(shapeId as ReturnType<typeof createShapeId>) as
+        | FileIconShape
+        | undefined;
       if (!shape || shape.type !== "file-icon") return;
+      e.stopPropagation();
       onPreview({
         id: shape.props.assetId,
         fileName: shape.props.fileName,
@@ -96,26 +171,16 @@ function BoardInner({
   );
 
   return (
-    <div
-      className="flex-1 relative"
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={handleDrop}
-      onDoubleClick={handleDoubleClick}
-    >
-      {/* ドロップヒント */}
-      <div
-        className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 z-10
-          rounded-full bg-black/50 px-4 py-1.5 text-xs text-white opacity-60"
-      >
-        ファイルをここにドロップしてアイコン配置
+    <div className="absolute inset-0" onDoubleClick={handleDoubleClick}>
+      <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 z-10 rounded-full bg-black/50 px-4 py-1.5 text-xs text-white opacity-50 select-none">
+        ファイルをドロップしてアイコン配置
       </div>
     </div>
   );
 }
 
 export default function TldrawBoard({ boardId, workspaceId }: Props) {
-  const [preview, setPreview] = useState<AssetRecord | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [preview, setPreview] = useState<ApiAsset | null>(null);
 
   return (
     <div className="flex h-screen flex-col">
@@ -134,20 +199,13 @@ export default function TldrawBoard({ boardId, workspaceId }: Props) {
       </div>
 
       {/* キャンバス */}
-      <div ref={containerRef} className="flex-1 relative">
+      <div className="flex-1 relative">
         <Tldraw
           persistenceKey={`board-${boardId}`}
           shapeUtils={SHAPE_UTILS}
-          onMount={(editor) => {
-            // tldraw自身のドロップを無効化（独自処理に置き換え）
-            editor.updateInstanceState({ isReadonly: false });
-          }}
+          assets={ASSET_STORE}
         >
-          <BoardInner
-            boardId={boardId}
-            workspaceId={workspaceId}
-            onPreview={setPreview}
-          />
+          <BoardInner boardId={boardId} onPreview={setPreview} />
         </Tldraw>
       </div>
 

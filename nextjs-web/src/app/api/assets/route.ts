@@ -17,8 +17,19 @@ export async function POST(req: NextRequest) {
   const workspaceId = formData.get("workspaceId") as string | null;
   const boardId = formData.get("boardId") as string | null;
 
-  if (!file || !workspaceId) {
-    return NextResponse.json({ error: "file and workspaceId are required" }, { status: 400 });
+  if (!file) {
+    return NextResponse.json({ error: "file is required" }, { status: 400 });
+  }
+
+  // boardId のみ渡された場合は DB から workspaceId を補完
+  let resolvedWorkspaceId = workspaceId;
+  if (!resolvedWorkspaceId && boardId) {
+    const board = await db.board.findUnique({ where: { id: boardId }, select: { workspaceId: true } });
+    if (!board) return NextResponse.json({ error: "board not found" }, { status: 404 });
+    resolvedWorkspaceId = board.workspaceId;
+  }
+  if (!resolvedWorkspaceId) {
+    return NextResponse.json({ error: "workspaceId or boardId is required" }, { status: 400 });
   }
 
   await ensureUploadDirs();
@@ -35,7 +46,7 @@ export async function POST(req: NextRequest) {
 
   const asset = await db.asset.create({
     data: {
-      workspaceId,
+      workspaceId: resolvedWorkspaceId,
       boardId: boardId || null,
       uploaderId: session.user.id,
       kind: getKind(mimeType),
