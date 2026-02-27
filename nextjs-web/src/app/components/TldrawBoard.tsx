@@ -14,7 +14,7 @@ import { CUSTOM_SHAPE_UTILS, placeFile, type ApiAsset, getFileEmoji, type FileIc
 import MediaPlayer from "./MediaPlayer";
 import { ConnectHandles } from "./ConnectHandles";
 
-type Props = { boardId: string; workspaceId: string };
+type Props = { boardId: string; workspaceId: string; userName: string };
 
 async function uploadFile(file: File, boardId: string): Promise<ApiAsset> {
   const fd = new FormData();
@@ -28,7 +28,7 @@ async function uploadFile(file: File, boardId: string): Promise<ApiAsset> {
   return res.json();
 }
 
-export default function TldrawBoard({ boardId, workspaceId }: Props) {
+export default function TldrawBoard({ boardId, workspaceId, userName }: Props) {
   const [preview, setPreview] = useState<ApiAsset | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -51,34 +51,35 @@ export default function TldrawBoard({ boardId, workspaceId }: Props) {
           await placeFile(editor, file, data, {
             x: pagePoint.x + i * 120,
             y: pagePoint.y,
-          });
+          }, userName);
         }
       });
 
       // シェイプ削除時に紐づくアローを連鎖削除する
       editor.store.listen(
         (entry) => {
-          // 今回の操作で削除されたシェイプ ID を収集
-          const removedIds = new Set(
-            Object.values(entry.changes.removed)
+          const removedRecords = Object.values(entry.changes.removed);
+          const removedShapeIds = new Set(
+            removedRecords
               .filter((r): r is TLRecord & { typeName: "shape" } => r.typeName === "shape")
               .map((r) => r.id)
           );
-          if (removedIds.size === 0) return;
+          if (removedShapeIds.size === 0) return;
 
-          // 削除シェイプにバインドされているアローを探して削除
-          const toDelete = editor
-            .getCurrentPageShapes()
-            .filter((s) => s.type === "arrow")
-            .filter((arrow) =>
-              editor
-                .getBindingsFromShape(arrow.id, "arrow")
-                .some((b) => removedIds.has(b.toId))
-            )
-            .map((arrow) => arrow.id);
+          // 削除差分の中から「削除されたシェイプに接続していたアローバインディング」を拾う
+          // ストア更新後に検索すると binding が消えて取り逃がすケースがあるため、差分ベースで判定する
+          const arrowIds = new Set<string>();
+          for (const record of removedRecords) {
+            if (record.typeName !== "binding") continue;
+            if (!("type" in record) || record.type !== "arrow") continue;
+            if (!("fromId" in record) || !("toId" in record)) continue;
+            if (removedShapeIds.has(record.toId as string)) {
+              arrowIds.add(record.fromId as string);
+            }
+          }
 
-          if (toDelete.length > 0) {
-            editor.deleteShapes(toDelete);
+          if (arrowIds.size > 0) {
+            editor.deleteShapes([...arrowIds]);
           }
         },
         { source: "user", scope: "document" }
@@ -113,7 +114,7 @@ export default function TldrawBoard({ boardId, workspaceId }: Props) {
         };
       }
     },
-    [boardId]
+    [boardId, userName]
   );
 
   return (
@@ -139,7 +140,7 @@ export default function TldrawBoard({ boardId, workspaceId }: Props) {
           shapeUtils={CUSTOM_SHAPE_UTILS}
           onMount={handleMount}
         >
-          {/* draw.io ライクな接続ハンドル: Tldraw children = editor コンテキスト内 */}
+          {/* draw.io ライクな接続ハンドル */}
           <ConnectHandles />
 
           <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 z-10 rounded-full bg-black/50 px-4 py-1.5 text-xs text-white opacity-50 select-none">

@@ -18,7 +18,10 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, account, profile }) {
       if (account?.provider === "discord" && profile) {
-        token.discordId = (profile as { id: string }).id;
+        const p = profile as { id: string; username: string; global_name?: string };
+        token.discordId = p.id;
+        // global_name は Discord の表示名、なければ username（識別子）を使う
+        token.discordName = p.global_name ?? p.username;
       }
       return token;
     },
@@ -26,6 +29,10 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.sub ?? "";
         session.user.discordId = (token.discordId as string | undefined) ?? "";
+        // Discord 表示名を name に上書き
+        if (token.discordName) {
+          session.user.name = token.discordName as string;
+        }
       }
       return session;
     },

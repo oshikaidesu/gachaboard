@@ -52,19 +52,22 @@ async function fetchTextContent(assetId: string): Promise<string> {
 /**
  * アップロード済みファイル 1 件をキャンバス上に配置する。
  *
- * @param editor   tldraw の Editor インスタンス
- * @param file     ドロップされた File オブジェクト（mime 判定に使用）
- * @param data     /api/assets へのアップロード結果
- * @param position キャンバス上の配置座標（ページ座標）
+ * @param editor     tldraw の Editor インスタンス
+ * @param file       ドロップされた File オブジェクト（mime 判定に使用）
+ * @param data       /api/assets へのアップロード結果
+ * @param position   キャンバス上の配置座標（ページ座標）
+ * @param createdBy  作成者名（シェイプ左上に表示）
  */
 export async function placeFile(
   editor: Editor,
   file: File,
   data: ApiAsset,
-  position: { x: number; y: number }
+  position: { x: number; y: number },
+  createdBy = "Unknown"
 ): Promise<void> {
   const mime = file.type || "application/octet-stream";
   const { x, y } = position;
+  const meta = { createdBy };
 
   // --- 画像 / GIF ---
   if (mime.startsWith("image/")) {
@@ -85,7 +88,7 @@ export async function placeFile(
       meta: {},
     };
     editor.createAssets([imageAsset]);
-    editor.createShape({ type: "image", x, y, props: { assetId, w: 320, h: 240 } });
+    editor.createShape({ type: "image", x, y, meta, props: { assetId, w: 320, h: 240 } });
     return;
   }
 
@@ -108,7 +111,7 @@ export async function placeFile(
       meta: {},
     };
     editor.createAssets([videoAsset]);
-    editor.createShape({ type: "video", x, y, props: { assetId, w: 320, h: 240 } });
+    editor.createShape({ type: "video", x, y, meta, props: { assetId, w: 320, h: 240 } });
     return;
   }
 
@@ -120,6 +123,7 @@ export async function placeFile(
       type: "text-file",
       x,
       y,
+      meta,
       props: {
         assetId: data.id,
         fileName: data.fileName,
@@ -139,6 +143,7 @@ export async function placeFile(
       type: "audio-player",
       x,
       y,
+      meta,
       props: {
         assetId: data.id,
         fileName: data.fileName,
@@ -156,6 +161,7 @@ export async function placeFile(
     type: "file-icon",
     x,
     y,
+    meta,
     props: {
       assetId: data.id,
       fileName: data.fileName,

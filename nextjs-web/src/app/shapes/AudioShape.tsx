@@ -6,6 +6,7 @@ import {
   Rectangle2d,
   TLShape,
 } from "@tldraw/tldraw";
+import { CreatorLabel } from "./CreatorLabel";
 
 const AUDIO_SHAPE_TYPE = "audio-player" as const;
 
@@ -57,12 +58,23 @@ export class AudioShapeUtil extends BaseBoxShapeUtil<AudioShape> {
         ? shape.props.fileName.slice(0, 28) + "…"
         : shape.props.fileName;
 
+    const createdBy = (shape.meta as Record<string, unknown>)?.createdBy as string | undefined;
+
     return (
       <HTMLContainer
         id={shape.id}
         style={{
           width: shape.props.w,
           height: shape.props.h,
+          overflow: "visible",
+          position: "relative",
+          pointerEvents: "all",
+        }}
+      >
+        <CreatorLabel name={createdBy ?? "Unknown"} />
+        <div style={{
+          width: "100%",
+          height: "100%",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
@@ -72,9 +84,7 @@ export class AudioShapeUtil extends BaseBoxShapeUtil<AudioShape> {
           border: "1px solid #2d2d4e",
           padding: "10px 14px",
           boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
-          pointerEvents: "all",
-        }}
-      >
+        }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 18, flexShrink: 0 }}>🎵</span>
           <span
@@ -99,6 +109,7 @@ export class AudioShapeUtil extends BaseBoxShapeUtil<AudioShape> {
           onMouseDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
         />
+        </div>
       </HTMLContainer>
     );
   }

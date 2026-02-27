@@ -6,6 +6,7 @@ import {
   Rectangle2d,
   TLShape,
 } from "@tldraw/tldraw";
+import { CreatorLabel } from "./CreatorLabel";
 
 const TEXT_FILE_TYPE = "text-file" as const;
 
@@ -74,72 +75,85 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
       ? shape.props.fileName.slice(0, 26) + "…"
       : shape.props.fileName;
 
+    const createdBy = (shape.meta as Record<string, unknown>)?.createdBy as string | undefined;
+
     return (
       <HTMLContainer
         id={shape.id}
         style={{
           width: shape.props.w,
           height: shape.props.h,
-          display: "flex",
-          flexDirection: "column",
-          borderRadius: 8,
-          overflow: "hidden",
-          border: "1px solid #e4e4e7",
-          background: "#ffffff",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+          overflow: "visible",
+          position: "relative",
           pointerEvents: "all",
         }}
       >
+        <CreatorLabel name={createdBy ?? "Unknown"} />
+        {/* カード本体: overflow hidden でコンテンツをクリップ */}
         <div
           style={{
-            background: headerBg,
-            padding: "6px 10px",
+            width: "100%",
+            height: "100%",
             display: "flex",
-            alignItems: "center",
-            gap: 6,
-            borderBottom: "1px solid #e4e4e7",
-            flexShrink: 0,
+            flexDirection: "column",
+            borderRadius: 8,
+            overflow: "hidden",
+            border: "1px solid #e4e4e7",
+            background: "#ffffff",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
           }}
         >
-          <span style={{ fontSize: 14 }}>{icon}</span>
-          <span
+          <div
             style={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: isCode ? "#cdd6f4" : "#18181b",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              background: headerBg,
+              padding: "6px 10px",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              borderBottom: "1px solid #e4e4e7",
+              flexShrink: 0,
+            }}
+          >
+            <span style={{ fontSize: 14 }}>{icon}</span>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: isCode ? "#cdd6f4" : "#18181b",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                flex: 1,
+                fontFamily: "system-ui, sans-serif",
+              }}
+            >
+              {shortName}
+            </span>
+          </div>
+          <div
+            style={{
               flex: 1,
-              fontFamily: "system-ui, sans-serif",
+              overflow: "auto",
+              padding: "8px 10px",
+              background: isCode ? "#1e1e2e" : "#ffffff",
             }}
           >
-            {shortName}
-          </span>
-        </div>
-        <div
-          style={{
-            flex: 1,
-            overflow: "auto",
-            padding: "8px 10px",
-            background: isCode ? "#1e1e2e" : "#ffffff",
-          }}
-        >
-          <pre
-            style={{
-              margin: 0,
-              fontSize: 11,
-              lineHeight: 1.6,
-              fontFamily: "'Fira Code', 'Cascadia Code', 'Consolas', monospace",
-              color: isCode ? "#cdd6f4" : "#3f3f46",
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-              pointerEvents: "none",
-              userSelect: "none",
-            }}
-          >
-            {shape.props.content || "(空のファイル)"}
-          </pre>
+            <pre
+              style={{
+                margin: 0,
+                fontSize: 11,
+                lineHeight: 1.6,
+                fontFamily: "'Fira Code', 'Cascadia Code', 'Consolas', monospace",
+                color: isCode ? "#cdd6f4" : "#3f3f46",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                pointerEvents: "none",
+                userSelect: "none",
+              }}
+            >
+              {shape.props.content || "(空のファイル)"}
+            </pre>
+          </div>
         </div>
       </HTMLContainer>
     );
