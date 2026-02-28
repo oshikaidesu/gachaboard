@@ -48,21 +48,21 @@ flowchart LR
 
 ## Phase 1: Discord認証基盤
 
-- [x] P1-01 Auth.js を導入 [#71](https://github.com/oshikaidesu/gachaboard/issues/71)
-- [x] P1-02 Discord Provider を設定（`guilds` scope） [#72](https://github.com/oshikaidesu/gachaboard/issues/72)
-- [x] P1-03 セッション型を拡張（`discordId/name/avatar`） [#73](https://github.com/oshikaidesu/gachaboard/issues/73)
-- [x] P1-04 サインイン/サインアウトUIを配置 [#74](https://github.com/oshikaidesu/gachaboard/issues/74)
-- [x] P1-05 認証失敗時ハンドリング（再試行導線） [#75](https://github.com/oshikaidesu/gachaboard/issues/75)
-- [x] P1-06 `.env.example` に認証変数を追加 [#76](https://github.com/oshikaidesu/gachaboard/issues/76)
+- [x] P1-01 Auth.js を導入
+- [x] P1-02 Discord Provider を設定（`guilds` scope）
+- [x] P1-03 セッション型を拡張（`discordId/name/avatar`）
+- [x] P1-04 サインイン/サインアウトUIを配置
+- [x] P1-05 認証失敗時ハンドリング（再試行導線）
+- [x] P1-06 `.env.example` に認証変数を追加
 - done条件:
   - ログイン後に `id/name/icon` が表示される
 
 ## Phase 2: DB/スキーマ基盤
 
-- [x] P2-01 Prisma 導入とDB接続 [#77](https://github.com/oshikaidesu/gachaboard/issues/77)
-- [x] P2-02 モデル作成（User/Guild/GuildMember/Project/Board/Asset） [#78](https://github.com/oshikaidesu/gachaboard/issues/78)
-- [x] P2-03 追加モデル作成（MediaComment/ObjectReaction/Connector） [#79](https://github.com/oshikaidesu/gachaboard/issues/79)
-- [x] P2-04 外部キー/複合ユニーク/索引の定義 [#80](https://github.com/oshikaidesu/gachaboard/issues/80)
+- [x] P2-01 Prisma 導入とDB接続
+- [x] P2-02 モデル作成（User/Guild/GuildMember/Project/Board/Asset）
+- [x] P2-03 追加モデル作成（MediaComment/ObjectReaction/Connector）
+- [x] P2-04 外部キー/複合ユニーク/索引の定義
 - [ ] P2-05 初期マイグレーション作成 [#9](https://github.com/oshikaidesu/gachaboard/issues/9)
 - [ ] P2-06 ローカルseed作成 [#10](https://github.com/oshikaidesu/gachaboard/issues/10)
 - [ ] P2-07 境界制約テスト（guild跨ぎ不許可） [#11](https://github.com/oshikaidesu/gachaboard/issues/11)
@@ -71,10 +71,10 @@ flowchart LR
 
 ## Phase 3: App Router導線
 
-- [x] P3-01 `/projects` 一覧ページ [#81](https://github.com/oshikaidesu/gachaboard/issues/81)
-- [x] P3-02 プロジェクト作成フロー（`guildId` 必須） [#82](https://github.com/oshikaidesu/gachaboard/issues/82)
-- [x] P3-03 `/project/[projectId]` 詳細ページ [#83](https://github.com/oshikaidesu/gachaboard/issues/83)
-- [x] P3-04 `/project/[projectId]/board/[boardId]` ページ [#84](https://github.com/oshikaidesu/gachaboard/issues/84)
+- [x] P3-01 `/projects` 一覧ページ
+- [x] P3-02 プロジェクト作成フロー（`guildId` 必須）
+- [x] P3-03 `/project/[projectId]` 詳細ページ
+- [x] P3-04 `/project/[projectId]/board/[boardId]` ページ
 - [x] P3-05 URLコピー導線 [#12](https://github.com/oshikaidesu/gachaboard/issues/12)
 - [x] P3-06 ローディング/エラー画面 [#13](https://github.com/oshikaidesu/gachaboard/issues/13)
 - done条件:
