@@ -12,12 +12,12 @@ export async function GET(req: NextRequest) {
 
   const reactions = await db.objectReaction.findMany({
     where: { boardId, ...(shapeId ? { shapeId } : {}), deletedAt: null },
-    include: { user: { select: { id: true, name: true, image: true } } },
+    include: { user: { select: { id: true, discordName: true, avatarUrl: true } } },
     orderBy: { createdAt: "asc" },
   });
 
   // emoji ごとに集計
-  const grouped: Record<string, { emoji: string; count: number; users: { id: string; name: string | null; image: string | null }[]; reacted: boolean }> = {};
+  const grouped: Record<string, { emoji: string; count: number; users: { id: string; discordName: string; avatarUrl: string | null }[]; reacted: boolean }> = {};
   for (const r of reactions) {
     const key = `${r.shapeId}:${r.emoji}`;
     if (!grouped[key]) grouped[key] = { emoji: r.emoji, count: 0, users: [], reacted: false };

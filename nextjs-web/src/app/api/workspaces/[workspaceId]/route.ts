@@ -4,6 +4,21 @@ import { db } from "@/lib/db";
 
 type Params = { params: Promise<{ workspaceId: string }> };
 
+/** GET /api/workspaces/[workspaceId] - ワークスペース詳細（ログイン済み全員） */
+export async function GET(_req: NextRequest, { params }: Params) {
+  const { workspaceId } = await params;
+  const session = await requireLogin();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const workspace = await db.workspace.findUnique({
+    where: { id: workspaceId },
+    include: { owner: { select: { discordName: true } } },
+  });
+  if (!workspace) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  return NextResponse.json({ ...workspace, ownerName: workspace.owner.discordName });
+}
+
 /** PATCH /api/workspaces/[workspaceId] - trash or restore */
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { workspaceId } = await params;

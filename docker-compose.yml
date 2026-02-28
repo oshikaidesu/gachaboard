@@ -8,10 +8,10 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - D:/whiteborad/whiteboard-multiplayer/nextjs-web:/app
+      - ./nextjs-web:/app
       - /app/node_modules
       - /app/.next
-      - D:/whiteborad/whiteboard-multiplayer/uploads:/app/uploads
+      - ./nextjs-web/uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -22,7 +22,9 @@ services:
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
       DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/whiteboard"
-      NEXTAUTH_URL: "https://desktop-hn7hdbv-1.tail16829c.ts.net"
+      NEXTAUTH_URL: "https://uooooooooooo.tail16829c.ts.net"
+      SYNC_SERVER_URL: "http://sync-server:5858"
+      E2E_TEST_MODE: "${E2E_TEST_MODE:-0}"
     command: >
       sh -c "
         echo 'Waiting for database...' &&
@@ -31,6 +33,21 @@ services:
         npx prisma db push --url $$DATABASE_URL &&
         exec npm run dev -- --hostname 0.0.0.0 --port 3000
       "
+
+  sync-server:
+    container_name: tldraw-sync
+    build:
+      context: ./nextjs-web/sync-server
+      dockerfile: Dockerfile
+    ports:
+      - "5858:5858"
+    environment:
+      SYNC_PORT: "5858"
+      ROOMS_DIR: "/app/.rooms"
+    volumes:
+      - sync_rooms:/app/.rooms
+    restart: unless-stopped
+
   postgres:
     image: postgres:16
     container_name: whiteboard-postgres
@@ -51,3 +68,4 @@ services:
 
 volumes:
   postgres_data:
+  sync_rooms:

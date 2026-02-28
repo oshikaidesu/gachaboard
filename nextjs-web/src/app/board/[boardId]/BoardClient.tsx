@@ -11,8 +11,8 @@ const TldrawBoard = dynamic(() => import("@/app/components/TldrawBoard"), {
   ),
 });
 
-type Props = { boardId: string; workspaceId: string; userName: string; currentUserId: string };
+type Props = { boardId: string; workspaceId: string; userName: string; currentUserId: string; avatarUrl?: string | null };
 
-export default function BoardClient({ boardId, workspaceId, userName, currentUserId }: Props) {
-  return <TldrawBoard boardId={boardId} workspaceId={workspaceId} userName={userName} currentUserId={currentUserId} />;
+export default function BoardClient({ boardId, workspaceId, userName, currentUserId, avatarUrl }: Props) {
+  return <TldrawBoard boardId={boardId} workspaceId={workspaceId} userName={userName} currentUserId={currentUserId} avatarUrl={avatarUrl} />;
 }

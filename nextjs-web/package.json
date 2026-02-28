@@ -14,6 +14,7 @@
     "@auth/prisma-adapter": "^2.11.1",
     "@prisma/adapter-pg": "^7.4.1",
     "@prisma/client": "7.4.1",
+    "@tldraw/sync": "^4.4.0",
     "@tldraw/tldraw": "^4.4.0",
     "@twemoji/api": "^17.0.2",
     "cheerio": "^1.2.0",

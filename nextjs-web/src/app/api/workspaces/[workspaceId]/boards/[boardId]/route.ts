@@ -40,5 +40,14 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   await db.board.delete({ where: { id: boardId } });
   await writeAuditLog(ctx.session.user.id, workspaceId, "board.delete", boardId);
+
+  // sync-server の SQLite ファイルも削除（失敗しても無視）
+  try {
+    const syncUrl = process.env.SYNC_SERVER_URL ?? "http://sync-server:5858";
+    await fetch(`${syncUrl}/room/${boardId}`, { method: "DELETE" });
+  } catch {
+    // sync-server が落ちていても DB 削除は成功させる
+  }
+
   return new NextResponse(null, { status: 204 });
 }

@@ -1,34 +1,29 @@
 {
-	"name": "whiteboard-multiplayer",
-	"private": true,
-	"version": "0.0.0",
-	"type": "module",
-	"scripts": {
-		"dev": "vite",
-		"build": "tsc && vite build",
-		"preview": "vite preview"
-	},
-	"dependencies": {
-		"@tldraw/sync": "^4.3.1",
-		"@tldraw/sync-core": "^4.3.1",
-		"@tldraw/tlschema": "^4.3.1",
-		"cloudflare-workers-unfurl": "^0.0.8",
-		"itty-router": "^5.0.18",
-		"lodash.throttle": "^4.1.1",
-		"react": "^19.2.1",
-		"react-dom": "^19.2.1",
-		"react-router-dom": "^6.28.2",
-		"tldraw": "^4.3.1"
-	},
-	"devDependencies": {
-		"@cloudflare/vite-plugin": "^1.13.2",
-		"@types/lodash.throttle": "^4.1.9",
-		"@types/react": "^19.2.7",
-		"@types/react-dom": "^19.2.3",
-		"@vitejs/plugin-react-swc": "^3.10.2",
-		"concurrently": "^9.1.2",
-		"typescript": "^5.8.3",
-		"vite": "^7.0.1",
-		"wrangler": "^4.37.1"
-	}
+  "name": "gachaboard",
+  "version": "1.0.0",
+  "description": "## Docker で起動（Next.js + Postgres）",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:sync:backend": "node test-sync.mjs",
+    "test:sync:ui": "npx playwright install chromium && E2E_BASE_URL=http://localhost:3000 npx playwright test e2e/sync-ui.spec.ts",
+    "test:sync:e2e": "E2E_TEST_MODE=1 docker compose up -d --build && npm run test:sync:backend && npm run test:sync:ui"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oshikaidesu/gachaboard.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/oshikaidesu/gachaboard/issues"
+  },
+  "homepage": "https://github.com/oshikaidesu/gachaboard#readme",
+  "dependencies": {
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
 }

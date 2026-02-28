@@ -2,16 +2,19 @@
 
 import { signIn } from "next-auth/react";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 export function SignInButton() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const searchParams = useSearchParams();
 
   const handleClick = async () => {
     setError(null);
     setLoading(true);
     try {
-      await signIn("discord", { callbackUrl: "/" });
+      const callbackUrl = searchParams.get("callbackUrl") || "/";
+      await signIn("discord", { callbackUrl });
     } catch (e) {
       setError(e instanceof Error ? e.message : "ログインに失敗しました");
     } finally {

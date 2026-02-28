@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
       deletedAt: trash ? { not: null } : null,
     },
     orderBy: { createdAt: "desc" },
-    include: { uploader: { select: { name: true, image: true } } },
+    include: { uploader: { select: { discordName: true, avatarUrl: true } } },
   });
 
   return NextResponse.json(

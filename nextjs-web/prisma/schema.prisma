@@ -8,55 +8,17 @@ datasource db {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  name           String?
-  email          String?         @unique
-  emailVerified  DateTime?
-  image          String?
-  discordId      String?         @unique
-  accounts       Account[]
-  sessions       Session[]
-  workspaces     Workspace[]     @relation("WorkspaceOwner")
+  id            String           @id @default(cuid())
+  discordId     String           @unique
+  discordName   String
+  avatarUrl     String?
+  workspaces    Workspace[]      @relation("WorkspaceOwner")
   uploadedAssets Asset[]
-  mediaComments  MediaComment[]
-  reactions      ObjectReaction[]
-  auditLogs      AuditLog[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-}
-
-model Account {
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String?
-  access_token      String?
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?
-  session_state     String?
-  user              User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([provider, providerAccountId])
-}
-
-model Session {
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([sessionToken])
-}
-
-model VerificationToken {
-  identifier String
-  token      String
-  expires    DateTime
-
-  @@id([identifier, token])
+  mediaComments MediaComment[]
+  reactions     ObjectReaction[]
+  auditLogs     AuditLog[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 }
 
 model Workspace {
@@ -75,17 +37,18 @@ model Workspace {
 }
 
 model Board {
-  id          String           @id @default(cuid())
-  workspaceId String
-  name        String
-  deletedAt   DateTime?
-  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  assets      Asset[]
-  connectors  Connector[]
-  reactions   ObjectReaction[]
-  comments    MediaComment[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id            String           @id @default(cuid())
+  workspaceId   String
+  name          String
+  snapshotData  Json?
+  deletedAt     DateTime?
+  workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  assets        Asset[]
+  connectors    Connector[]
+  reactions     ObjectReaction[]
+  comments      MediaComment[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
   @@index([workspaceId, createdAt])
   @@index([deletedAt])

@@ -15,7 +15,10 @@ import {
   TldrawUiToolbarButton,
   useValue,
   GeoShapeGeoStyle,
+  DefaultCursor,
+  type TLCursorProps,
 } from "@tldraw/tldraw";
+import { useSync, type RemoteTLStoreWithStatus } from "@tldraw/sync";
 import "@tldraw/tldraw/tldraw.css";
 import Link from "next/link";
 import { CUSTOM_SHAPE_UTILS, placeFile, type ApiAsset, getFileEmoji, type FileIconShape } from "@/app/shapes";
@@ -24,7 +27,7 @@ import { ConnectHandles } from "./ConnectHandles";
 import { BoardContext } from "./BoardContext";
 import { SmartHandTool, brushModeAtom } from "@/app/tools/SmartHandTool";
 
-type Props = { boardId: string; workspaceId: string; userName: string; currentUserId: string };
+type Props = { boardId: string; workspaceId: string; userName: string; currentUserId: string; avatarUrl?: string | null };
 
 // 全ツールをトグル動作にする：同じツールを再押下すると select（SmartHand）に戻る
 const uiOverrides: TLUiOverrides = {
@@ -87,6 +90,83 @@ function SmartHandToolbar(props: React.ComponentProps<typeof DefaultToolbar>) {
 
 const CUSTOM_TOOLS = [SmartHandTool];
 
+// 名前ラベル付きコラボレーターカーソル
+function CollaboratorCursorWithName(props: TLCursorProps) {
+  const { name, color, point, zoom } = props;
+  if (!point) return null;
+
+  return (
+    <div style={{ position: "relative" }}>
+      <DefaultCursor {...props} />
+      {name && (
+        <div
+          style={{
+            position: "absolute",
+            // カーソル先端の少し右下にラベルを配置
+            top: `${14 / zoom}px`,
+            left: `${8 / zoom}px`,
+            background: color ?? "#1d1d1d",
+            color: "#fff",
+            fontSize: `${12 / zoom}px`,
+            lineHeight: 1,
+            padding: `${3 / zoom}px ${6 / zoom}px`,
+            borderRadius: `${4 / zoom}px`,
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+            userSelect: "none",
+            fontFamily: "sans-serif",
+            fontWeight: 500,
+            boxShadow: `0 1px 3px rgba(0,0,0,0.3)`,
+          }}
+        >
+          {name}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 同期ステータスバッジ
+function SyncStatusBadge({ store, syncUrl, boardId, userId }: {
+  store: RemoteTLStoreWithStatus;
+  syncUrl: string;
+  boardId: string;
+  userId: string;
+}) {
+  const status = store.status;
+  const color =
+    status === "synced-remote" ? "bg-green-500" :
+    status === "loading" ? "bg-yellow-400" :
+    status === "error" ? "bg-red-500" :
+    "bg-zinc-400";
+  const label =
+    status === "synced-remote" ? "同期中" :
+    status === "loading" ? "接続中..." :
+    status === "error" ? "エラー" :
+    status;
+
+  return (
+    <div className="flex items-center gap-2 text-xs text-zinc-500 font-mono">
+      <span className={`inline-block w-2 h-2 rounded-full ${color}`} />
+      <span>{label}</span>
+      <span className="text-zinc-300">|</span>
+      <span className="text-zinc-400 truncate max-w-[180px]" title={syncUrl}>{syncUrl}</span>
+      <span className="text-zinc-300">|</span>
+      <span className="text-zinc-400">uid: {userId.slice(0, 8)}</span>
+    </div>
+  );
+}
+
+// ユーザーIDから一貫したカーソル色を生成する
+function stringToColor(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = Math.abs(hash) % 360;
+  return `hsl(${h}, 70%, 50%)`;
+}
+
 async function uploadFile(file: File, boardId: string): Promise<ApiAsset> {
   const fd = new FormData();
   fd.append("file", file);
@@ -99,12 +179,43 @@ async function uploadFile(file: File, boardId: string): Promise<ApiAsset> {
   return res.json();
 }
 
-export default function TldrawBoard({ boardId, workspaceId, userName, currentUserId }: Props) {
+export default function TldrawBoard({ boardId, workspaceId, userName, currentUserId, avatarUrl }: Props) {
   const [preview, setPreview] = useState<ApiAsset | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const isE2eMode =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("e2e") === "1";
+
+  const syncServerUrl = useMemo(() => {
+    if (typeof window === "undefined") {
+      return `ws://localhost:5858/ws/sync/${boardId}`;
+    }
+    // E2Eテストモード: Next.jsのrewritesはWebSocketを処理できないため直接接続
+    if (isE2eMode) {
+      return `ws://${window.location.hostname}:5858/sync/${boardId}`;
+    }
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    return `${protocol}://${window.location.host}/ws/sync/${boardId}`;
+  }, [boardId, isE2eMode]);
+
+  const safeUserId = currentUserId;
+
+  const store = useSync({
+    uri: syncServerUrl,
+    shapeUtils: CUSTOM_SHAPE_UTILS,
+    userInfo: {
+      id: safeUserId,
+      name: userName || "Unknown",
+      color: stringToColor(safeUserId),
+      avatar: avatarUrl ?? undefined,
+    },
+  });
 
   const handleMount = useCallback(
     (editor: Editor) => {
+      if (isE2eMode) {
+        (window as unknown as { __E2E_TLDRAW_EDITOR__?: Editor }).__E2E_TLDRAW_EDITOR__ = editor;
+      }
       // ホイール → ズーム（tldraw の wheelBehavior を 'zoom' に設定）
       // デフォルトは 'pan'（ホイール=スクロール、Ctrl+ホイール=ズーム）なので反転する
       editor.setCameraOptions({ wheelBehavior: "zoom" });
@@ -213,12 +324,13 @@ export default function TldrawBoard({ boardId, workspaceId, userName, currentUse
         };
       }
     },
-    [boardId, userName]
+    [boardId, isE2eMode, userName]
   );
 
   const components = useMemo<TLComponents>(
     () => ({
       Toolbar: SmartHandToolbar,
+      CollaboratorCursor: CollaboratorCursorWithName,
     }),
     []
   );
@@ -231,7 +343,13 @@ export default function TldrawBoard({ boardId, workspaceId, userName, currentUse
         <Link href="javascript:history.back()" className="text-xs text-zinc-500 hover:underline">
           ← 戻る
         </Link>
-        <span className="text-xs text-zinc-400">Board: {boardId}</span>
+        <span className="text-xs text-zinc-400">Board: {boardId.slice(0, 8)}</span>
+        <SyncStatusBadge
+          store={store}
+          syncUrl={`/ws/sync/${boardId}`}
+          boardId={boardId}
+          userId={safeUserId}
+        />
         <button
           onClick={() => navigator.clipboard.writeText(window.location.href)}
           className="ml-auto rounded border border-zinc-200 px-3 py-1 text-xs hover:bg-zinc-50"
@@ -243,7 +361,7 @@ export default function TldrawBoard({ boardId, workspaceId, userName, currentUse
       {/* キャンバス */}
       <div className="flex-1 relative">
         <Tldraw
-          persistenceKey={`board-${boardId}`}
+          store={store}
           shapeUtils={CUSTOM_SHAPE_UTILS}
           tools={CUSTOM_TOOLS}
           overrides={uiOverrides}

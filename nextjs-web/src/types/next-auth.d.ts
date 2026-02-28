@@ -5,12 +5,16 @@ declare module "next-auth" {
     user: {
       id: string;
       discordId: string;
-    } & DefaultSession["user"];
+      name: string;
+      avatarUrl: string | null;
+    } & Omit<DefaultSession["user"], "email" | "image">;
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
     discordId?: string;
+    discordName?: string;
+    avatarUrl?: string | null;
   }
 }

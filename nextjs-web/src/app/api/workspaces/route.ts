@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireLogin, writeAuditLog } from "@/lib/authz";
 import { db } from "@/lib/db";
 
-/** GET /api/workspaces - 自分のワークスペース一覧 */
+/** GET /api/workspaces - 全ワークスペース一覧（ログイン済み全員が閲覧可） */
 export async function GET(req: NextRequest) {
   const session = await requireLogin();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -11,14 +11,23 @@ export async function GET(req: NextRequest) {
 
   const workspaces = await db.workspace.findMany({
     where: {
-      ownerUserId: session.user.id,
+      // ownerUserId フィルタを削除 → 全ユーザーが全WSを閲覧可能
       ...(includeDeleted ? {} : { deletedAt: null }),
     },
-    include: { _count: { select: { boards: true } } },
+    include: {
+      _count: { select: { boards: true } },
+      owner: { select: { discordName: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(workspaces);
+  // ownerUserId を含めてUIでオーナー判定できるようにする
+  return NextResponse.json(
+    workspaces.map((ws) => ({
+      ...ws,
+      ownerName: ws.owner.discordName,
+    }))
+  );
 }
 
 /** POST /api/workspaces - ワークスペース作成 */

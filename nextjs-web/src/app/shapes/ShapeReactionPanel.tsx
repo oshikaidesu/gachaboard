@@ -29,7 +29,7 @@ type Reaction = {
   emoji: string;
   userId: string;
   deletedAt: string | null;
-  user: { id: string; name: string | null; image: string | null };
+  user: { id: string; discordName: string; avatarUrl: string | null };
 };
 
 type Props = {
@@ -61,7 +61,12 @@ export function ShapeReactionPanel({ shapeId }: Props) {
     if (res.ok) setReactions(await res.json());
   }, [boardId, shapeId]);
 
-  useEffect(() => { load(); }, [load]);
+  // 初回ロード + 3秒ポーリングでリアルタイム同期
+  useEffect(() => {
+    load();
+    const timer = setInterval(load, 3000);
+    return () => clearInterval(timer);
+  }, [load]);
 
   // ピッカー外クリックで閉じる
   useEffect(() => {

@@ -26,11 +26,14 @@ export async function GET(req: NextRequest, { params }: Params) {
   return NextResponse.json(boards);
 }
 
-/** POST /api/workspaces/[workspaceId]/boards - オーナーのみ作成可 */
+/** POST /api/workspaces/[workspaceId]/boards - ログイン済み全員が作成可 */
 export async function POST(req: NextRequest, { params }: Params) {
   const { workspaceId } = await params;
-  const ctx = await assertWorkspaceOwner(workspaceId);
-  if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await requireLogin();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const workspace = await db.workspace.findUnique({ where: { id: workspaceId } });
+  if (!workspace) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json() as { name: string };
   if (!body.name?.trim()) {
@@ -41,6 +44,6 @@ export async function POST(req: NextRequest, { params }: Params) {
     data: { workspaceId, name: body.name.trim() },
   });
 
-  await writeAuditLog(ctx.session.user.id, workspaceId, "board.create", board.id);
+  await writeAuditLog(session.user.id, workspaceId, "board.create", board.id);
   return NextResponse.json(board, { status: 201 });
 }
