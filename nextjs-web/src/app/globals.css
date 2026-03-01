@@ -19,6 +19,11 @@
   }
 }
 
+html,
+body {
+  height: 100%;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -49,6 +54,28 @@ button[data-testid="rich-text.link"] {
 
 /* トリガーボタンの自分のアバター（常に末尾に追加される）を非表示 */
 .tlui-people-menu__avatars .tlui-people-menu__avatar:last-child {
+  display: none !important;
+}
+
+/* モバイル: カスタムシェイプ内のインタラクティブ要素でtldrawのパン操作を防ぐ */
+.tl-shape[data-shape-type='video-player'] button,
+.tl-shape[data-shape-type='video-player'] input[type='range'],
+.tl-shape[data-shape-type='audio-player'] button,
+.tl-shape[data-shape-type='audio-player'] input[type='range'],
+.tl-shape[data-shape-type='audio-player'] canvas {
+  touch-action: none;
+}
+
+/* モバイル: コメントリストは縦スクロールのみ許可 */
+.tl-shape[data-shape-type='video-player'] .comment-list,
+.tl-shape[data-shape-type='audio-player'] .comment-list {
+  touch-action: pan-y;
+}
+
+/* 回転ハンドルを非表示 */
+.tl-rotate-corner,
+.tl-mobile-rotate__bg,
+.tl-mobile-rotate__fg {
   display: none !important;
 }
 

@@ -11,7 +11,7 @@ type Props = {
 
 /**
  * tldrawシェイプ内でスクロール可能なコンテンツを持つシェイプの外側に配置する。
- * シェイプが選択されている間、ホイールイベントをtldrawに伝播させず、
+ * シェイプが選択されている間、ホイール・タッチイベントをtldrawに伝播させず、
  * 内部のoverflow:autoなdivのスクロールだけが効くようにする。
  */
 export const WheelGuard = forwardRef<HTMLDivElement, Props>(
@@ -23,16 +23,41 @@ export const WheelGuard = forwardRef<HTMLDivElement, Props>(
       const el = internalRef.current;
       if (!el) return;
 
+      const isSelected = () => editor.getSelectedShapeIds().includes(shapeId as never);
+
       const handleWheel = (e: WheelEvent) => {
-        const selected = editor.getSelectedShapeIds();
-        if (selected.includes(shapeId as never)) {
+        if (isSelected()) {
           e.stopPropagation();
           e.stopImmediatePropagation();
         }
       };
 
+      // モバイル: タッチスクロール中にtldrawがパン操作を奪わないようにする
+      // ただしinput/button/select/textareaへのタッチはブラウザのフォーカス動作を妨げないよう除外
+      const FOCUSABLE = ["INPUT", "TEXTAREA", "SELECT", "BUTTON", "A"];
+      const handleTouchStart = (e: TouchEvent) => {
+        if (!isSelected()) return;
+        const target = e.target as HTMLElement;
+        if (FOCUSABLE.includes(target.tagName)) return;
+        e.stopPropagation();
+      };
+
+      const handleTouchMove = (e: TouchEvent) => {
+        if (isSelected()) {
+          e.stopPropagation();
+          // スクロール可能な子要素内でのスクロールを許可するためpreventDefaultは呼ばない
+        }
+      };
+
       el.addEventListener("wheel", handleWheel, { passive: false });
-      return () => el.removeEventListener("wheel", handleWheel);
+      el.addEventListener("touchstart", handleTouchStart, { passive: false });
+      el.addEventListener("touchmove", handleTouchMove, { passive: false });
+
+      return () => {
+        el.removeEventListener("wheel", handleWheel);
+        el.removeEventListener("touchstart", handleTouchStart);
+        el.removeEventListener("touchmove", handleTouchMove);
+      };
     }, [editor, shapeId]);
 
     const setRef = (node: HTMLDivElement | null) => {

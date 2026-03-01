@@ -17,7 +17,7 @@ import Link from "next/link";
 import { CUSTOM_SHAPE_UTILS } from "@/app/shapes";
 import { BoardContext } from "./BoardContext";
 import { BoardReactionProvider } from "./BoardReactionProvider";
-import { SmartHandTool } from "@/app/tools/SmartHandTool";
+import { SmartHandTool, brushModeAtom } from "@/app/tools/SmartHandTool";
 import { SyncStatusBadge } from "./SyncStatusBadge";
 import { CollaboratorCursorWithName } from "./CollaboratorCursor";
 import { SmartHandToolbar } from "./SmartHandToolbar";
@@ -50,19 +50,46 @@ const uiOverrides: TLUiOverrides = {
   actions(_editor, actions) {
     // リンク埋め込みアクションを削除（ショートカット含む）
     delete actions["insert-link"];
+    // 回転アクションを削除（ショートカット Shift+. / Shift+, を無効化）
+    delete actions["rotate-cw"];
+    delete actions["rotate-ccw"];
     return actions;
   },
   tools(editor, tools) {
     delete tools["hand"];
-    delete tools["select"];
     delete tools["note"];
+
+    // select ツールを brushModeAtom のトグルとして上書き
+    // スマホでは onTouchStart + onClick の両方が発火して2回トグルされるため
+    // 300ms 以内の2回目呼び出しを無視するデバウンスを入れる
+    if (tools["select"]) {
+      let lastToggleTime = 0;
+      tools["select"].onSelect = () => {
+        const now = Date.now();
+        if (now - lastToggleTime < 300) return;
+        lastToggleTime = now;
+        brushModeAtom.set(!brushModeAtom.get());
+      };
+    }
 
     for (const key of Object.keys(tools)) {
       const tool = tools[key];
       if (!tool) continue;
+      if (key === "select") continue; // select は上で個別に上書き済み
       const originalOnSelect = tool.onSelect?.bind(tool);
 
+      // スマホでは onTouchStart + onClick の両方が発火して2回呼ばれるため
+      // 300ms 以内の2回目呼び出しを無視する
+      let lastCallTime = 0;
+
       tool.onSelect = (source) => {
+        const now = Date.now();
+        if (now - lastCallTime < 300) return;
+        lastCallTime = now;
+
+        // 他のツールが選択されたら範囲選択モードを解除
+        if (brushModeAtom.get()) brushModeAtom.set(false);
+
         const activeToolId = editor.getCurrentToolId();
 
         if (tool.meta?.geo) {
@@ -219,23 +246,29 @@ export default function TldrawBoard({ boardId, workspaceId, userName, currentUse
   return (
     <BoardContext.Provider value={{ boardId, workspaceId, currentUserId, avatarUrl: avatarUrl ?? null, userInfoAtom }}>
     <BoardReactionProvider>
-      <div className="flex h-screen flex-col">
-        <div className="flex items-center gap-3 border-b border-zinc-200 bg-white px-4 py-2 z-10">
-          <Link href="javascript:history.back()" className="text-xs text-zinc-500 hover:underline">
+      <div className="flex h-[100dvh] flex-col">
+        <div className="flex items-center gap-2 border-b border-zinc-200 bg-white px-3 py-1.5 z-10 min-h-0">
+          <Link href="javascript:history.back()" className="shrink-0 text-xs text-zinc-500 hover:underline">
             ← 戻る
           </Link>
-          <span className="text-xs text-zinc-400">Board: {boardId.slice(0, 8)}</span>
-          <SyncStatusBadge
-            store={store}
-            syncUrl={`/ws/sync/${boardId}`}
-            boardId={boardId}
-            userId={currentUserId}
-          />
+          <div className="shrink-0">
+            <SyncStatusBadge
+              store={store}
+              syncUrl={`/ws/sync/${boardId}`}
+              boardId={boardId}
+              userId={currentUserId}
+            />
+          </div>
           <button
             onClick={() => navigator.clipboard.writeText(window.location.href)}
-            className="ml-auto rounded border border-zinc-200 px-3 py-1 text-xs hover:bg-zinc-50"
+            className="ml-auto shrink-0 rounded border border-zinc-200 p-1.5 text-zinc-500 hover:bg-zinc-50"
+            title="URLをコピー"
+            aria-label="URLをコピー"
           >
-            URLをコピー
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
           </button>
         </div>
 

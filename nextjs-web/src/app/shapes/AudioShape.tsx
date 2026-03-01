@@ -223,6 +223,8 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
   const { boardId, workspaceId } = useBoardContext();
   const editor = useEditor();
   const audioRef = useRef<HTMLAudioElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const commentInputRef = useRef<HTMLInputElement>(null);
   const { ref: visRef, visible } = useVisibility<HTMLDivElement>();
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -231,6 +233,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
   const [comments, setComments] = useState<ApiComment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
+  const [commentFocused, setCommentFocused] = useState(false);
   const heightUpdateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTargetH = useRef<number>(shape.props.h);
 
@@ -313,9 +316,32 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
+  // シェイプ外タップでコメント入力を解除
+  useEffect(() => {
+    const handleOutsideTouch = (e: MouseEvent | TouchEvent) => {
+      const container = containerRef.current;
+      const input = commentInputRef.current;
+      if (!container || !input) return;
+      const target = e instanceof TouchEvent ? e.touches[0]?.target : e.target;
+      if (target && !container.contains(target as Node)) {
+        input.blur();
+        setCommentFocused(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideTouch, true);
+    document.addEventListener("touchstart", handleOutsideTouch, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideTouch, true);
+      document.removeEventListener("touchstart", handleOutsideTouch, true);
+    };
+  }, []);
+
   return (
     <WheelGuard
-      ref={visRef}
+      ref={(node) => {
+        (visRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      }}
       shapeId={shape.id}
       style={{
         width: "100%",
@@ -435,51 +461,62 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         style={{ display: "flex", gap: 4, alignItems: "center" }}
         onMouseDown={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
       >
-        <span style={{ fontSize: 9, color: "#9ca3af", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
-          {formatTime(currentTime)}
-        </span>
+        {commentFocused && (
+          <span style={{ fontSize: 9, color: "#9ca3af", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
+            {formatTime(currentTime)}
+          </span>
+        )}
         <input
+          ref={commentInputRef}
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") postComment(); }}
-          onTouchStart={(e) => e.stopPropagation()}
-          placeholder="コメントを追加..."
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { postComment(); commentInputRef.current?.blur(); setCommentFocused(false); }
+            if (e.key === "Escape") { commentInputRef.current?.blur(); setCommentFocused(false); setNewComment(""); }
+          }}
+          onFocus={() => setCommentFocused(true)}
+          onBlur={() => setCommentFocused(false)}
+          onTouchEnd={(e) => { e.stopPropagation(); commentInputRef.current?.focus(); }}
+          placeholder={commentFocused ? "コメントを追加..." : "💬 コメント"}
           style={{
             flex: 1,
             fontSize: 10,
-            padding: "3px 6px",
+            padding: commentFocused ? "4px 8px" : "3px 6px",
             borderRadius: 4,
-            border: "1px solid #e5e7eb",
-            background: "#f9fafb",
+            border: commentFocused ? `1px solid ${ORANGE}` : "1px solid #e5e7eb",
+            background: commentFocused ? "#fff" : "#f9fafb",
             color: "#111827",
             outline: "none",
             minWidth: 0,
+            transition: "border-color 0.15s, padding 0.15s",
+            boxShadow: commentFocused ? `0 0 0 2px ${ORANGE}33` : "none",
           }}
         />
-        <button
-          onClick={postComment}
-          disabled={posting || !newComment.trim()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); postComment(); }}
-          style={{
-            fontSize: 9,
-            padding: "3px 7px",
-            borderRadius: 4,
-            border: "none",
-            background: ORANGE,
-            color: "#fff",
-            cursor: "pointer",
-            flexShrink: 0,
-            opacity: posting || !newComment.trim() ? 0.4 : 1,
-            touchAction: "none",
-          }}
-        >
-          投稿
-        </button>
+        {commentFocused && (
+          <button
+            onClick={() => { postComment(); setCommentFocused(false); }}
+            disabled={posting || !newComment.trim()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); postComment(); setCommentFocused(false); }}
+            style={{
+              fontSize: 9,
+              padding: "3px 7px",
+              borderRadius: 4,
+              border: "none",
+              background: ORANGE,
+              color: "#fff",
+              cursor: "pointer",
+              flexShrink: 0,
+              opacity: posting || !newComment.trim() ? 0.4 : 1,
+              touchAction: "none",
+            }}
+          >
+            投稿
+          </button>
+        )}
       </div>
 
       {/* コメントリスト */}

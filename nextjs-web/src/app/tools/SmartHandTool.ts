@@ -220,16 +220,6 @@ class SmartPointingCanvas extends StateNode {
   }
 
   private complete() {
-    // 慣性スクロール
-    const { editor } = this;
-    const pointerVelocity = editor.inputs.getPointerVelocity();
-    const velocityAtPointerUp = Math.min(pointerVelocity.len(), 2);
-    if (velocityAtPointerUp > 0.1) {
-      editor.slideCamera({
-        speed: velocityAtPointerUp,
-        direction: pointerVelocity,
-      });
-    }
     this.parent.transition("idle");
   }
 }

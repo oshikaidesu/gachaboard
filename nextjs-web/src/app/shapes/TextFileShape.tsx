@@ -118,6 +118,8 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
               padding: "8px 10px",
               background: isCode ? "#1e1e2e" : "#ffffff",
             }}
+            onPointerDown={(e) => { e.stopPropagation(); }}
+            onPointerMove={(e) => { e.stopPropagation(); }}
           >
             <pre
               style={{
