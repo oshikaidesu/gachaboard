@@ -30,7 +30,14 @@ export function PreviewModal({ asset, workspaceId, onClose }: Props) {
           <img
             src={`/api/assets/${asset.id}/file`}
             alt={asset.fileName}
-            className="max-h-[60vh] w-full object-contain rounded"
+            className="max-h-[60vh] max-w-full object-contain rounded"
+            style={{
+              backgroundImage:
+                "linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)",
+              backgroundSize: "16px 16px",
+              backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
+              backgroundColor: "#e0e0e0",
+            }}
           />
         ) : asset.kind === "video" || asset.kind === "audio" ? (
           <MediaPlayer

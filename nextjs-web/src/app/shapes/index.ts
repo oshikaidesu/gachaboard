@@ -75,6 +75,53 @@ export const CUSTOM_SHAPE_UTILS = [
 
 // ---- ファイル振り分けロジック ------------------------------------------------
 
+const MAX_IMAGE_SIZE = 300;
+
+function getImageDimensions(file: File): Promise<{ w: number; h: number }> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const { naturalWidth: nw, naturalHeight: nh } = img;
+      URL.revokeObjectURL(url);
+      if (nw <= MAX_IMAGE_SIZE && nh <= MAX_IMAGE_SIZE) {
+        resolve({ w: nw, h: nh });
+      } else {
+        const scale = Math.min(MAX_IMAGE_SIZE / nw, MAX_IMAGE_SIZE / nh);
+        resolve({ w: Math.round(nw * scale), h: Math.round(nh * scale) });
+      }
+    };
+    img.onerror = () => {
+      resolve({ w: MAX_IMAGE_SIZE, h: MAX_IMAGE_SIZE });
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  });
+}
+
+function getVideoDimensions(file: File): Promise<{ w: number; h: number }> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.onloadedmetadata = () => {
+      const vw = video.videoWidth || MAX_IMAGE_SIZE;
+      const vh = video.videoHeight || MAX_IMAGE_SIZE;
+      URL.revokeObjectURL(url);
+      if (vw <= MAX_IMAGE_SIZE && vh <= MAX_IMAGE_SIZE) {
+        resolve({ w: vw, h: vh });
+      } else {
+        const scale = Math.min(MAX_IMAGE_SIZE / vw, MAX_IMAGE_SIZE / vh);
+        resolve({ w: Math.round(vw * scale), h: Math.round(vh * scale) });
+      }
+    };
+    video.onerror = () => {
+      resolve({ w: MAX_IMAGE_SIZE, h: MAX_IMAGE_SIZE });
+      URL.revokeObjectURL(url);
+    };
+    video.src = url;
+  });
+}
+
 async function fetchTextContent(assetId: string): Promise<string> {
   try {
     const res = await fetch(`/api/assets/${assetId}/file`);
@@ -103,6 +150,7 @@ export async function placeFile(
 
   // --- 画像（ネイティブ tldraw アセット） ---
   if (mime.startsWith("image/")) {
+    const { w: imgW, h: imgH } = await getImageDimensions(file);
     const assetId = AssetRecordType.createId();
     const imageAsset: TLImageAsset = {
       id: assetId,
@@ -110,8 +158,8 @@ export async function placeFile(
       type: "image",
       props: {
         src: `/api/assets/${data.id}/file`,
-        w: 320,
-        h: 240,
+        w: imgW,
+        h: imgH,
         name: data.fileName,
         isAnimated: mime === "image/gif",
         mimeType: mime,
@@ -120,12 +168,13 @@ export async function placeFile(
       meta: {},
     };
     editor.createAssets([imageAsset]);
-    editor.createShape({ type: "image", x, y, meta, props: { assetId, w: 320, h: 240 } });
+    editor.createShape({ type: "image", x, y, meta, props: { assetId, w: imgW, h: imgH } });
     return;
   }
 
   // --- 動画（ネイティブ tldraw アセット） ---
   if (mime.startsWith("video/")) {
+    const { w: vidW, h: vidH } = await getVideoDimensions(file);
     const assetId = AssetRecordType.createId();
     const videoAsset: TLVideoAsset = {
       id: assetId,
@@ -133,8 +182,8 @@ export async function placeFile(
       type: "video",
       props: {
         src: `/api/assets/${data.id}/file`,
-        w: 320,
-        h: 240,
+        w: vidW,
+        h: vidH,
         name: data.fileName,
         isAnimated: true,
         mimeType: mime,
@@ -143,7 +192,7 @@ export async function placeFile(
       meta: {},
     };
     editor.createAssets([videoAsset]);
-    editor.createShape({ type: "video", x, y, meta, props: { assetId, w: 320, h: 240 } });
+    editor.createShape({ type: "video", x, y, meta, props: { assetId, w: vidW, h: vidH } });
     return;
   }
 

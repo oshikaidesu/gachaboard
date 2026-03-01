@@ -129,9 +129,32 @@ function wrapWithExtras<TShape extends { id: string; props: { w?: number; h?: nu
 
 // ---------- ファクトリ生成（単純ラッパー） -----------------------------------
 
-export const WrappedImageShapeUtil = wrapWithExtras(
-  ImageShapeUtil as new (...args: unknown[]) => ShapeUtil<{ id: string; props: { w: number; h: number } }>
-) as unknown as typeof ImageShapeUtil;
+const CHECKER_STYLE: React.CSSProperties = {
+  backgroundImage:
+    "linear-gradient(45deg, #ddd 25%, transparent 25%), linear-gradient(-45deg, #ddd 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ddd 75%), linear-gradient(-45deg, transparent 75%, #ddd 75%)",
+  backgroundSize: "12px 12px",
+  backgroundPosition: "0 0, 0 6px, 6px -6px, -6px 0px",
+  backgroundColor: "#c0c0c0",
+};
+
+type ImageShape = { id: string; props: { w: number; h: number } };
+
+export class WrappedImageShapeUtil extends (wrapWithExtras(
+  ImageShapeUtil as new (...args: unknown[]) => ShapeUtil<ImageShape>
+) as unknown as typeof ImageShapeUtil) {
+  override component(shape: Parameters<ImageShapeUtil["component"]>[0]) {
+    const base = super.component(shape);
+    const { w, h } = shape.props;
+    return (
+      <HTMLContainer
+        id={shape.id}
+        style={{ width: w, height: h, position: "relative", overflow: "hidden", ...CHECKER_STYLE }}
+      >
+        {base}
+      </HTMLContainer>
+    );
+  }
+}
 
 export const WrappedVideoShapeUtil = wrapWithExtras(
   VideoShapeUtil as new (...args: unknown[]) => ShapeUtil<{ id: string; props: { w: number; h: number } }>
