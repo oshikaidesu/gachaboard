@@ -24,3 +24,13 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* PeopleMenu の自分の行（新規ユーザー欄）を非表示 */
+.tlui-people-menu__user {
+  display: none !important;
+}
+
+/* トリガーボタンの自分のアバター（常に末尾に追加される）を非表示 */
+.tlui-people-menu__avatars .tlui-people-menu__avatar:last-child {
+  display: none !important;
+}

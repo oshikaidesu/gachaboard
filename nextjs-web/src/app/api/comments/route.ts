@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireLogin } from "@/lib/authz";
 import { db } from "@/lib/db";
+import { USER_SELECT, SOFT_DELETE_FILTER } from "@/lib/prismaHelpers";
 
 export async function GET(req: NextRequest) {
   const session = await requireLogin();
@@ -10,9 +11,9 @@ export async function GET(req: NextRequest) {
   if (!assetId) return NextResponse.json({ error: "assetId required" }, { status: 400 });
 
   const comments = await db.mediaComment.findMany({
-    where: { assetId, deletedAt: null },
+    where: { assetId, ...SOFT_DELETE_FILTER },
     orderBy: { timeSec: "asc" },
-    include: { author: { select: { id: true, name: true, image: true } } },
+    include: { author: { select: USER_SELECT } },
   });
 
   return NextResponse.json(comments);
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
       timeSec,
       body: body.trim(),
     },
-    include: { author: { select: { id: true, name: true, image: true } } },
+    include: { author: { select: USER_SELECT } },
   });
 
   return NextResponse.json(comment, { status: 201 });

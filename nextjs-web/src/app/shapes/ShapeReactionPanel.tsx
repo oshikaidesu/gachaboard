@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useBoardContext } from "@/app/components/BoardContext";
+import { POLLING_INTERVAL_REACTIONS } from "@shared/constants";
 
 // Twemoji CDN から絵文字画像URLを生成する
 function twemojiUrl(emoji: string): string {
@@ -34,6 +35,8 @@ type Reaction = {
 
 type Props = {
   shapeId: string;
+  /** 外側コンテナの style を上書きする。デフォルトは position:absolute, bottom:-28 */
+  containerStyle?: React.CSSProperties;
 };
 
 function TwemojiImg({ emoji, size = 16 }: { emoji: string; size?: number }) {
@@ -49,7 +52,7 @@ function TwemojiImg({ emoji, size = 16 }: { emoji: string; size?: number }) {
   );
 }
 
-export function ShapeReactionPanel({ shapeId }: Props) {
+export function ShapeReactionPanel({ shapeId, containerStyle }: Props) {
   const { boardId, workspaceId, currentUserId } = useBoardContext();
   const [reactions, setReactions] = useState<Reaction[]>([]);
   const [showPicker, setShowPicker] = useState(false);
@@ -61,10 +64,9 @@ export function ShapeReactionPanel({ shapeId }: Props) {
     if (res.ok) setReactions(await res.json());
   }, [boardId, shapeId]);
 
-  // 初回ロード + 3秒ポーリングでリアルタイム同期
   useEffect(() => {
     load();
-    const timer = setInterval(load, 3000);
+    const timer = setInterval(load, POLLING_INTERVAL_REACTIONS);
     return () => clearInterval(timer);
   }, [load]);
 
@@ -112,6 +114,7 @@ export function ShapeReactionPanel({ shapeId }: Props) {
         userSelect: "none",
         zIndex: 10,
         whiteSpace: "nowrap",
+        ...containerStyle,
       }}
       // tldraw のドラッグ操作と競合しないよう伝播を止める
       onPointerDown={(e) => e.stopPropagation()}

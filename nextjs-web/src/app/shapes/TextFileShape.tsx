@@ -4,42 +4,17 @@ import {
   BaseBoxShapeUtil,
   HTMLContainer,
   Rectangle2d,
-  TLShape,
 } from "@tldraw/tldraw";
 import { CreatorLabel, getCreatedBy } from "./CreatorLabel";
 import { ShapeReactionPanel } from "./ShapeReactionPanel";
+import { AssetLoader } from "./AssetLoader";
+import { SHAPE_TYPE, isTextFile, type TextFileShape } from "@shared/shapeDefs";
 
-const TEXT_FILE_TYPE = "text-file" as const;
-
-declare module "@tldraw/tldraw" {
-  interface TLGlobalShapePropsMap {
-    [TEXT_FILE_TYPE]: {
-      assetId: string;
-      fileName: string;
-      mimeType: string;
-      content: string;
-      w: number;
-      h: number;
-    };
-  }
-}
-
-export type TextFileShape = TLShape<typeof TEXT_FILE_TYPE>;
-
-const TEXT_EXTENSIONS = new Set([
-  "txt", "md", "log", "csv",
-  "json", "yaml", "yml", "toml", "xml",
-  "js", "ts", "jsx", "tsx", "py", "go", "rs", "cpp", "c", "java",
-  "html", "css", "sh", "bash", "zsh",
-]);
-
-export function isTextFile(fileName: string, mimeType: string): boolean {
-  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
-  return TEXT_EXTENSIONS.has(ext) || mimeType.startsWith("text/");
-}
+export type { TextFileShape } from "@shared/shapeDefs";
+export { isTextFile } from "@shared/shapeDefs";
 
 export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
-  static override type = TEXT_FILE_TYPE;
+  static override type = SHAPE_TYPE.TEXT_FILE;
 
   getDefaultProps(): TextFileShape["props"] {
     return {
@@ -88,6 +63,7 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
         }}
       >
         <CreatorLabel name={getCreatedBy(shape)} />
+        <AssetLoader assetId={shape.props.assetId}>
         {/* カード本体: overflow hidden でコンテンツをクリップ */}
         <div
           style={{
@@ -154,6 +130,7 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
             </pre>
           </div>
         </div>
+        </AssetLoader>
         <ShapeReactionPanel shapeId={shape.id} />
       </HTMLContainer>
     );

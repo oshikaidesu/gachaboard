@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireLogin } from "@/lib/authz";
 import { db } from "@/lib/db";
+import { USER_SELECT } from "@/lib/prismaHelpers";
 import { createWriteStream } from "fs";
 import { pipeline } from "stream/promises";
 import { Readable } from "stream";
@@ -81,7 +82,7 @@ export async function GET(req: NextRequest) {
       deletedAt: trash ? { not: null } : null,
     },
     orderBy: { createdAt: "desc" },
-    include: { uploader: { select: { discordName: true, avatarUrl: true } } },
+    include: { uploader: { select: USER_SELECT } },
   });
 
   return NextResponse.json(

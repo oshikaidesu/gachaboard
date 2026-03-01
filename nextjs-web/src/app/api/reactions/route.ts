@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireLogin } from "@/lib/authz";
 import { db } from "@/lib/db";
+import { USER_SELECT, SOFT_DELETE_FILTER } from "@/lib/prismaHelpers";
 
 export async function GET(req: NextRequest) {
   const session = await requireLogin();
@@ -11,8 +12,8 @@ export async function GET(req: NextRequest) {
   if (!boardId) return NextResponse.json({ error: "boardId required" }, { status: 400 });
 
   const reactions = await db.objectReaction.findMany({
-    where: { boardId, ...(shapeId ? { shapeId } : {}), deletedAt: null },
-    include: { user: { select: { id: true, discordName: true, avatarUrl: true } } },
+    where: { boardId, ...(shapeId ? { shapeId } : {}), ...SOFT_DELETE_FILTER },
+    include: { user: { select: USER_SELECT } },
     orderBy: { createdAt: "asc" },
   });
 

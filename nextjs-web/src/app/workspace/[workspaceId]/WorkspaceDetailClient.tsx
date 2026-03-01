@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import type { ApiBoard, ApiWorkspaceInfo } from "@shared/apiTypes";
 
-type Board = { id: string; name: string; createdAt: string; deletedAt: string | null };
-type WorkspaceInfo = { name: string; ownerUserId: string; ownerName: string };
+type Board = ApiBoard;
+type WorkspaceInfo = ApiWorkspaceInfo;
 
 type Props = { workspaceId: string; currentUserId: string };
 

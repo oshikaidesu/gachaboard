@@ -37,8 +37,8 @@ services:
   sync-server:
     container_name: tldraw-sync
     build:
-      context: ./nextjs-web/sync-server
-      dockerfile: Dockerfile
+      context: ./nextjs-web
+      dockerfile: sync-server/Dockerfile
     ports:
       - "5858:5858"
     environment:

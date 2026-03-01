@@ -1,13 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-
-type Comment = {
-  id: string;
-  timeSec: number;
-  body: string;
-  author: { id: string; name: string | null; image: string | null };
-};
+import type { ApiComment } from "@shared/apiTypes";
 
 type Props = {
   assetId: string;
@@ -22,7 +16,7 @@ export default function MediaPlayer({ assetId, mimeType, fileName, workspaceId, 
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [comments, setComments] = useState<ApiComment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
 
@@ -32,7 +26,7 @@ export default function MediaPlayer({ assetId, mimeType, fileName, workspaceId, 
 
   const loadComments = useCallback(async () => {
     const res = await fetch(`/api/comments?assetId=${assetId}`);
-    if (res.ok) setComments(await res.json());
+    if (res.ok) setComments(await res.json() as ApiComment[]);
   }, [assetId]);
 
   useEffect(() => { loadComments(); }, [loadComments]);
@@ -105,7 +99,6 @@ export default function MediaPlayer({ assetId, mimeType, fileName, workspaceId, 
         />
       ) : null}
 
-      {/* タイムライン */}
       {duration > 0 && (
         <div className="relative h-8 rounded bg-zinc-100">
           <div
@@ -124,7 +117,6 @@ export default function MediaPlayer({ assetId, mimeType, fileName, workspaceId, 
         </div>
       )}
 
-      {/* コメント投稿 */}
       <div className="flex gap-2">
         <span className="text-xs text-zinc-400 shrink-0 pt-2">{formatTime(currentTime)}</span>
         <input
@@ -143,7 +135,6 @@ export default function MediaPlayer({ assetId, mimeType, fileName, workspaceId, 
         </button>
       </div>
 
-      {/* コメント一覧 */}
       {comments.length > 0 && (
         <ul className="flex flex-col gap-1 max-h-48 overflow-y-auto">
           {comments.map((c) => (
@@ -155,7 +146,7 @@ export default function MediaPlayer({ assetId, mimeType, fileName, workspaceId, 
                 {formatTime(c.timeSec)}
               </button>
               <span className="flex-1 text-sm text-zinc-700">{c.body}</span>
-              <span className="text-xs text-zinc-400 shrink-0">{c.author.name}</span>
+              <span className="text-xs text-zinc-400 shrink-0">{c.author.discordName}</span>
               <button
                 onClick={() => deleteComment(c.id)}
                 className="hidden text-xs text-zinc-300 hover:text-red-400 group-hover:block"

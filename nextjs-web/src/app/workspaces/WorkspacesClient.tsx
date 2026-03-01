@@ -2,17 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import type { ApiWorkspace } from "@shared/apiTypes";
 
-type Workspace = {
-  id: string;
-  name: string;
-  description: string | null;
-  ownerUserId: string;
-  ownerName: string;
-  createdAt: string;
-  deletedAt: string | null;
-  _count: { boards: number };
-};
+type Workspace = ApiWorkspace;
 
 export default function WorkspacesClient({ currentUserId }: { currentUserId: string }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);

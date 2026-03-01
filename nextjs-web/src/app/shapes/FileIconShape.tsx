@@ -4,27 +4,13 @@ import {
   BaseBoxShapeUtil,
   HTMLContainer,
   Rectangle2d,
-  TLShape,
 } from "@tldraw/tldraw";
 import { CreatorLabel, getCreatedBy } from "./CreatorLabel";
 import { ShapeReactionPanel } from "./ShapeReactionPanel";
+import { AssetLoader } from "./AssetLoader";
+import { SHAPE_TYPE, type FileIconShape } from "@shared/shapeDefs";
 
-const FILE_ICON_TYPE = "file-icon" as const;
-
-declare module "@tldraw/tldraw" {
-  interface TLGlobalShapePropsMap {
-    [FILE_ICON_TYPE]: {
-      assetId: string;
-      fileName: string;
-      mimeType: string;
-      kind: string;
-      w: number;
-      h: number;
-    };
-  }
-}
-
-export type FileIconShape = TLShape<typeof FILE_ICON_TYPE>;
+export type { FileIconShape } from "@shared/shapeDefs";
 
 export function getFileEmoji(fileName: string, kind: string): string {
   if (kind === "image" || kind === "gif") return "🖼️";
@@ -45,7 +31,7 @@ export function getFileEmoji(fileName: string, kind: string): string {
 }
 
 export class FileIconShapeUtil extends BaseBoxShapeUtil<FileIconShape> {
-  static override type = FILE_ICON_TYPE;
+  static override type = SHAPE_TYPE.FILE_ICON;
 
   getDefaultProps(): FileIconShape["props"] {
     return {
@@ -89,37 +75,39 @@ export class FileIconShapeUtil extends BaseBoxShapeUtil<FileIconShape> {
         }}
       >
         <CreatorLabel name={getCreatedBy(shape)} />
-        {shape.props.kind === "image" || shape.props.kind === "gif" ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={`/api/assets/${shape.props.assetId}/file`}
-            alt={name}
+        <AssetLoader assetId={shape.props.assetId}>
+          {shape.props.kind === "image" || shape.props.kind === "gif" ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`/api/assets/${shape.props.assetId}/file`}
+              alt={name}
+              style={{
+                width: 64,
+                height: 64,
+                objectFit: "cover",
+                borderRadius: 8,
+                pointerEvents: "none",
+              }}
+            />
+          ) : (
+            <span style={{ fontSize: 48, lineHeight: 1, pointerEvents: "none" }}>{emoji}</span>
+          )}
+          <span
             style={{
-              width: 64,
-              height: 64,
-              objectFit: "cover",
-              borderRadius: 8,
+              fontSize: 11,
+              textAlign: "center",
+              wordBreak: "break-all",
+              maxWidth: shape.props.w - 8,
+              lineHeight: 1.3,
               pointerEvents: "none",
+              background: "rgba(255,255,255,0.85)",
+              borderRadius: 3,
+              padding: "1px 3px",
             }}
-          />
-        ) : (
-          <span style={{ fontSize: 48, lineHeight: 1, pointerEvents: "none" }}>{emoji}</span>
-        )}
-        <span
-          style={{
-            fontSize: 11,
-            textAlign: "center",
-            wordBreak: "break-all",
-            maxWidth: shape.props.w - 8,
-            lineHeight: 1.3,
-            pointerEvents: "none",
-            background: "rgba(255,255,255,0.85)",
-            borderRadius: 3,
-            padding: "1px 3px",
-          }}
-        >
-          {shortName}
-        </span>
+          >
+            {shortName}
+          </span>
+        </AssetLoader>
         <ShapeReactionPanel shapeId={shape.id} />
       </HTMLContainer>
     );
