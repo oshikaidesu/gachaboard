@@ -63,6 +63,11 @@ export async function POST(req: NextRequest) {
     convertWavToMp3(storageKey).catch(console.error);
   }
 
+  // 音声ファイルは非同期で波形JSON生成
+  if (mimeType.startsWith("audio/")) {
+    generateWaveform(storageKey).catch(console.error);
+  }
+
   return NextResponse.json({ ...asset, sizeBytes: asset.sizeBytes.toString() }, { status: 201 });
 }
 
@@ -110,4 +115,45 @@ async function convertWavToMp3(storageKey: string) {
       .on("end", () => resolve())
       .on("error", reject);
   });
+}
+
+export async function generateWaveform(storageKey: string): Promise<void> {
+  const { default: ffmpeg } = await import("fluent-ffmpeg");
+  const { getFilePath, getWaveformPath, ensureUploadDirs } = await import("@/lib/storage");
+  const { writeFile } = await import("fs/promises");
+  await ensureUploadDirs();
+
+  const inputPath = getFilePath(storageKey);
+  const outputPath = getWaveformPath(storageKey);
+  const BAR_COUNT = 200;
+
+  const pcmBuffer = await new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    ffmpeg(inputPath)
+      .audioChannels(1)
+      .audioFrequency(8000)
+      .format("s16le")
+      .pipe()
+      .on("data", (chunk: Buffer) => chunks.push(chunk))
+      .on("end", () => resolve(Buffer.concat(chunks)))
+      .on("error", reject);
+  });
+
+  // 16bit signed PCM → Float32 samples
+  const sampleCount = Math.floor(pcmBuffer.length / 2);
+  const samplesPerBar = Math.max(1, Math.floor(sampleCount / BAR_COUNT));
+  const peaks: number[] = [];
+
+  for (let i = 0; i < BAR_COUNT; i++) {
+    let max = 0;
+    const start = i * samplesPerBar;
+    const end = Math.min(start + samplesPerBar, sampleCount);
+    for (let j = start; j < end; j++) {
+      const sample = Math.abs(pcmBuffer.readInt16LE(j * 2));
+      if (sample > max) max = sample;
+    }
+    peaks.push(max / 32768);
+  }
+
+  await writeFile(outputPath, JSON.stringify({ peaks }), "utf-8");
 }
