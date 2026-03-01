@@ -21,26 +21,55 @@ function extractFirstUrl(text: string): string | null {
 }
 
 /**
+ * richText ノードツリーから全ての link mark を除去する（青字化防止）。
+ * URL テキストノード自体は残す（removeUrlFromRichText で別途削除する）。
+ */
+function stripLinkMarks(node: unknown): unknown {
+  if (!node || typeof node !== "object") return node;
+  const n = node as { type?: string; text?: string; content?: unknown[]; marks?: unknown[] };
+
+  if (n.type === "text") {
+    if (!Array.isArray(n.marks) || n.marks.length === 0) return node;
+    const filteredMarks = n.marks.filter(
+      (m) => !(m && typeof m === "object" && (m as { type?: string }).type === "link")
+    );
+    return { ...n, marks: filteredMarks };
+  }
+
+  if (Array.isArray(n.content)) {
+    return { ...n, content: n.content.map(stripLinkMarks) };
+  }
+
+  return node;
+}
+
+/**
  * richText ノードツリーから URL テキストノードを再帰的に削除する。
- * - marks に link がある → 削除（tldraw は URL を link mark 付きの独立ノードに分割する）
- * - text が URL のみ → 削除（mark なしで URL だけのノード）
- * - それ以外 → そのまま保持
+ * - text が URL のみのノード → 削除
+ * - marks に link があり text も URL → 削除
+ * - marks に link があるが text が URL でない（文字にリンクが付いた）→ link mark だけ除去してテキストは保持
  */
 function removeUrlFromRichText(node: unknown): unknown {
   if (!node || typeof node !== "object") return node;
   const n = node as { type?: string; text?: string; content?: unknown[]; marks?: unknown[] };
 
   if (n.type === "text" && typeof n.text === "string") {
-    // link mark がついているノードは URL ノードとして削除
     const hasLinkMark = Array.isArray(n.marks) && n.marks.some(
       (m) => m && typeof m === "object" && (m as { type?: string }).type === "link"
     );
-    if (hasLinkMark) return null;
+    const isUrlText = /^https?:\/\/\S+$/.test(n.text.trim());
 
-    // URL のみのテキストノード
-    if (/^https?:\/\/\S+$/.test(n.text.trim())) return null;
+    if (isUrlText) {
+      // URL テキストノードは削除（link mark の有無に関わらず）
+      return null;
+    }
 
-    // tldraw は URL を必ず独立ノードに分割するため、混在テキストの除去は不要
+    if (hasLinkMark) {
+      // URL でない文字に link mark が付いている場合は mark だけ除去してテキストは保持
+      const filteredMarks = (n.marks as { type?: string }[]).filter((m) => m.type !== "link");
+      return { ...n, marks: filteredMarks };
+    }
+
     return node;
   }
 
@@ -50,12 +79,10 @@ function removeUrlFromRichText(node: unknown): unknown {
       .filter((c) => c !== null);
 
     if (n.type === "paragraph" && newContent.length === 0) {
-      // URL のみの paragraph を削除（上位の doc レベルで判断する）
       return null;
     }
 
     if (n.type === "doc") {
-      // doc の全 paragraph が消えた場合は空の paragraph を1つ残す
       if (newContent.length === 0) {
         return { ...n, content: [{ type: "paragraph", content: [] }] };
       }
@@ -69,11 +96,35 @@ function removeUrlFromRichText(node: unknown): unknown {
 
 const TARGET_TYPES = new Set(["text", "note", "geo"]);
 
+/** richText に link mark が含まれているか確認する */
+function hasLinkMarkAnywhere(node: unknown): boolean {
+  if (!node || typeof node !== "object") return false;
+  const n = node as { type?: string; marks?: unknown[]; content?: unknown[] };
+  if (n.type === "text" && Array.isArray(n.marks)) {
+    if (n.marks.some((m) => m && typeof m === "object" && (m as { type?: string }).type === "link")) {
+      return true;
+    }
+  }
+  if (Array.isArray(n.content)) {
+    return n.content.some(hasLinkMarkAnywhere);
+  }
+  return false;
+}
+
 export function useUrlPreviewAttacher() {
   const registerListener = useCallback((editor: Editor) => {
-    // 処理中フラグ：handleEditingEnd 内の updateShape によるリスナー再発火を防ぐ
     let isProcessing = false;
     let prevEditingId: TLShapeId | null = null;
+
+    // store に書き込まれる前に link mark を除去する（ペースト時の青字リンク防止）
+    const cleanupLinkMarks = editor.sideEffects.registerBeforeChangeHandler("shape", (_prev, next) => {
+      if (!TARGET_TYPES.has(next.type)) return next;
+      const props = next.props as Record<string, unknown>;
+      const richText = props.richText;
+      if (!richText || !hasLinkMarkAnywhere(richText)) return next;
+      const stripped = stripLinkMarks(richText);
+      return { ...next, props: { ...props, richText: stripped } };
+    });
 
     const cleanup = editor.store.listen(
       () => {
@@ -98,7 +149,10 @@ export function useUrlPreviewAttacher() {
       { source: "all", scope: "session" }
     );
 
-    return cleanup;
+    return () => {
+      cleanup();
+      cleanupLinkMarks();
+    };
   }, []);
 
   return { registerListener };
@@ -120,7 +174,6 @@ function handleEditingEnd(editor: Editor, shapeId: TLShapeId) {
     // URL を meta.ogpUrls 配列に追加し、richText から URL を削除
     const existingUrls = (shape.meta as Record<string, unknown>)?.ogpUrls;
     const prevUrls: string[] = Array.isArray(existingUrls) ? existingUrls as string[] : [];
-    // 重複追加を防ぐ
     const newUrls = prevUrls.includes(url) ? prevUrls : [...prevUrls, url];
     const newRichText = removeUrlFromRichText(richText);
     editor.updateShape({
@@ -130,5 +183,5 @@ function handleEditingEnd(editor: Editor, shapeId: TLShapeId) {
       props: { ...props, richText: newRichText },
     });
   }
-  // URL がない場合は何もしない（OGP クリアは × ボタンのみ）
+  // URL がない場合は何もしない（link mark 除去はリアルタイムハンドラが担当）
 }

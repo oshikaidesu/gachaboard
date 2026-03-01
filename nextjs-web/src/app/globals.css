@@ -25,6 +25,23 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* tldraw テキストエディタ内のリンク青字・下線を無効化 */
+.tl-text a,
+.tl-text-content a,
+.tl-rich-text a,
+[class^="tl-"] a,
+[class*=" tl-"] a {
+  color: inherit !important;
+  text-decoration: none !important;
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+/* リッチテキストツールバーのリンクボタンを非表示 */
+button[data-testid="rich-text.link"] {
+  display: none !important;
+}
+
 /* PeopleMenu の自分の行（新規ユーザー欄）を非表示 */
 .tlui-people-menu__user {
   display: none !important;

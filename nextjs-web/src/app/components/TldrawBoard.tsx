@@ -46,6 +46,11 @@ function stringToColor(str: string): string {
 }
 
 const uiOverrides: TLUiOverrides = {
+  actions(_editor, actions) {
+    // リンク埋め込みアクションを削除（ショートカット含む）
+    delete actions["insert-link"];
+    return actions;
+  },
   tools(editor, tools) {
     delete tools["hand"];
     delete tools["select"];
