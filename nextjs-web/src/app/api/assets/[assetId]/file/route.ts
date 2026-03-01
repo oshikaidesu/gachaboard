@@ -7,6 +7,23 @@ import { open } from "fs/promises";
 
 type Params = { params: Promise<{ assetId: string }> };
 
+export async function HEAD(req: NextRequest, { params }: Params) {
+  const session = await requireLogin();
+  if (!session) return new NextResponse(null, { status: 401 });
+
+  const { assetId } = await params;
+  const { searchParams } = new URL(req.url);
+  const converted = searchParams.get("converted") === "1";
+
+  const asset = await db.asset.findUnique({ where: { id: assetId } });
+  if (!asset || asset.deletedAt) return new NextResponse(null, { status: 404 });
+
+  const filePath = converted ? getConvertedPath(asset.storageKey) : getFilePath(asset.storageKey);
+  if (!existsSync(filePath)) return new NextResponse(null, { status: 404 });
+
+  return new NextResponse(null, { status: 200 });
+}
+
 export async function GET(req: NextRequest, { params }: Params) {
   const session = await requireLogin();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -14,6 +31,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { assetId } = await params;
   const { searchParams } = new URL(req.url);
   const converted = searchParams.get("converted") === "1";
+  const forceDownload = searchParams.get("download") === "1";
 
   const asset = await db.asset.findUnique({ where: { id: assetId } });
   if (!asset || asset.deletedAt) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -22,7 +40,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (!existsSync(filePath)) return NextResponse.json({ error: "File not found" }, { status: 404 });
 
   const mimeType = converted ? "audio/mpeg" : (asset.mimeType || "application/octet-stream");
-  const isInline = mimeType.startsWith("image/") || mimeType.startsWith("video/") || mimeType.startsWith("audio/");
+  const isInline = !forceDownload && (mimeType.startsWith("image/") || mimeType.startsWith("video/") || mimeType.startsWith("audio/"));
   const disposition = isInline ? "inline" : "attachment";
   const encodedName = encodeURIComponent(asset.fileName);
   const totalSize = statSync(filePath).size;

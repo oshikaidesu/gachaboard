@@ -12,7 +12,6 @@ import {
   BaseBoxShapeUtil,
   Rectangle2d,
   ImageShapeUtil,
-  VideoShapeUtil,
   NoteShapeUtil,
   GeoShapeUtil,
   TextShapeUtil,
@@ -66,7 +65,6 @@ export const customSchema = createTLSchemaFromUtils({
   shapeUtils: [
     ...customShapeUtils,
     ImageShapeUtil,
-    VideoShapeUtil,
     NoteShapeUtil,
     GeoShapeUtil,
     TextShapeUtil,

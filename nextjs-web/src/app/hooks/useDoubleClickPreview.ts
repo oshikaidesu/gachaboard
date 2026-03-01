@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback } from "react";
-import { Editor, StateNode, type TLClickEventInfo, type TLImageShape, type TLVideoShape, type TLImageAsset, type TLVideoAsset } from "@tldraw/tldraw";
-import type { FileIconShape } from "@/app/shapes";
+import { Editor, StateNode, type TLClickEventInfo, type TLImageShape, type TLImageAsset } from "@tldraw/tldraw";
+import type { FileIconShape, VideoShape } from "@/app/shapes";
 import type { ApiAsset } from "@shared/apiTypes";
 
 type IdleStateNode = StateNode & {
@@ -65,21 +65,18 @@ export function useDoubleClickPreview(
             }
           }
 
-          if (shape.type === "video") {
-            const videoShape = info.shape as TLVideoShape;
-            const tlAsset = editor.getAsset(videoShape.props.assetId) as TLVideoAsset | undefined;
-            if (tlAsset?.props.src) {
-              const id = assetIdFromSrc(tlAsset.props.src);
-              if (id) {
-                onOpen({
-                  id,
-                  fileName: tlAsset.props.name,
-                  mimeType: tlAsset.props.mimeType ?? "video/*",
-                  kind: "video",
-                  sizeBytes: String(tlAsset.props.fileSize ?? 0),
-                });
-                return;
-              }
+          if (shape.type === "video-player") {
+            const videoShape = info.shape as unknown as VideoShape;
+            const props = videoShape.props as unknown as { assetId: string; fileName: string; mimeType: string };
+            if (props.assetId) {
+              onOpen({
+                id: props.assetId,
+                fileName: props.fileName,
+                mimeType: props.mimeType ?? "video/*",
+                kind: "video",
+                sizeBytes: "0",
+              });
+              return;
             }
           }
         }

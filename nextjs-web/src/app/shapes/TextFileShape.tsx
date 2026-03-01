@@ -5,9 +5,12 @@ import {
   HTMLContainer,
   Rectangle2d,
 } from "@tldraw/tldraw";
+import { DownloadButton } from "./DownloadButton";
 import { CreatorLabel, getCreatedBy } from "./CreatorLabel";
 import { ShapeReactionPanel } from "./ShapeReactionPanel";
+import { ShapeConnectHandles } from "./ShapeConnectHandles";
 import { AssetLoader } from "./AssetLoader";
+import { WheelGuard } from "./ScrollContainer";
 import { SHAPE_TYPE, isTextFile, type TextFileShape } from "@shared/shapeDefs";
 
 export type { TextFileShape } from "@shared/shapeDefs";
@@ -64,8 +67,8 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
       >
         <CreatorLabel name={getCreatedBy(shape)} />
         <AssetLoader assetId={shape.props.assetId}>
-        {/* カード本体: overflow hidden でコンテンツをクリップ */}
-        <div
+        <WheelGuard
+          shapeId={shape.id}
           style={{
             width: "100%",
             height: "100%",
@@ -104,6 +107,9 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
             >
               {shortName}
             </span>
+            <DownloadButton assetId={shape.props.assetId} fileName={shape.props.fileName}
+              style={{ flexShrink: 0, width: 20, height: 20, fontSize: 10, background: isCode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)", border: `1px solid ${isCode ? "rgba(255,255,255,0.15)" : "#e4e4e7"}`, color: isCode ? "#cdd6f4" : "#71717a" }}
+            />
           </div>
           <div
             style={{
@@ -129,9 +135,10 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
               {shape.props.content || "(空のファイル)"}
             </pre>
           </div>
-        </div>
+        </WheelGuard>
         </AssetLoader>
         <ShapeReactionPanel shapeId={shape.id} />
+        <ShapeConnectHandles shapeId={shape.id} w={shape.props.w} h={shape.props.h} />
       </HTMLContainer>
     );
   }

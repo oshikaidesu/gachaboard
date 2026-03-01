@@ -9,10 +9,13 @@ import {
 import { useEffect, useRef, useState, useCallback } from "react";
 import { CreatorLabel, getCreatedBy } from "./CreatorLabel";
 import { ShapeReactionPanel } from "./ShapeReactionPanel";
+import { ShapeConnectHandles } from "./ShapeConnectHandles";
 import { AssetLoader } from "./AssetLoader";
 import { SHAPE_TYPE, type AudioShape } from "@shared/shapeDefs";
 import { useWaveform } from "@/app/hooks/useWaveform";
 import { useBoardContext } from "@/app/components/BoardContext";
+import { WheelGuard } from "./ScrollContainer";
+import { DownloadButton } from "./DownloadButton";
 import type { ApiComment } from "@shared/apiTypes";
 
 export type { AudioShape } from "@shared/shapeDefs";
@@ -182,6 +185,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
   const [comments, setComments] = useState<ApiComment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
@@ -258,7 +262,8 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
   };
 
   return (
-    <div
+    <WheelGuard
+      shapeId={shape.id}
       style={{
         width: "100%",
         height: "100%",
@@ -288,6 +293,9 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         }}>
           {shortName}
         </span>
+        <DownloadButton assetId={shape.props.assetId} fileName={shape.props.fileName}
+          style={{ flexShrink: 0, width: 22, height: 22, fontSize: 11, background: "#f3f4f6", border: "1px solid #e5e7eb", color: "#6b7280" }}
+        />
       </div>
 
       {/* 波形 */}
@@ -340,8 +348,26 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         <span style={{ fontSize: 10, color: "#6b7280", fontVariantNumeric: "tabular-nums" }}>
           {formatTime(currentTime)} / {formatTime(duration)}
         </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
+          <span style={{ fontSize: 10 }}>{volume === 0 ? "🔇" : volume < 0.5 ? "🔉" : "🔊"}</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={volume}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              setVolume(v);
+              if (audioRef.current) audioRef.current.volume = v;
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            style={{ width: 196, accentColor: ORANGE, cursor: "pointer" }}
+          />
+        </div>
         {comments.length > 0 && (
-          <span style={{ fontSize: 9, color: ORANGE, marginLeft: "auto" }}>
+          <span style={{ fontSize: 9, color: ORANGE }}>
             💬 {comments.length}
           </span>
         )}
@@ -406,9 +432,6 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
             overflowY: "auto",
             maxHeight: 8 * COMMENT_ROW_HEIGHT,
           }}
-          onMouseDown={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          onWheel={(e) => e.stopPropagation()}
         >
           {comments.map((c: ApiComment) => {
             const m = Math.floor(c.timeSec / 60);
@@ -476,7 +499,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         onEnded={() => setPlaying(false)}
         style={{ display: "none" }}
       />
-    </div>
+    </WheelGuard>
   );
 }
 
@@ -520,8 +543,13 @@ export class AudioShapeUtil extends BaseBoxShapeUtil<AudioShape> {
           <AudioPlayer shape={shape} />
         </AssetLoader>
         <ShapeReactionPanel shapeId={shape.id} />
+        <ShapeConnectHandles shapeId={shape.id} w={shape.props.w} h={shape.props.h} />
       </HTMLContainer>
     );
+  }
+
+  override hideSelectionBoundsBg() {
+    return true;
   }
 
   override indicator(shape: AudioShape) {

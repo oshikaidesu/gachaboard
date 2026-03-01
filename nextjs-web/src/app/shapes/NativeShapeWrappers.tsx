@@ -11,7 +11,6 @@
 import {
   HTMLContainer,
   ImageShapeUtil,
-  VideoShapeUtil,
   NoteShapeUtil,
   GeoShapeUtil,
   TextShapeUtil,
@@ -25,6 +24,7 @@ import {
 } from "@tldraw/tldraw";
 import { CreatorLabel, getCreatedBy } from "./CreatorLabel";
 import { ShapeReactionPanel } from "./ShapeReactionPanel";
+import { ShapeConnectHandles } from "./ShapeConnectHandles";
 import { OgpPreview } from "./OgpPreview";
 
 // ---------- ファクトリ関数 ---------------------------------------------------
@@ -90,6 +90,7 @@ function wrapWithExtras<TShape extends { id: string; props: { w?: number; h?: nu
                 }}
               />
             </div>
+            <ShapeConnectHandles shapeId={shape.id} w={w} h={h} />
           </HTMLContainer>
         );
       }
@@ -148,25 +149,30 @@ export class WrappedImageShapeUtil extends (wrapWithExtras(
     return (
       <HTMLContainer
         id={shape.id}
-        style={{ width: w, height: h, position: "relative", overflow: "hidden", ...CHECKER_STYLE }}
+        style={{ width: w, height: h, position: "relative", overflow: "visible" }}
       >
-        {base}
+        {/* 画像クリッピング用の内側コンテナ */}
+        <div style={{ position: "absolute", inset: 0, overflow: "hidden", ...CHECKER_STYLE }}>
+          {base}
+        </div>
+        <ShapeConnectHandles shapeId={shape.id} w={w} h={h} />
       </HTMLContainer>
     );
   }
 }
 
-export const WrappedVideoShapeUtil = wrapWithExtras(
-  VideoShapeUtil as new (...args: unknown[]) => ShapeUtil<{ id: string; props: { w: number; h: number } }>
-) as unknown as typeof VideoShapeUtil;
-
 export const WrappedNoteShapeUtil = wrapWithExtras(
   NoteShapeUtil as new (...args: unknown[]) => ShapeUtil<{ id: string; props: { w?: number; h?: number } }>
 ) as unknown as typeof NoteShapeUtil;
 
-export const WrappedTextShapeUtil = wrapWithExtras(
+export class WrappedTextShapeUtil extends (wrapWithExtras(
   TextShapeUtil as new (...args: unknown[]) => ShapeUtil<{ id: string; props: { w?: number; h?: number } }>
-) as unknown as typeof TextShapeUtil;
+) as unknown as typeof TextShapeUtil) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  override onBeforeCreate(shape: any): any {
+    return { ...shape, props: { ...shape.props, font: "mono" } };
+  }
+}
 
 // ---------- 個別実装（独自ロジックあり） ------------------------------------
 
@@ -192,7 +198,7 @@ export class WrappedGeoShapeUtil extends GeoShapeUtil {
         color: getColorForShape(shape.id),
         fill: "solid",
         dash: "solid",
-        font: "sans",
+        font: "mono",
       },
     };
   }
@@ -262,6 +268,7 @@ export class WrappedGeoShapeUtil extends GeoShapeUtil {
             }}
           />
         </div>
+        <ShapeConnectHandles shapeId={shape.id} w={w} h={h} />
       </HTMLContainer>
     );
   }

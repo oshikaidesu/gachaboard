@@ -32,13 +32,14 @@ export const SHAPE_TYPE = {
   FILE_ICON: "file-icon" as const,
   AUDIO: "audio-player" as const,
   TEXT_FILE: "text-file" as const,
+  VIDEO: "video-player" as const,
 };
 
 // ---------- declare module（1 回限り） ----------
 
 declare module "@tldraw/tldraw" {
   interface TLGlobalShapePropsMap {
-    [K: string]: Record<string, unknown>;
+    "video-player": VideoProps;
   }
 }
 
@@ -70,11 +71,20 @@ export type TextFileProps = {
   h: number;
 };
 
+export type VideoProps = {
+  assetId: string;
+  fileName: string;
+  mimeType: string;
+  w: number;
+  h: number;
+};
+
 // ---------- シェイプ型エイリアス ----------
 
 export type FileIconShape = TLShape<typeof SHAPE_TYPE.FILE_ICON>;
 export type AudioShape = TLShape<typeof SHAPE_TYPE.AUDIO>;
 export type TextFileShape = TLShape<typeof SHAPE_TYPE.TEXT_FILE>;
+export type VideoShape = TLShape<typeof SHAPE_TYPE.VIDEO>;
 
 // ---------- レジストリ定義 ----------
 
@@ -88,6 +98,17 @@ export type ShapeDef<P extends Record<string, unknown> = Record<string, unknown>
 };
 
 export const SHAPE_DEFS: Record<string, ShapeDef> = {
+  [SHAPE_TYPE.VIDEO]: {
+    defaultProps: {
+      assetId: "",
+      fileName: "video.mp4",
+      mimeType: "video/mp4",
+      w: 480,
+      h: 330,
+    } satisfies VideoProps,
+    matchMime: (mime) => mime.startsWith("video/"),
+    priority: 40,
+  },
   [SHAPE_TYPE.AUDIO]: {
     defaultProps: {
       assetId: "",
@@ -133,7 +154,7 @@ export function resolveShapeType(
   mime: string,
   fileName: string,
 ): { type: string; def: ShapeDef } | null {
-  if (mime.startsWith("image/") || mime.startsWith("video/")) {
+  if (mime.startsWith("image/")) {
     return null;
   }
   const sorted = Object.entries(SHAPE_DEFS).sort(

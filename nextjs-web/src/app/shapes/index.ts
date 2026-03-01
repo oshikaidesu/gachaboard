@@ -11,7 +11,7 @@
  */
 
 import {
-  Editor, createShapeId, AssetRecordType, TLImageAsset, TLVideoAsset,
+  Editor, createShapeId, AssetRecordType, TLImageAsset,
   DrawShapeUtil,
   HighlightShapeUtil,
   LineShapeUtil,
@@ -22,9 +22,9 @@ import {
 import { FileIconShapeUtil } from "./FileIconShape";
 import { TextFileShapeUtil } from "./TextFileShape";
 import { AudioShapeUtil } from "./AudioShape";
+import { VideoShapeUtil } from "./VideoShape";
 import {
   WrappedImageShapeUtil,
-  WrappedVideoShapeUtil,
   WrappedNoteShapeUtil,
   WrappedGeoShapeUtil,
   WrappedTextShapeUtil,
@@ -36,6 +36,7 @@ import {
   resolveShapeType,
   type FileIconShape,
   type AudioShape,
+  type VideoShape,
   type TextFileShape,
 } from "@shared/shapeDefs";
 
@@ -57,9 +58,9 @@ export const CUSTOM_SHAPE_UTILS = [
   FileIconShapeUtil,
   TextFileShapeUtil,
   AudioShapeUtil,
+  VideoShapeUtil,
   // 組み込みシェイプのラッパー（CreatorLabel 追加）
   WrappedImageShapeUtil,
-  WrappedVideoShapeUtil,
   WrappedNoteShapeUtil,
   WrappedGeoShapeUtil,
   WrappedTextShapeUtil,
@@ -96,29 +97,6 @@ function getImageDimensions(file: File): Promise<{ w: number; h: number }> {
       URL.revokeObjectURL(url);
     };
     img.src = url;
-  });
-}
-
-function getVideoDimensions(file: File): Promise<{ w: number; h: number }> {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const video = document.createElement("video");
-    video.onloadedmetadata = () => {
-      const vw = video.videoWidth || MAX_IMAGE_SIZE;
-      const vh = video.videoHeight || MAX_IMAGE_SIZE;
-      URL.revokeObjectURL(url);
-      if (vw <= MAX_IMAGE_SIZE && vh <= MAX_IMAGE_SIZE) {
-        resolve({ w: vw, h: vh });
-      } else {
-        const scale = Math.min(MAX_IMAGE_SIZE / vw, MAX_IMAGE_SIZE / vh);
-        resolve({ w: Math.round(vw * scale), h: Math.round(vh * scale) });
-      }
-    };
-    video.onerror = () => {
-      resolve({ w: MAX_IMAGE_SIZE, h: MAX_IMAGE_SIZE });
-      URL.revokeObjectURL(url);
-    };
-    video.src = url;
   });
 }
 
@@ -172,30 +150,6 @@ export async function placeFile(
     return;
   }
 
-  // --- 動画（ネイティブ tldraw アセット） ---
-  if (mime.startsWith("video/")) {
-    const { w: vidW, h: vidH } = await getVideoDimensions(file);
-    const assetId = AssetRecordType.createId();
-    const videoAsset: TLVideoAsset = {
-      id: assetId,
-      typeName: "asset",
-      type: "video",
-      props: {
-        src: `/api/assets/${data.id}/file`,
-        w: vidW,
-        h: vidH,
-        name: data.fileName,
-        isAnimated: true,
-        mimeType: mime,
-        fileSize: Number(data.sizeBytes),
-      },
-      meta: {},
-    };
-    editor.createAssets([videoAsset]);
-    editor.createShape({ type: "video", x, y, meta, props: { assetId, w: vidW, h: vidH } });
-    return;
-  }
-
   // --- カスタムシェイプ（SHAPE_DEFS でデータ駆動判定） ---
   const resolved = resolveShapeType(mime, file.name);
   if (!resolved) return;
@@ -217,6 +171,14 @@ export async function placeFile(
     editor.createShape<AudioShape>({
       id: createShapeId(), type, x, y, meta,
       props: baseProps as AudioShape["props"],
+    });
+    return;
+  }
+
+  if (type === SHAPE_TYPE.VIDEO) {
+    editor.createShape<VideoShape>({
+      id: createShapeId(), type, x, y, meta,
+      props: baseProps as VideoShape["props"],
     });
     return;
   }
@@ -244,11 +206,11 @@ export async function placeholderShape(
   const meta = { createdBy };
   const id = createShapeId();
 
-  // image/video はネイティブアセットなので FileIconShape で仮表示
-  if (mime.startsWith("image/") || mime.startsWith("video/")) {
+  // image はネイティブアセットなので FileIconShape で仮表示
+  if (mime.startsWith("image/")) {
     editor.createShape<FileIconShape>({
       id, type: SHAPE_TYPE.FILE_ICON, x, y, meta,
-      props: { assetId: "", fileName: file.name, mimeType: mime, kind: mime.startsWith("image/") ? "image" : "video", w: 96, h: 96 },
+      props: { assetId: "", fileName: file.name, mimeType: mime, kind: "image", w: 96, h: 96 },
     });
     return id;
   }
@@ -275,6 +237,14 @@ export async function placeholderShape(
     return id;
   }
 
+  if (type === SHAPE_TYPE.VIDEO) {
+    editor.createShape<VideoShape>({
+      id, type, x, y, meta,
+      props: baseProps as VideoShape["props"],
+    });
+    return id;
+  }
+
   // file-icon（fallback）
   editor.createShape<FileIconShape>({
     id, type: SHAPE_TYPE.FILE_ICON, x, y, meta,
@@ -288,3 +258,4 @@ export async function placeholderShape(
 export { FileIconShapeUtil, type FileIconShape, getFileEmoji } from "./FileIconShape";
 export { TextFileShapeUtil, type TextFileShape, isTextFile } from "./TextFileShape";
 export { AudioShapeUtil, type AudioShape } from "./AudioShape";
+export { VideoShapeUtil, type VideoShape } from "./VideoShape";

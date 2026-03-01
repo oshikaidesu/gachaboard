@@ -9,12 +9,12 @@ import {
   type TLUiOverrides,
   getDefaultUserPresence,
   atom,
+  createShapeId,
 } from "@tldraw/tldraw";
 import { useSync } from "@tldraw/sync";
 import "@tldraw/tldraw/tldraw.css";
 import Link from "next/link";
 import { CUSTOM_SHAPE_UTILS } from "@/app/shapes";
-import { ConnectHandles } from "./ConnectHandles";
 import { BoardContext } from "./BoardContext";
 import { SmartHandTool } from "@/app/tools/SmartHandTool";
 import { SyncStatusBadge } from "./SyncStatusBadge";
@@ -54,6 +54,7 @@ const uiOverrides: TLUiOverrides = {
   tools(editor, tools) {
     delete tools["hand"];
     delete tools["select"];
+    delete tools["note"];
 
     for (const key of Object.keys(tools)) {
       const tool = tools[key];
@@ -67,6 +68,34 @@ const uiOverrides: TLUiOverrides = {
           const currentGeo = editor.getSharedStyles().getAsKnownValue(GeoShapeGeoStyle);
           if (activeToolId === "geo" && currentGeo === tool.meta.geo) {
             editor.setCurrentTool("select");
+            return;
+          }
+
+          // ツールバーからのクリック → ビューポート中央に即配置
+          if (source === "toolbar") {
+            const geo = tool.meta.geo as string;
+            const size =
+              geo === "star" ? { w: 200, h: 190 }
+              : geo === "cloud" ? { w: 300, h: 180 }
+              : { w: 200, h: 200 };
+            const scale = editor.user.getIsDynamicResizeMode()
+              ? 1 / editor.getZoomLevel()
+              : 1;
+            const vp = editor.getViewportPageBounds();
+            const cx = vp.x + vp.w / 2;
+            const cy = vp.y + vp.h / 2;
+            const id = createShapeId();
+            editor.markHistoryStoppingPoint(`creating_geo:${id}`);
+            editor.createShapes([{
+              id,
+              type: "geo",
+              x: cx - (size.w * scale) / 2,
+              y: cy - (size.h * scale) / 2,
+              props: { geo, scale, w: size.w * scale, h: size.h * scale },
+            }]);
+            editor.select(id);
+            editor.setCurrentTool("select");
+            editor.setEditingShape(id);
             return;
           }
         } else {
@@ -138,6 +167,8 @@ export default function TldrawBoard({ boardId, workspaceId, userName, currentUse
   const { registerHandler: registerDoubleClickHandler } = useDoubleClickPreview(setPreview);
   const { registerListener: registerUrlPreviewAttacher } = useUrlPreviewAttacher();
 
+  const cameraStorageKey = `gachaboard:camera:${boardId}`;
+
   const handleMount = useCallback(
     (editor: Editor) => {
       if (isE2eMode) {
@@ -145,13 +176,35 @@ export default function TldrawBoard({ boardId, workspaceId, userName, currentUse
       }
       editor.setCameraOptions({ wheelBehavior: "zoom" });
 
+      // カメラ位置を復元
+      const savedCamera = localStorage.getItem(cameraStorageKey);
+      if (savedCamera) {
+        try {
+          const { x, y, z } = JSON.parse(savedCamera);
+          editor.setCamera({ x, y, z }, { animation: { duration: 0 } });
+        } catch {
+          // 無効なデータは無視
+        }
+      }
+
+      // カメラ位置の変化を監視して保存
+      const unsubscribe = editor.store.listen(
+        () => {
+          const camera = editor.getCamera();
+          localStorage.setItem(cameraStorageKey, JSON.stringify({ x: camera.x, y: camera.y, z: camera.z }));
+        },
+        { source: "user", scope: "session" }
+      );
+
       registerFileDropHandler(editor);
       registerArrowDeleteListener(editor);
       registerCreatedByListener(editor);
       registerDoubleClickHandler(editor);
       registerUrlPreviewAttacher(editor);
+
+      return () => { unsubscribe(); };
     },
-    [isE2eMode, registerFileDropHandler, registerArrowDeleteListener, registerCreatedByListener, registerDoubleClickHandler, registerUrlPreviewAttacher]
+    [isE2eMode, cameraStorageKey, registerFileDropHandler, registerArrowDeleteListener, registerCreatedByListener, registerDoubleClickHandler, registerUrlPreviewAttacher]
   );
 
   const components = useMemo<TLComponents>(
@@ -194,7 +247,6 @@ export default function TldrawBoard({ boardId, workspaceId, userName, currentUse
             initialState="select"
             onMount={handleMount}
           >
-            <ConnectHandles />
             <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 z-10 rounded-full bg-black/50 px-4 py-1.5 text-xs text-white opacity-50 select-none">
               ファイルをドロップして配置
             </div>
