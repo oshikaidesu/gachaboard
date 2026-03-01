@@ -22,7 +22,7 @@ services:
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
       DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/whiteboard"
-      NEXTAUTH_URL: "https://uooooooooooo.tail16829c.ts.net"
+      NEXTAUTH_URL: "${NEXTAUTH_URL}"
       SYNC_SERVER_URL: "http://sync-server:5858"
       E2E_TEST_MODE: "${E2E_TEST_MODE:-0}"
     command: >

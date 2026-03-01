@@ -1,5 +1,55 @@
 # tldraw sync server
 
+## 別環境から移行・同期するとき
+
+### 1. GitHubから最新コードを取得
+
+```powershell
+cd d:\whiteborad\whiteboard-multiplayer
+git pull origin master
+```
+
+### 2. 環境固有ファイルを用意（GitHubに含まれないため手動で作成）
+
+**`nextjs-web/.env.local`**（認証情報）
+```env
+# Discord OAuth
+DISCORD_CLIENT_ID=...
+DISCORD_CLIENT_SECRET=...
+
+# NextAuth
+NEXTAUTH_SECRET=...
+NEXTAUTH_URL=https://<このマシンのTailscaleホスト名>
+
+# Database
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/whiteboard
+```
+
+**`.env`**（Docker Compose変数展開用）
+```env
+NEXTAUTH_URL=https://<このマシンのTailscaleホスト名>
+```
+
+**`nextjs-web/next.config.ts`** の `allowedDevOrigins` をこのマシンのTailscaleホスト名に更新：
+```ts
+allowedDevOrigins: ["<このマシンのTailscaleホスト名>"],
+```
+
+### 3. Discord Developer Portal でリダイレクトURLを更新
+
+https://discord.com/developers/applications/ にアクセスし、OAuth2 の Redirects に以下を追加：
+```
+https://<このマシンのTailscaleホスト名>/api/auth/callback/discord
+```
+
+### 4. 起動
+
+```powershell
+docker compose up --build -d
+```
+
+---
+
 ## Docker で起動（Next.js + Postgres）
 
 ```powershell

@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: { bodySizeLimit: "50gb" },
   },
-  allowedDevOrigins: ["uooooooooooo.tail16829c.ts.net"],
+  allowedDevOrigins: ["desktop-hn7hdbv-1.tail16829c.ts.net"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "cdn.discordapp.com" },
@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/ws/sync/:path*",
-        destination: "http://localhost:5858/sync/:path*",
+        destination: "http://sync-server:5858/sync/:path*",
       },
     ];
   },
