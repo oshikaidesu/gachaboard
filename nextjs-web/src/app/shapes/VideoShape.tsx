@@ -90,6 +90,7 @@ function SeekBar({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onMouseDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
       style={{
         position: "relative",
         width: "100%",
@@ -98,6 +99,7 @@ function SeekBar({
         alignItems: "center",
         cursor: duration > 0 ? "pointer" : "default",
         flexShrink: 0,
+        touchAction: "none",
       }}
     >
       {/* トラック */}
@@ -180,6 +182,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
   const heightUpdateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTargetH = useRef<number>(props.h);
 
   const shortName =
     props.fileName.length > 36
@@ -198,20 +201,22 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
     return () => clearInterval(id);
   }, [loadComments, visible]);
 
-  // コメント数に応じてシェイプの高さを自動更新（debounce で同期ストーム回避）
+  // コメント数に応じてシェイプの高さを自動更新
+  // props.h を依存配列に入れると updateShape → props.h 変化 → 再発火のループになるため
+  // lastTargetH ref で「前回要求した高さ」を管理し、変化があった時だけ1回だけ更新する
   useEffect(() => {
     const targetH = comments.length > 0
       ? BASE_HEIGHT + COMMENT_LIST_PADDING + comments.length * COMMENT_ROW_HEIGHT
       : BASE_HEIGHT;
-    if (props.h === targetH) return;
+    if (lastTargetH.current === targetH) return;
+    lastTargetH.current = targetH;
     if (heightUpdateTimer.current) clearTimeout(heightUpdateTimer.current);
     heightUpdateTimer.current = setTimeout(() => {
-      if (props.h !== targetH) {
-        editor.updateShape({ id: shape.id, type: shape.type, props: { h: targetH } });
-      }
-    }, 300 + Math.random() * 200);
+      editor.updateShape({ id: shape.id, type: shape.type, props: { h: targetH } });
+    }, 100);
     return () => { if (heightUpdateTimer.current) clearTimeout(heightUpdateTimer.current); };
-  }, [comments.length, editor, shape.id, shape.type, props.h]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comments.length]);
 
   const postComment = async () => {
     if (!newComment.trim()) return;
@@ -348,9 +353,12 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
           alignItems: "center",
           justifyContent: "center",
           position: "relative",
+          touchAction: "none",
         }}
         onMouseDown={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+        onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); togglePlay(); }}
       >
         <video
           ref={videoRef}
@@ -410,6 +418,8 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
             onClick={togglePlay}
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); togglePlay(); }}
             style={{
               width: 28,
               height: 28,
@@ -423,6 +433,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
               flexShrink: 0,
               color: "#fff",
               fontSize: 10,
+              touchAction: "none",
             }}
           >
             {playing ? "⏸" : "▶"}
@@ -453,6 +464,8 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
               onClick={toggleMute}
               onMouseDown={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); toggleMute(); }}
               style={{
                 background: "none",
                 border: "none",
@@ -461,6 +474,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
                 padding: 0,
                 lineHeight: 1,
                 color: TEXT_MUTED,
+                touchAction: "none",
               }}
             >
               {muted || volume === 0 ? "🔇" : volume < 0.5 ? "🔉" : "🔊"}
@@ -474,7 +488,8 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
               onChange={handleVolumeChange}
               onMouseDown={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
-              style={{ width: 64, accentColor: BLUE, cursor: "pointer" }}
+              onTouchStart={(e) => e.stopPropagation()}
+              style={{ width: 64, accentColor: BLUE, cursor: "pointer", touchAction: "none" }}
             />
           </div>
         </div>
@@ -485,6 +500,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
         style={{ display: "flex", gap: 4, alignItems: "center", padding: "0 10px 6px" }}
         onMouseDown={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
       >
         <span style={{ fontSize: 9, color: TEXT_MUTED, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
           {formatTime(currentTime)}
@@ -493,6 +509,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") postComment(); }}
+          onTouchStart={(e) => e.stopPropagation()}
           placeholder="コメントを追加..."
           style={{
             flex: 1,
@@ -511,6 +528,8 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
           disabled={posting || !newComment.trim()}
           onMouseDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); postComment(); }}
           style={{
             fontSize: 9,
             padding: "3px 7px",
@@ -521,6 +540,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
             cursor: "pointer",
             flexShrink: 0,
             opacity: posting || !newComment.trim() ? 0.4 : 1,
+            touchAction: "none",
           }}
         >
           投稿
@@ -538,9 +558,11 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
             gap: 2,
             overflowY: "auto",
             maxHeight: 8 * COMMENT_ROW_HEIGHT,
+            touchAction: "pan-y",
           }}
           onMouseDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
         >
           {comments.map((c) => {
             const m = Math.floor(c.timeSec / 60);
@@ -550,6 +572,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
               <div
                 key={c.id}
                 onClick={() => seekTo(c.timeSec)}
+                onTouchEnd={(e) => { e.stopPropagation(); seekTo(c.timeSec); }}
                 style={{
                   display: "flex",
                   alignItems: "center",

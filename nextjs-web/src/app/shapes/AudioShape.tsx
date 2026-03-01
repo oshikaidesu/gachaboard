@@ -106,6 +106,17 @@ function WaveformCanvas({
     onSeek(ratio * duration);
   };
 
+  const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (duration <= 0) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
+    onSeek(ratio * duration);
+  };
+
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (duration <= 0 || comments.length === 0) {
       setTooltip(null);
@@ -132,9 +143,10 @@ function WaveformCanvas({
 
   return (
     <div
-      style={{ position: "relative", width: "100%", height: WAVEFORM_HEIGHT + 10 }}
+      style={{ position: "relative", width: "100%", height: WAVEFORM_HEIGHT + 10, touchAction: "none" }}
       onMouseMove={handleMouseMove}
       onMouseLeave={() => setTooltip(null)}
+      onTouchStart={(e) => e.stopPropagation()}
     >
       <canvas
         ref={canvasRef}
@@ -144,6 +156,7 @@ function WaveformCanvas({
         onClick={handleClick}
         onMouseDown={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
+        onTouchEnd={handleTouchEnd}
       />
 
       {/* コメントピン — クリックでシーク */}
@@ -153,6 +166,7 @@ function WaveformCanvas({
           onClick={() => onSeek(c.timeSec)}
           onMouseDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); onSeek(c.timeSec); }}
           style={{
             position: "absolute",
             bottom: 0,
@@ -218,23 +232,26 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
   const heightUpdateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTargetH = useRef<number>(shape.props.h);
 
   const { peaks, status: waveStatus } = useWaveform(shape.props.assetId);
 
-  // コメント数に応じてシェイプの高さを自動更新（debounce で同期ストーム回避）
+  // コメント数に応じてシェイプの高さを自動更新
+  // props.h を依存配列に入れると updateShape → props.h 変化 → 再発火のループになるため
+  // lastTargetH ref で「前回要求した高さ」を管理し、変化があった時だけ1回だけ更新する
   useEffect(() => {
     const targetH = comments.length > 0
       ? BASE_HEIGHT + COMMENT_LIST_PADDING + comments.length * COMMENT_ROW_HEIGHT
       : BASE_HEIGHT;
-    if (shape.props.h === targetH) return;
+    if (lastTargetH.current === targetH) return;
+    lastTargetH.current = targetH;
     if (heightUpdateTimer.current) clearTimeout(heightUpdateTimer.current);
     heightUpdateTimer.current = setTimeout(() => {
-      if (shape.props.h !== targetH) {
-        editor.updateShape({ id: shape.id, type: shape.type, props: { h: targetH } });
-      }
-    }, 300 + Math.random() * 200);
+      editor.updateShape({ id: shape.id, type: shape.type, props: { h: targetH } });
+    }, 100);
     return () => { if (heightUpdateTimer.current) clearTimeout(heightUpdateTimer.current); };
-  }, [comments.length, editor, shape.id, shape.type, shape.props.h]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comments.length]);
 
   const shortName =
     shape.props.fileName.length > 32
@@ -364,6 +381,8 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
           onClick={togglePlay}
           onMouseDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); togglePlay(); }}
           style={{
             width: 28,
             height: 28,
@@ -377,6 +396,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
             flexShrink: 0,
             color: "#fff",
             fontSize: 11,
+            touchAction: "none",
           }}
         >
           {playing ? "⏸" : "▶"}
@@ -399,7 +419,8 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
             }}
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
-            style={{ width: 196, accentColor: ORANGE, cursor: "pointer" }}
+            onTouchStart={(e) => e.stopPropagation()}
+            style={{ width: 196, accentColor: ORANGE, cursor: "pointer", touchAction: "none" }}
           />
         </div>
         {comments.length > 0 && (
@@ -414,6 +435,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         style={{ display: "flex", gap: 4, alignItems: "center" }}
         onMouseDown={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
       >
         <span style={{ fontSize: 9, color: "#9ca3af", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
           {formatTime(currentTime)}
@@ -422,6 +444,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") postComment(); }}
+          onTouchStart={(e) => e.stopPropagation()}
           placeholder="コメントを追加..."
           style={{
             flex: 1,
@@ -440,6 +463,8 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
           disabled={posting || !newComment.trim()}
           onMouseDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); postComment(); }}
           style={{
             fontSize: 9,
             padding: "3px 7px",
@@ -450,6 +475,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
             cursor: "pointer",
             flexShrink: 0,
             opacity: posting || !newComment.trim() ? 0.4 : 1,
+            touchAction: "none",
           }}
         >
           投稿
@@ -467,7 +493,9 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
             gap: 2,
             overflowY: "auto",
             maxHeight: 8 * COMMENT_ROW_HEIGHT,
+            touchAction: "pan-y",
           }}
+          onTouchStart={(e) => e.stopPropagation()}
         >
           {comments.map((c: ApiComment) => {
             const m = Math.floor(c.timeSec / 60);
@@ -477,6 +505,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
               <div
                 key={c.id}
                 onClick={() => seekTo(c.timeSec)}
+                onTouchEnd={(e) => { e.stopPropagation(); seekTo(c.timeSec); }}
                 style={{
                   display: "flex",
                   alignItems: "center",
