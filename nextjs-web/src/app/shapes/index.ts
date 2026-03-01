@@ -10,7 +10,15 @@
  * TldrawBoard.tsx は触らない。
  */
 
-import { Editor, createShapeId, AssetRecordType, TLImageAsset, TLVideoAsset } from "@tldraw/tldraw";
+import {
+  Editor, createShapeId, AssetRecordType, TLImageAsset, TLVideoAsset,
+  DrawShapeUtil,
+  HighlightShapeUtil,
+  LineShapeUtil,
+  FrameShapeUtil,
+  BookmarkShapeUtil,
+  EmbedShapeUtil,
+} from "@tldraw/tldraw";
 import { FileIconShapeUtil } from "./FileIconShape";
 import { TextFileShapeUtil } from "./TextFileShape";
 import { AudioShapeUtil } from "./AudioShape";
@@ -56,6 +64,13 @@ export const CUSTOM_SHAPE_UTILS = [
   WrappedGeoShapeUtil,
   WrappedTextShapeUtil,
   WrappedArrowShapeUtil,
+  // 組み込みシェイプ（ラッパー不要・スキーマ一致のために登録）
+  DrawShapeUtil,
+  HighlightShapeUtil,
+  LineShapeUtil,
+  FrameShapeUtil,
+  BookmarkShapeUtil,
+  EmbedShapeUtil,
 ];
 
 // ---- ファイル振り分けロジック ------------------------------------------------

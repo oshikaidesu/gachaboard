@@ -17,6 +17,12 @@ import {
   GeoShapeUtil,
   TextShapeUtil,
   ArrowShapeUtil,
+  DrawShapeUtil,
+  HighlightShapeUtil,
+  LineShapeUtil,
+  FrameShapeUtil,
+  BookmarkShapeUtil,
+  EmbedShapeUtil,
   createTLSchemaFromUtils,
   type TLShape,
 } from "@tldraw/tldraw";
@@ -54,7 +60,7 @@ const customShapeUtils = Object.entries(SHAPE_DEFS).map(([type, def]) =>
 );
 
 // ---------- スキーマ生成 ----------------------------------------------------
-// カスタムシェイプ（SHAPE_DEFS から自動生成）+ 組み込みシェイプ（ラッパーと型名が同じなのでネイティブを使用）
+// カスタムシェイプ（SHAPE_DEFS から自動生成）+ 組み込みシェイプ全種
 
 export const customSchema = createTLSchemaFromUtils({
   shapeUtils: [
@@ -65,5 +71,11 @@ export const customSchema = createTLSchemaFromUtils({
     GeoShapeUtil,
     TextShapeUtil,
     ArrowShapeUtil,
+    DrawShapeUtil,
+    HighlightShapeUtil,
+    LineShapeUtil,
+    FrameShapeUtil,
+    BookmarkShapeUtil,
+    EmbedShapeUtil,
   ],
 });
