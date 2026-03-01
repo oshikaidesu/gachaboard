@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, forwardRef } from "react";
 import { useEditor } from "@tldraw/tldraw";
 
 type Props = {
@@ -14,29 +14,37 @@ type Props = {
  * シェイプが選択されている間、ホイールイベントをtldrawに伝播させず、
  * 内部のoverflow:autoなdivのスクロールだけが効くようにする。
  */
-export function WheelGuard({ shapeId, style, children }: Props) {
-  const editor = useEditor();
-  const ref = useRef<HTMLDivElement>(null);
+export const WheelGuard = forwardRef<HTMLDivElement, Props>(
+  function WheelGuard({ shapeId, style, children }, forwardedRef) {
+    const editor = useEditor();
+    const internalRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    useEffect(() => {
+      const el = internalRef.current;
+      if (!el) return;
 
-    const handleWheel = (e: WheelEvent) => {
-      const selected = editor.getSelectedShapeIds();
-      if (selected.includes(shapeId as never)) {
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-      }
+      const handleWheel = (e: WheelEvent) => {
+        const selected = editor.getSelectedShapeIds();
+        if (selected.includes(shapeId as never)) {
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+        }
+      };
+
+      el.addEventListener("wheel", handleWheel, { passive: false });
+      return () => el.removeEventListener("wheel", handleWheel);
+    }, [editor, shapeId]);
+
+    const setRef = (node: HTMLDivElement | null) => {
+      (internalRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      if (typeof forwardedRef === "function") forwardedRef(node);
+      else if (forwardedRef) forwardedRef.current = node;
     };
 
-    el.addEventListener("wheel", handleWheel, { passive: false });
-    return () => el.removeEventListener("wheel", handleWheel);
-  }, [editor, shapeId]);
-
-  return (
-    <div ref={ref} style={style}>
-      {children}
-    </div>
-  );
-}
+    return (
+      <div ref={setRef} style={style}>
+        {children}
+      </div>
+    );
+  },
+);

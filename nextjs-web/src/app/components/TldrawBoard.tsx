@@ -16,6 +16,7 @@ import "@tldraw/tldraw/tldraw.css";
 import Link from "next/link";
 import { CUSTOM_SHAPE_UTILS } from "@/app/shapes";
 import { BoardContext } from "./BoardContext";
+import { BoardReactionProvider } from "./BoardReactionProvider";
 import { SmartHandTool } from "@/app/tools/SmartHandTool";
 import { SyncStatusBadge } from "./SyncStatusBadge";
 import { CollaboratorCursorWithName } from "./CollaboratorCursor";
@@ -217,6 +218,7 @@ export default function TldrawBoard({ boardId, workspaceId, userName, currentUse
 
   return (
     <BoardContext.Provider value={{ boardId, workspaceId, currentUserId, avatarUrl: avatarUrl ?? null, userInfoAtom }}>
+    <BoardReactionProvider>
       <div className="flex h-screen flex-col">
         <div className="flex items-center gap-3 border-b border-zinc-200 bg-white px-4 py-2 z-10">
           <Link href="javascript:history.back()" className="text-xs text-zinc-500 hover:underline">
@@ -267,6 +269,7 @@ export default function TldrawBoard({ boardId, workspaceId, userName, currentUse
           />
         )}
       </div>
+    </BoardReactionProvider>
     </BoardContext.Provider>
   );
 }

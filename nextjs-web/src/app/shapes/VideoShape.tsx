@@ -16,6 +16,7 @@ import { SHAPE_TYPE, type VideoShape } from "@shared/shapeDefs";
 import { WheelGuard } from "./ScrollContainer";
 import { DownloadButton } from "./DownloadButton";
 import { useBoardContext } from "@/app/components/BoardContext";
+import { useVisibility } from "@/app/hooks/useVisibility";
 import type { ApiComment } from "@shared/apiTypes";
 
 export type { VideoShape } from "@shared/shapeDefs";
@@ -169,6 +170,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
   const { boardId, workspaceId } = useBoardContext();
   const editor = useEditor();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { ref: visRef, visible } = useVisibility<HTMLDivElement>();
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -177,6 +179,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
   const [comments, setComments] = useState<ApiComment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
+  const heightUpdateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const shortName =
     props.fileName.length > 36
@@ -190,18 +193,24 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
 
   useEffect(() => {
     loadComments();
+    if (!visible) return;
     const id = setInterval(loadComments, 5000);
     return () => clearInterval(id);
-  }, [loadComments]);
+  }, [loadComments, visible]);
 
-  // コメント数に応じてシェイプの高さを自動更新
+  // コメント数に応じてシェイプの高さを自動更新（debounce で同期ストーム回避）
   useEffect(() => {
     const targetH = comments.length > 0
       ? BASE_HEIGHT + COMMENT_LIST_PADDING + comments.length * COMMENT_ROW_HEIGHT
       : BASE_HEIGHT;
-    if (props.h !== targetH) {
-      editor.updateShape({ id: shape.id, type: shape.type, props: { h: targetH } });
-    }
+    if (props.h === targetH) return;
+    if (heightUpdateTimer.current) clearTimeout(heightUpdateTimer.current);
+    heightUpdateTimer.current = setTimeout(() => {
+      if (props.h !== targetH) {
+        editor.updateShape({ id: shape.id, type: shape.type, props: { h: targetH } });
+      }
+    }, 300 + Math.random() * 200);
+    return () => { if (heightUpdateTimer.current) clearTimeout(heightUpdateTimer.current); };
   }, [comments.length, editor, shape.id, shape.type, props.h]);
 
   const postComment = async () => {
@@ -279,6 +288,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
 
   return (
     <WheelGuard
+      ref={visRef}
       shapeId={shape.id}
       style={{
         width: "100%",
@@ -345,7 +355,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
         <video
           ref={videoRef}
           src={src}
-          preload="auto"
+          preload="metadata"
           autoPlay={false}
           controls={false}
           muted={false}

@@ -11,8 +11,16 @@ type OgpData = {
   youtubeId?: string;
 };
 
-// モジュールレベルのキャッシュ（ページリロードまで保持）
+const OGP_CACHE_LIMIT = 200;
 const ogpCache = new Map<string, OgpData>();
+
+function ogpCacheSet(key: string, value: OgpData) {
+  if (ogpCache.size >= OGP_CACHE_LIMIT) {
+    const oldest = ogpCache.keys().next().value;
+    if (oldest !== undefined) ogpCache.delete(oldest);
+  }
+  ogpCache.set(key, value);
+}
 
 async function fetchOgp(url: string): Promise<OgpData> {
   if (ogpCache.has(url)) return ogpCache.get(url)!;
@@ -20,14 +28,14 @@ async function fetchOgp(url: string): Promise<OgpData> {
     const res = await fetch(`/api/ogp?url=${encodeURIComponent(url)}`);
     if (res.ok) {
       const data = await res.json() as OgpData;
-      ogpCache.set(url, data);
+      ogpCacheSet(url, data);
       return data;
     }
   } catch {
     // フェッチ失敗
   }
   const fallback: OgpData = { url };
-  ogpCache.set(url, fallback);
+  ogpCacheSet(url, fallback);
   return fallback;
 }
 

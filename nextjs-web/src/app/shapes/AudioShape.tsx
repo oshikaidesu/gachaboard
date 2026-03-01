@@ -14,6 +14,7 @@ import { AssetLoader } from "./AssetLoader";
 import { SHAPE_TYPE, type AudioShape } from "@shared/shapeDefs";
 import { useWaveform } from "@/app/hooks/useWaveform";
 import { useBoardContext } from "@/app/components/BoardContext";
+import { useVisibility } from "@/app/hooks/useVisibility";
 import { WheelGuard } from "./ScrollContainer";
 import { DownloadButton } from "./DownloadButton";
 import type { ApiComment } from "@shared/apiTypes";
@@ -46,7 +47,13 @@ function WaveformCanvas({
   onSeek: (sec: number) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const prevBoundaryRef = useRef(-1);
   const [tooltip, setTooltip] = useState<{ x: number; text: string } | null>(null);
+
+  // 波形データが変わった時のみフル再描画
+  useEffect(() => {
+    prevBoundaryRef.current = -1;
+  }, [peaks]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -55,21 +62,41 @@ function WaveformCanvas({
     if (!ctx) return;
 
     const { width, height } = canvas;
-    ctx.clearRect(0, 0, width, height);
-
     const barWidth = (width - BAR_GAP * (peaks.length - 1)) / peaks.length;
     const playedRatio = duration > 0 ? currentTime / duration : 0;
+    const boundary = Math.floor(playedRatio * peaks.length);
 
-    peaks.forEach((peak, i) => {
+    if (prevBoundaryRef.current === boundary && prevBoundaryRef.current !== -1) return;
+
+    const prevBoundary = prevBoundaryRef.current;
+    prevBoundaryRef.current = boundary;
+
+    if (prevBoundary === -1) {
+      ctx.clearRect(0, 0, width, height);
+      peaks.forEach((peak, i) => {
+        const x = i * (barWidth + BAR_GAP);
+        const barH = Math.max(2, peak * height);
+        const y = (height - barH) / 2;
+        ctx.fillStyle = i < boundary ? ORANGE : GRAY;
+        ctx.beginPath();
+        ctx.roundRect(x, y, barWidth, barH, 1);
+        ctx.fill();
+      });
+      return;
+    }
+
+    const lo = Math.min(prevBoundary, boundary);
+    const hi = Math.max(prevBoundary, boundary);
+    for (let i = lo; i <= hi && i < peaks.length; i++) {
       const x = i * (barWidth + BAR_GAP);
-      const barH = Math.max(2, peak * height);
+      const barH = Math.max(2, peaks[i] * height);
       const y = (height - barH) / 2;
-      const ratio = i / peaks.length;
-      ctx.fillStyle = ratio < playedRatio ? ORANGE : GRAY;
+      ctx.clearRect(x, y - 1, barWidth + BAR_GAP, barH + 2);
+      ctx.fillStyle = i < boundary ? ORANGE : GRAY;
       ctx.beginPath();
       ctx.roundRect(x, y, barWidth, barH, 1);
       ctx.fill();
-    });
+    }
   }, [peaks, currentTime, duration]);
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -182,6 +209,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
   const { boardId, workspaceId } = useBoardContext();
   const editor = useEditor();
   const audioRef = useRef<HTMLAudioElement>(null);
+  const { ref: visRef, visible } = useVisibility<HTMLDivElement>();
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -189,17 +217,23 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
   const [comments, setComments] = useState<ApiComment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
+  const heightUpdateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { peaks, status: waveStatus } = useWaveform(shape.props.assetId);
 
-  // コメント数に応じてシェイプの高さを自動更新
+  // コメント数に応じてシェイプの高さを自動更新（debounce で同期ストーム回避）
   useEffect(() => {
     const targetH = comments.length > 0
       ? BASE_HEIGHT + COMMENT_LIST_PADDING + comments.length * COMMENT_ROW_HEIGHT
       : BASE_HEIGHT;
-    if (shape.props.h !== targetH) {
-      editor.updateShape({ id: shape.id, type: shape.type, props: { h: targetH } });
-    }
+    if (shape.props.h === targetH) return;
+    if (heightUpdateTimer.current) clearTimeout(heightUpdateTimer.current);
+    heightUpdateTimer.current = setTimeout(() => {
+      if (shape.props.h !== targetH) {
+        editor.updateShape({ id: shape.id, type: shape.type, props: { h: targetH } });
+      }
+    }, 300 + Math.random() * 200);
+    return () => { if (heightUpdateTimer.current) clearTimeout(heightUpdateTimer.current); };
   }, [comments.length, editor, shape.id, shape.type, shape.props.h]);
 
   const shortName =
@@ -214,9 +248,10 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
 
   useEffect(() => {
     loadComments();
+    if (!visible) return;
     const id = setInterval(loadComments, 5000);
     return () => clearInterval(id);
-  }, [loadComments]);
+  }, [loadComments, visible]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -263,6 +298,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
 
   return (
     <WheelGuard
+      ref={visRef}
       shapeId={shape.id}
       style={{
         width: "100%",
@@ -490,7 +526,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
       <audio
         ref={audioRef}
         src={src}
-        preload="auto"
+        preload="metadata"
         onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime ?? 0)}
         onLoadedMetadata={() => setDuration(audioRef.current?.duration ?? 0)}
         onDurationChange={() => setDuration(audioRef.current?.duration ?? 0)}

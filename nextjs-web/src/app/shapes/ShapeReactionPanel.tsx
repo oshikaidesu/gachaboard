@@ -1,17 +1,14 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useBoardContext } from "@/app/components/BoardContext";
-import { POLLING_INTERVAL_REACTIONS } from "@shared/constants";
+import { useBoardReactions } from "@/app/components/BoardReactionProvider";
 
-// Twemoji CDN から絵文字画像URLを生成する
 function twemojiUrl(emoji: string): string {
-  // サロゲートペアや variation selector を除いてコードポイント列を取得
   const codePoints: string[] = [];
   for (const char of emoji) {
     const cp = char.codePointAt(0);
     if (cp === undefined) continue;
-    // variation selector (U+FE0F) は除外
     if (cp === 0xfe0f) continue;
     codePoints.push(cp.toString(16));
   }
@@ -24,18 +21,8 @@ const EMOJI_LIST = [
   "👏","🙏","💪","🎊","😍","🤩","😎","🥳","💡","⭐","🌟","💎",
 ];
 
-type Reaction = {
-  id: string;
-  shapeId: string;
-  emoji: string;
-  userId: string;
-  deletedAt: string | null;
-  user: { id: string; discordName: string; avatarUrl: string | null };
-};
-
 type Props = {
   shapeId: string;
-  /** 外側コンテナの style を上書きする。デフォルトは position:absolute, bottom:-28 */
   containerStyle?: React.CSSProperties;
 };
 
@@ -54,23 +41,10 @@ function TwemojiImg({ emoji, size = 16 }: { emoji: string; size?: number }) {
 
 export function ShapeReactionPanel({ shapeId, containerStyle }: Props) {
   const { boardId, workspaceId, currentUserId } = useBoardContext();
-  const [reactions, setReactions] = useState<Reaction[]>([]);
+  const { reactions, refresh } = useBoardReactions(shapeId);
   const [showPicker, setShowPicker] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
-  const load = useCallback(async () => {
-    if (!boardId || !shapeId) return;
-    const res = await fetch(`/api/reactions?boardId=${boardId}&shapeId=${shapeId}`);
-    if (res.ok) setReactions(await res.json());
-  }, [boardId, shapeId]);
-
-  useEffect(() => {
-    load();
-    const timer = setInterval(load, POLLING_INTERVAL_REACTIONS);
-    return () => clearInterval(timer);
-  }, [load]);
-
-  // ピッカー外クリックで閉じる
   useEffect(() => {
     if (!showPicker) return;
     const handler = (e: MouseEvent) => {
@@ -88,7 +62,7 @@ export function ShapeReactionPanel({ shapeId, containerStyle }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ boardId, workspaceId, shapeId, emoji }),
     });
-    await load();
+    await refresh();
     setShowPicker(false);
   };
 
