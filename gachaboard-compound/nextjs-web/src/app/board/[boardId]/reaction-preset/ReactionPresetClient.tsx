@@ -1,13 +1,22 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { TwemojiImg } from "@/app/components/ui/Twemoji";
+import emojiRegex from "emoji-regex";
 import {
   DEFAULT_REACTION_EMOJI_LIST,
   FIXED_EMOJI_LIST,
-  CUSTOM_EMOJI_CANDIDATES,
 } from "@shared/constants";
+
+/** 固定5つを除いたカスタム絵文字のみを抽出 */
+function getCustomEmojis(full: string[]): string[] {
+  return full.filter((e) => !FIXED_EMOJI_LIST.includes(e));
+}
+
+/** 固定5つ + カスタムを結合（保存用） */
+function toFullEmojiList(custom: string[]): string[] {
+  return [...FIXED_EMOJI_LIST, ...custom];
+}
 
 type Props = {
   boardId: string;
@@ -16,66 +25,38 @@ type Props = {
   initialEmojis: string[] | null;
 };
 
+/** テキストから絵文字を抽出（順序保持・重複は先頭を優先） */
+function extractEmojis(text: string): string[] {
+  const regex = emojiRegex();
+  const matches = text.match(regex) ?? [];
+  return [...new Set(matches)];
+}
+
 export default function ReactionPresetClient({
   boardId,
   boardName,
   workspaceId,
   initialEmojis,
 }: Props) {
-  const [emojis, setEmojis] = useState<string[]>(
-    initialEmojis ?? DEFAULT_REACTION_EMOJI_LIST
-  );
-  const [showCandidates, setShowCandidates] = useState(false);
+  const initialCustom = getCustomEmojis(initialEmojis ?? DEFAULT_REACTION_EMOJI_LIST);
+  const [text, setText] = useState(() => initialCustom.join(""));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
-  const addEmoji = useCallback((emoji: string) => {
-    if (emojis.length >= 48) return;
-    if (emojis.includes(emoji)) return;
-    setEmojis((prev) => [...prev, emoji]);
-  }, [emojis]);
+  // 初期値変更時（例: 別ボードへ遷移）にテキストを同期
+  useEffect(() => {
+    setText(initialCustom.join(""));
+  }, [boardId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const removeEmoji = useCallback((index: number) => {
-    setEmojis((prev) => {
-      const next = prev.filter((_, i) => i !== index);
-      return next.length >= 1 ? next : prev;
-    });
+  const customEmojis = extractEmojis(text).filter((e) => !FIXED_EMOJI_LIST.includes(e));
+  const fullEmojis = toFullEmojiList(customEmojis);
+
+  const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setText(e.target.value);
   }, []);
-
-  const handleDragStart = useCallback((index: number) => {
-    setDraggedIndex(index);
-  }, []);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-  }, []);
-
-  const handleDragEnd = useCallback(() => {
-    setDraggedIndex(null);
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent, dropIndex: number) => {
-      e.preventDefault();
-      const from = draggedIndex;
-      if (from === null || from === dropIndex) {
-        setDraggedIndex(null);
-        return;
-      }
-      setEmojis((prev) => {
-        const arr = [...prev];
-        const [removed] = arr.splice(from, 1);
-        arr.splice(dropIndex, 0, removed);
-        return arr;
-      });
-      setDraggedIndex(null);
-    },
-    [draggedIndex]
-  );
 
   const resetToDefault = useCallback(() => {
-    setEmojis(DEFAULT_REACTION_EMOJI_LIST);
+    setText(getCustomEmojis(DEFAULT_REACTION_EMOJI_LIST).join(""));
   }, []);
 
   const save = useCallback(async () => {
@@ -84,14 +65,15 @@ export default function ReactionPresetClient({
     const res = await fetch(`/api/boards/${boardId}/reaction-preset`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ emojis }),
+      body: JSON.stringify({ emojis: fullEmojis }),
     });
     setSaving(false);
     if (res.ok) setSaved(true);
-  }, [boardId, emojis]);
+  }, [boardId, fullEmojis]);
 
-  const candidateList = [...new Set([...FIXED_EMOJI_LIST, ...CUSTOM_EMOJI_CANDIDATES])];
-  const availableToAdd = candidateList.filter((e) => !emojis.includes(e));
+  const copyToClipboard = useCallback(() => {
+    navigator.clipboard.writeText(fullEmojis.join(""));
+  }, [fullEmojis]);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 bg-background p-8">
@@ -106,65 +88,34 @@ export default function ReactionPresetClient({
           リアクション絵文字のカスタマイズ
         </h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          ボード「{boardName}」で使用するリアクション絵文字を設定します。
+          ボード「{boardName}」で使用するリアクション絵文字を設定します。❤️👍🙇🔥🆗 は常に含まれます。
         </p>
       </header>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">選択中の絵文字（ドラッグで並び替え）</h2>
-        <div className="flex flex-wrap gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
-          {emojis.map((emoji, i) => (
-            <div
-              key={`${emoji}-${i}`}
-              draggable
-              onDragStart={() => handleDragStart(i)}
-              onDragOver={handleDragOver}
-              onDragEnd={handleDragEnd}
-              onDrop={(e) => handleDrop(e, i)}
-              className={`group relative flex cursor-grab items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2 py-1.5 transition-shadow active:cursor-grabbing dark:border-zinc-600 dark:bg-zinc-800 ${
-                draggedIndex === i ? "opacity-50 shadow-lg" : "hover:shadow-md"
-              }`}
-            >
-              <TwemojiImg emoji={emoji} size={20} />
-              <button
-                type="button"
-                onClick={() => removeEmoji(i)}
-                onPointerDown={(e) => e.stopPropagation()}
-                className="ml-1 rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
-                aria-label="削除"
-              >
-                ×
-              </button>
-            </div>
-          ))}
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            カスタム絵文字（テキストで編集・貼り付け・削除・並び替え）
+          </h2>
+          <button
+            type="button"
+            onClick={copyToClipboard}
+            className="text-xs text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          >
+            コピー
+          </button>
         </div>
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">絵文字を追加</h2>
-        <button
-          onClick={() => setShowCandidates((v) => !v)}
-          className="w-fit rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700"
-        >
-          {showCandidates ? "候補を閉じる" : "候補から追加"}
-        </button>
-        {showCandidates && (
-          <div className="flex flex-wrap gap-2 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
-            {availableToAdd.length === 0 ? (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">すべて追加済みです</p>
-            ) : (
-              availableToAdd.map((emoji) => (
-                <button
-                  key={emoji}
-                  onClick={() => addEmoji(emoji)}
-                  className="rounded-lg border border-zinc-200 p-2 hover:bg-zinc-50 dark:border-zinc-600 dark:hover:bg-zinc-700"
-                >
-                  <TwemojiImg emoji={emoji} size={24} />
-                </button>
-              ))
-            )}
-          </div>
-        )}
+        <textarea
+          value={text}
+          onChange={handleTextChange}
+          placeholder="絵文字を貼り付けてください。例: ✨😂🎉💯🚀"
+          rows={6}
+          className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-3 text-lg placeholder:text-zinc-400 dark:border-zinc-600 dark:bg-zinc-800 dark:placeholder:text-zinc-500"
+          spellCheck={false}
+        />
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          絵文字以外の文字は無視されます。{customEmojis.length}件のカスタム絵文字
+        </p>
       </section>
 
       <div className="flex flex-wrap gap-3">
