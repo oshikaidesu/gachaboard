@@ -7,7 +7,7 @@ export default async function AuthErrorPage({ searchParams }: Props) {
   const { error } = await searchParams;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 p-8">
+    <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 bg-background p-8">
       <h1 className="text-2xl font-semibold text-red-600 dark:text-red-400">ログインエラー</h1>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         Discord ログイン中にエラーが発生しました。以下を確認してください。

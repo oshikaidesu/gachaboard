@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import MediaPlayer from "@/app/components/ui/MediaPlayer";
@@ -15,16 +15,27 @@ type Asset = {
   deletedAt: string | null;
   createdAt: string;
   uploader: { name: string | null; image: string | null };
+  board?: { id: string; name: string } | null;
 };
+
+const KIND_OPTIONS: { value: string; label: string }[] = [
+  { value: "", label: "すべての種類" },
+  { value: "image", label: "画像" },
+  { value: "gif", label: "GIF" },
+  { value: "video", label: "動画" },
+  { value: "audio", label: "音声" },
+  { value: "file", label: "その他" },
+];
 
 export default function AssetsPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"active" | "trash">("active");
-  const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<Asset | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [search, setSearch] = useState("");
+  const [filterBoard, setFilterBoard] = useState("");
+  const [filterKind, setFilterKind] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -34,27 +45,6 @@ export default function AssetsPage() {
   }, [workspaceId, tab]);
 
   useEffect(() => { load(); }, [load]);
-
-  const upload = async (files: FileList | File[]) => {
-    const fileArray = Array.from(files).filter((f) => f.size > 0);
-    if (fileArray.length === 0) return;
-    setUploading(true);
-    for (const file of fileArray) {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("workspaceId", workspaceId);
-      await fetch("/api/assets", { method: "POST", body: fd });
-    }
-    await load();
-    setUploading(false);
-  };
-
-  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    if (tab !== "active" || uploading) return;
-    const files = Array.from(e.dataTransfer.files).filter((f) => f.size > 0);
-    if (files.length > 0) await upload(files);
-  };
 
   const trash = async (id: string) => {
     await fetch(`/api/assets/${id}`, {
@@ -90,6 +80,27 @@ export default function AssetsPage() {
 
   const isMedia = (a: Asset) => a.kind === "image" || a.kind === "video" || a.kind === "audio" || a.kind === "gif";
 
+  // 検索・フィルタ適用
+  const filteredAssets = assets.filter((a) => {
+    const q = search.trim().toLowerCase();
+    if (q && !a.fileName.toLowerCase().includes(q)) return false;
+    if (filterBoard) {
+      if (filterBoard === "__none__" && a.board !== null) return false;
+      if (filterBoard === "__none__" && a.board === null) return true;
+      if (filterBoard !== "__none__" && a.board?.id !== filterBoard) return false;
+    }
+    if (filterKind && a.kind !== filterKind) return false;
+    return true;
+  });
+
+  const boardOptions = Array.from(
+    new Map(
+      assets
+        .filter((a) => a.board)
+        .map((a) => [a.board!.id, { id: a.board!.id, name: a.board!.name }])
+    ).values()
+  ).sort((a, b) => a.name.localeCompare(b.name));
+
   const fileIcon = (a: Asset) => {
     if (a.kind === "video") return "🎬";
     if (a.kind === "audio") return "🎵";
@@ -108,13 +119,9 @@ export default function AssetsPage() {
   };
 
   return (
-    <main
-      className="flex min-h-screen flex-col bg-stone-100 bg-grid-subtle dark:bg-[#212529]"
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={handleDrop}
-    >
-      {/* ヘッダー（ライト: 白、ダーク: ネイビー） */}
-      <header className="border-b border-zinc-200 bg-white px-4 py-4 dark:border-slate-600 dark:bg-slate-900">
+    <main className="flex min-h-screen flex-col bg-background bg-grid-subtle">
+      {/* ヘッダー（ライト: 白、ダーク: 背景と同系） */}
+      <header className="border-b border-zinc-200 bg-white px-4 py-4 dark:border-zinc-700 dark:bg-[#25292e]">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-zinc-900 dark:text-white">アセット管理</h1>
@@ -122,18 +129,6 @@ export default function AssetsPage() {
               ← ボード一覧に戻る
             </Link>
           </div>
-          {tab === "active" && (
-            <div className="flex flex-col items-end gap-1">
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-40 dark:bg-white/20 dark:hover:bg-white/30"
-              >
-                {uploading ? "アップロード中..." : "+ アップロード"}
-              </button>
-              <span className="text-xs text-zinc-400 dark:text-slate-400">またはここにファイルをドロップ</span>
-            </div>
-          )}
         </div>
         <div className="mx-auto mt-3 flex max-w-5xl gap-2 border-t border-zinc-200 pt-3 dark:border-slate-600/50">
           {(["active", "trash"] as const).map((t) => (
@@ -143,9 +138,6 @@ export default function AssetsPage() {
             </button>
           ))}
         </div>
-        <input ref={fileRef} type="file" multiple className="hidden"
-          onChange={(e) => e.target.files && upload(e.target.files)}
-        />
       </header>
 
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-8">
@@ -173,38 +165,114 @@ export default function AssetsPage() {
         </div>
       )}
 
+      {/* 検索・フィルタ */}
+      {!loading && assets.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="search"
+            placeholder="ファイル名で検索..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="min-w-[200px] flex-1 rounded border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-600 dark:bg-zinc-800 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-zinc-500"
+          />
+          <select
+            value={filterBoard}
+            onChange={(e) => setFilterBoard(e.target.value)}
+            className="rounded border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-600 dark:bg-zinc-800 dark:text-slate-100 dark:focus:border-zinc-500"
+          >
+            <option value="">すべてのボード</option>
+            <option value="__none__">未配置</option>
+            {boardOptions.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterKind}
+            onChange={(e) => setFilterKind(e.target.value)}
+            className="rounded border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400 dark:border-zinc-600 dark:bg-zinc-800 dark:text-slate-100 dark:focus:border-zinc-500"
+          >
+            {KIND_OPTIONS.map((o) => (
+              <option key={o.value || "_all"} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          {(search || filterBoard || filterKind) && (
+            <button
+              onClick={() => { setSearch(""); setFilterBoard(""); setFilterKind(""); }}
+              className="text-xs text-zinc-500 hover:underline dark:text-slate-400 dark:hover:text-slate-300"
+            >
+              クリア
+            </button>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-16 text-sm text-zinc-400 dark:text-slate-400">読み込み中...</div>
       ) : assets.length === 0 ? (
         <div className="rounded-lg border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-slate-600 dark:text-slate-400">
           {tab === "active"
-            ? "アセットがありません。「+ アップロード」またはファイルをここにドロップしてください。"
+            ? "アセットがありません。ボードにファイルをドロップしてアップロードしてください。"
             : "ゴミ箱は空です。"}
         </div>
+      ) : filteredAssets.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-slate-600 dark:text-slate-400">
+          条件に一致するアセットがありません。
+        </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {assets.map((a) => (
-            <div key={a.id} className={`group relative rounded-lg border border-zinc-200 bg-stone-100 p-4 dark:border-slate-600 dark:bg-[#212529] ${tab === "trash" ? "opacity-60" : ""}`}>
-              {/* サムネイル */}
+        <ul className="flex flex-col gap-2">
+          {filteredAssets.map((a) => (
+            <li
+              key={a.id}
+              className={`flex items-center gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900/50 ${tab === "trash" ? "opacity-60" : ""}`}
+            >
+              {/* 簡易プレビュー（画像・動画はサムネイル、動画は変換済みを再生） */}
               <div
-                className={`mb-3 flex h-32 items-center justify-center rounded bg-zinc-100 overflow-hidden dark:bg-slate-700 ${isMedia(a) ? "cursor-pointer" : ""}`}
+                className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded bg-zinc-100 dark:bg-zinc-700 ${isMedia(a) ? "cursor-pointer" : ""}`}
                 onClick={() => isMedia(a) && setPreview(a)}
               >
-                {a.kind === "image" || a.kind === "gif" ? (
+                {(a.kind === "image" || a.kind === "gif") ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={`/api/assets/${a.id}/file`} alt={a.fileName} className="h-full w-full object-cover" />
-                ) : (
-                  <TwemojiImg emoji={fileIcon(a)} size={40} />
+                  <img src={`/api/assets/${a.id}/file`} alt="" className="h-full w-full object-cover" />
+                ) : a.kind === "video" ? (
+                  // 動画: サムネイル（.mov 等は変換済み mp4 を再生）
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={`/api/assets/${a.id}/thumbnail`} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.nextElementSibling?.classList.remove("hidden"); }} />
+                ) : null}
+                {(a.kind !== "image" && a.kind !== "gif") && (
+                  <span className={a.kind === "video" ? "hidden" : ""}>
+                    <TwemojiImg emoji={fileIcon(a)} size={24} />
+                  </span>
                 )}
               </div>
-
-              <p className="truncate text-sm font-medium dark:text-slate-200" title={a.fileName}>{a.fileName}</p>
-              <p className="text-xs text-zinc-400 dark:text-slate-500">{formatSize(a.sizeBytes)} · {a.uploader.name}</p>
-
-              <div className="mt-2 flex gap-1 flex-wrap">
+              <div className="min-w-0 flex-1">
+                <p
+                  className={`truncate text-sm font-medium dark:text-slate-200 ${isMedia(a) ? "cursor-pointer hover:underline" : ""}`}
+                  title={a.fileName}
+                  onClick={() => isMedia(a) && setPreview(a)}
+                >
+                  {a.fileName}
+                </p>
+                <p className="text-xs text-zinc-400 dark:text-slate-500">
+                  {formatSize(a.sizeBytes)} · {a.uploader.name}
+                  {a.board && (
+                    <>
+                      {" · "}
+                      <Link href={`/board/${a.board.id}`} className="hover:underline">
+                        {a.board.name}
+                      </Link>
+                    </>
+                  )}
+                  {a.board === null && " · 未配置"}
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-1">
                 {tab === "active" && (
                   <a
-                    href={`/api/assets/${a.id}/file`}
+                    href={`/api/assets/${a.id}/file?download=1`}
                     download={a.fileName}
                     className="rounded border border-zinc-200 px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
                     onClick={(e) => e.stopPropagation()}
@@ -230,9 +298,9 @@ export default function AssetsPage() {
                   </>
                 )}
               </div>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
       </div>
     </main>

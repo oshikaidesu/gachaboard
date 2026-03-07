@@ -10,9 +10,9 @@
   color-scheme: light;
 }
 
-/* ダークモード */
+/* ダークモード（背景 #1F2327 基準） */
 .dark {
-  --background: #1c1917;
+  --background: #1F2327;
   --foreground: #e7e5e4;
   color-scheme: dark;
 }

@@ -8,7 +8,7 @@ export default async function Home() {
   const session = await getServerSession(authOptions);
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-8 p-8">
+    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-8 bg-background p-8">
       <header className="space-y-2">
         <h1 className="text-3xl font-semibold dark:text-zinc-100">Gachaboard</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">

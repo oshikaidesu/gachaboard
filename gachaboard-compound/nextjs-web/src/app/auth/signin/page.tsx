@@ -11,7 +11,7 @@ function SignInContent() {
   const callbackUrl = searchParams.get("callbackUrl") ?? "/workspaces";
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 p-8">
+    <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 bg-background p-8">
       <h1 className="text-2xl font-semibold dark:text-zinc-100">ログイン</h1>
 
       <div className="space-y-3">
@@ -48,7 +48,7 @@ function SignInContent() {
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={<main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 p-8"><p className="text-zinc-500 dark:text-zinc-400">読み込み中...</p></main>}>
+    <Suspense fallback={<main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 bg-background p-8"><p className="text-zinc-500 dark:text-zinc-400">読み込み中...</p></main>}>
       <SignInContent />
     </Suspense>
   );

@@ -103,9 +103,9 @@ export default function WorkspacesClient({ currentUserId }: { currentUserId: str
   const list = tab === "active" ? active : trashed;
 
   return (
-    <main className="flex min-h-screen flex-col bg-stone-100 bg-grid-subtle dark:bg-[#212529]">
-      {/* ヘッダー（ライト: 白、ダーク: ネイビー） */}
-      <header className="border-b border-zinc-200 bg-white px-4 py-4 dark:border-slate-600 dark:bg-slate-900">
+    <main className="flex min-h-screen flex-col bg-background bg-grid-subtle">
+      {/* ヘッダー（ライト: 白、ダーク: 背景と同系） */}
+      <header className="border-b border-zinc-200 bg-white px-4 py-4 dark:border-zinc-700 dark:bg-[#25292e]">
         <div className="mx-auto flex max-w-4xl flex-col gap-3">
           <div className="flex items-center justify-between">
             <div>

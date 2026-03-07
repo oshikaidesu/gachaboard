@@ -217,7 +217,7 @@ export default function BoardTrashClient({ boardId, boardName, workspaceId }: Pr
         />
       )}
 
-      <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-6 p-8">
+      <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-6 bg-background p-8">
         {/* ヘッダー */}
         <header className="flex flex-col gap-1">
           <div className="flex items-center justify-between">

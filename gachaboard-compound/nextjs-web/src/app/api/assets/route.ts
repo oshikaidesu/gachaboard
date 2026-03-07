@@ -100,7 +100,10 @@ export async function GET(req: NextRequest) {
       deletedAt: trash ? { not: null } : null,
     },
     orderBy: { createdAt: "desc" },
-    include: { uploader: { select: USER_SELECT } },
+    include: {
+      uploader: { select: USER_SELECT },
+      ...(workspaceId ? { board: { select: { id: true, name: true } } } : {}),
+    },
   });
 
   return NextResponse.json(
