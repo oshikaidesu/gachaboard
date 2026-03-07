@@ -27,6 +27,7 @@ Gachaboard のドキュメントを体系的にまとめた索引です。
 | ドキュメント | 内容 |
 |-------------|------|
 | [HANDOVER.md](HANDOVER.md) | 引き継ぎドキュメント（全体像・開発フロー・トラブルシュート） |
+| [ownership-design.md](ownership-design.md) | オーナー・権限（`SERVER_OWNER_DISCORD_ID`、アクセス制御） |
 | [GLOSSARY.md](GLOSSARY.md) | 用語集 |
 
 ---
@@ -55,6 +56,7 @@ Gachaboard のドキュメントを体系的にまとめた索引です。
 
 | ドキュメント | 内容 |
 |-------------|------|
+| [docker-architecture-explanation.md](docker-architecture-explanation.md) | Docker まわりメモ |
 | [planning/fresh-to-compound-migration.md](planning/fresh-to-compound-migration.md) | fresh → compound 移行プラン |
 | [planning/custom-shapes-analysis.md](planning/custom-shapes-analysis.md) | カスタムシェイプの分析 |
 | [planning/docker-and-board-todo.md](planning/docker-and-board-todo.md) | Docker・ボード関連 TODO |

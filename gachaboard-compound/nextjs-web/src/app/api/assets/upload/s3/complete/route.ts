@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireLogin } from "@/lib/authz";
 import { db } from "@/lib/db";
+import { s3CompleteSchema } from "@/lib/apiSchemas";
+import { formatZodError, parseJsonBody } from "@/lib/parseJsonBody";
+import { ZodError } from "zod";
 import {
   isS3Enabled,
   completeMultipartUpload,
@@ -30,26 +33,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "S3 is not configured" }, { status: 503 });
   }
 
-  const body = await req.json() as {
-    uploadId: string;
-    key: string;
-    storageKey: string;
-    fileName: string;
-    mimeType: string;
-    totalSize: number;
-    boardId: string;
-    parts: { PartNumber: number; ETag: string }[];
-  };
-
-  const { uploadId, key, storageKey, fileName, mimeType, totalSize, boardId, parts } = body;
-
-  if (!uploadId || !key || !storageKey || !fileName || !boardId || !parts?.length) {
-    return NextResponse.json({ error: "uploadId, key, storageKey, fileName, boardId, parts are required" }, { status: 400 });
+  let body: { uploadId: string; key: string; parts: { PartNumber: number; ETag: string }[] };
+  try {
+    body = await parseJsonBody(req, s3CompleteSchema);
+  } catch (e) {
+    if (e instanceof ZodError) return NextResponse.json({ error: formatZodError(e) }, { status: 400 });
+    throw e;
   }
+
+  const { uploadId, key, parts } = body;
+
+  const row = await db.s3UploadSession.findUnique({ where: { uploadId } });
+  if (!row) return NextResponse.json({ error: "Upload session not found" }, { status: 404 });
+  if (row.uploaderId !== session.user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { storageKey, fileName, mimeType, totalSize, boardId } = row;
 
   await completeMultipartUpload(key, uploadId, parts);
 
-  await db.s3UploadSession.deleteMany({ where: { uploadId } });
+  await db.s3UploadSession.delete({ where: { uploadId } });
 
   const board = await db.board.findUnique({ where: { id: boardId }, select: { workspaceId: true } });
   if (!board) return NextResponse.json({ error: "Board not found" }, { status: 404 });
@@ -60,11 +64,11 @@ export async function POST(req: NextRequest) {
     data: {
       workspaceId: board.workspaceId,
       boardId,
-      uploaderId: session.user.id,
+      uploaderId: row.uploaderId,
       kind,
       mimeType: mimeType || "application/octet-stream",
       fileName,
-      sizeBytes: BigInt(totalSize),
+      sizeBytes: totalSize,
       storageKey,
       storageBackend: "s3",
     },

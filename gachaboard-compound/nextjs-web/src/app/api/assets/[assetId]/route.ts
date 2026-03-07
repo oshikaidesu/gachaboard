@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireLogin } from "@/lib/authz";
+import { assertAssetReadAccess, assertAssetWriteAccess } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { deleteFile } from "@/lib/storage";
 import { headers } from "next/headers";
@@ -11,12 +11,12 @@ type Params = { params: Promise<{ assetId: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   const hdrs = env.E2E_TEST_MODE ? await headers() : null;
   const isE2e = hdrs?.get("x-e2e-user-id");
+  const { assetId } = await params;
   if (!isE2e) {
-    const session = await requireLogin();
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await assertAssetReadAccess(assetId);
+    if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { assetId } = await params;
   const asset = await db.asset.findUnique({ where: { id: assetId, deletedAt: null } });
   if (!asset) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -25,18 +25,16 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
 // 論理削除 or 復元 or 位置情報更新
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const session = await requireLogin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   const { assetId } = await params;
+  const ctx = await assertAssetWriteAccess(assetId);
+  if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const { asset } = ctx;
   const body = await req.json() as {
     action?: "trash" | "restore";
     lastKnownX?: number;
     lastKnownY?: number;
   };
-
-  const asset = await db.asset.findUnique({ where: { id: assetId } });
-  if (!asset) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const updateData: {
     deletedAt?: Date | null;
@@ -63,11 +61,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
 // 完全削除（ゴミ箱内のみ）
 export async function DELETE(_req: NextRequest, { params }: Params) {
-  const session = await requireLogin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   const { assetId } = await params;
-  const asset = await db.asset.findUnique({ where: { id: assetId } });
+  const ctx = await assertAssetWriteAccess(assetId);
+  if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const { asset } = ctx;
   if (!asset) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!asset.deletedAt) {
     return NextResponse.json({ error: "Move to trash first" }, { status: 400 });

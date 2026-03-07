@@ -54,6 +54,8 @@ export const env = {
   CHUNKS_DIR: optional("CHUNKS_DIR", ""),
   /** 動画サムネイルの保存ディレクトリ */
   THUMBNAIL_DIR: optional("THUMBNAIL_DIR", ""),
+  /** アップロードファイルの最大サイズ（バイト）。デフォルト 100GB（stem 等の大容量ファイル用） */
+  MAX_UPLOAD_SIZE: parseInt(optional("MAX_UPLOAD_SIZE", "107374182400"), 10),
 
   // ---- S3（オプション。未設定時はローカルアップロードのみ）-------------------------
   /** S3 バケット名 */
@@ -75,9 +77,17 @@ export const env = {
   /** クライアント用 WebSocket URL（NEXT_PUBLIC 必須）。例: ws://localhost:5858 または wss://host/ws */
   NEXT_PUBLIC_SYNC_WS_URL: optional("NEXT_PUBLIC_SYNC_WS_URL", "ws://localhost:5858"),
 
+  /** サーバーオーナーの Discord ID（設定時はこのユーザーのみワークスペースへアクセス可） */
+  SERVER_OWNER_DISCORD_ID: optional("SERVER_OWNER_DISCORD_ID", ""),
+
   // ---- テスト・開発 --------------------------------------------------------
   /** E2E テストモード（認証バイパス等） */
   E2E_TEST_MODE: bool("E2E_TEST_MODE"),
   /** Node.js 環境 */
   NODE_ENV: optional("NODE_ENV", "development") as "development" | "production" | "test",
 } as const;
+
+// E2E テストモードは本番環境で使用禁止（認証バイパス等の重大な脆弱性）
+if (env.E2E_TEST_MODE && env.NODE_ENV === "production") {
+  throw new Error("[env] E2E_TEST_MODE は本番環境で使用できません");
+}

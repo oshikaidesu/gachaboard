@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireLogin } from "@/lib/authz";
+import { assertAssetReadAccess } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { getFilePath, getConvertedPath, getVideoConvertedPath } from "@/lib/storage";
 import { getObjectStream, headS3Object, s3KeyAssets, s3KeyConverted } from "@/lib/s3";
@@ -12,12 +12,11 @@ type Params = { params: Promise<{ assetId: string }> };
 export async function HEAD(req: NextRequest, { params }: Params) {
   let assetId = "(unknown)";
   try {
-    if (!env.E2E_TEST_MODE) {
-      const session = await requireLogin();
-      if (!session) return new NextResponse(null, { status: 401 });
-    }
-
     ({ assetId } = await params);
+    if (!env.E2E_TEST_MODE) {
+      const ctx = await assertAssetReadAccess(assetId);
+      if (!ctx) return new NextResponse(null, { status: 401 });
+    }
     const { searchParams } = new URL(req.url);
     const converted = searchParams.get("converted") === "1";
 
@@ -89,12 +88,11 @@ export async function HEAD(req: NextRequest, { params }: Params) {
 export async function GET(req: NextRequest, { params }: Params) {
   let assetId = "(unknown)";
   try {
-    if (!env.E2E_TEST_MODE) {
-      const session = await requireLogin();
-      if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     ({ assetId } = await params);
+    if (!env.E2E_TEST_MODE) {
+      const ctx = await assertAssetReadAccess(assetId);
+      if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const { searchParams } = new URL(req.url);
     const converted = searchParams.get("converted") === "1";
     const forceDownload = searchParams.get("download") === "1";

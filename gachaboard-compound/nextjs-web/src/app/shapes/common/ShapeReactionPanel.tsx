@@ -14,9 +14,9 @@ type Props = {
 };
 
 export function ShapeReactionPanel({ shapeId, containerStyle }: Props) {
-  const { boardId, workspaceId, currentUserId } = useBoardContext();
-  const emojiList = useReactionPreset(boardId);
-  const { reactions, refresh, syncReactionToYjs } = useBoardReactions(shapeId);
+  const { boardId, workspaceId, currentUserId, provider } = useBoardContext();
+  const emojiList = useReactionPreset({ boardId, workspaceId, provider });
+  const { reactions, addReaction, removeReaction } = useBoardReactions(shapeId);
   const editor = useEditor();
   const [showPicker, setShowPicker] = useState(false);
   const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null);
@@ -64,17 +64,13 @@ export function ShapeReactionPanel({ shapeId, containerStyle }: Props) {
     };
   }, [showPicker, closePicker]);
 
-  const toggle = async (emoji: string) => {
-    const res = await fetch("/api/reactions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ boardId, workspaceId, shapeId, emoji }),
-    });
-    if (res.ok) {
-      const reaction = (await res.json()) as { id: string; shapeId: string; emoji: string; userId: string; deletedAt: string | null; user: { id: string; discordName: string; avatarUrl: string | null } };
-      syncReactionToYjs(reaction);
+  const toggle = (emoji: string) => {
+    const reacted = active.find((r) => r.emoji === emoji && r.userId === currentUserId);
+    if (reacted) {
+      removeReaction(reacted.id);
+    } else {
+      addReaction(emoji);
     }
-    await refresh();
     closePicker();
   };
 

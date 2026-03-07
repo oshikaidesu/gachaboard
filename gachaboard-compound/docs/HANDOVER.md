@@ -54,6 +54,7 @@ npm run dev
 
 - `env.local.template` を `.env.local` にコピーして編集
 - Discord OAuth、NextAuth、DATABASE_URL が必須
+- `SERVER_OWNER_DISCORD_ID`: サーバーオーナーの Discord ID。未設定なら全員アクセス可。設定時はオーナーのみ WS にアクセス。運用詳細は [ownership-design.md](ownership-design.md)
 - S3 未設定時はローカル `uploads/` に保存
 
 ### 2.3 マイグレーション

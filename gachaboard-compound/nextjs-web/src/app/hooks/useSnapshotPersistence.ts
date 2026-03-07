@@ -7,6 +7,7 @@
  */
 import type { TLRecord } from "@cmpd/tlschema";
 import { useEffect, useRef } from "react";
+import type { WebsocketProvider } from "y-websocket";
 
 const DOCUMENT_SCOPE_TYPES = new Set([
   "page",
@@ -27,28 +28,59 @@ function getDocumentRecords(store: { allRecords: () => Iterable<TLRecord> }): TL
   return records;
 }
 
+function getYMapEntries(provider: WebsocketProvider, mapKey: string): Record<string, string> {
+  const yMap = provider.doc.getMap<string>(mapKey);
+  const out: Record<string, string> = {};
+  yMap.forEach((value, key) => {
+    out[key] = value;
+  });
+  return out;
+}
+
 export type UseSnapshotSaveOptions = {
   store: { allRecords: () => Iterable<TLRecord>; listen: (fn: () => void, opts?: object) => (() => void) | undefined } | null;
+  provider?: WebsocketProvider | null;
   boardId: string;
   workspaceId: string;
   enabled: boolean;
 };
 
 const SAVE_DEBOUNCE_MS = 3000;
+const REACTIONS_MAP_KEY = "reactions";
+const COMMENTS_MAP_KEY = "comments";
+const REACTION_EMOJI_PRESET_MAP_KEY = "reactionEmojiPreset";
+const REACTION_EMOJI_PRESET_EMOJIS_KEY = "emojis";
 
-export function useSnapshotSave({ store, boardId, workspaceId, enabled }: UseSnapshotSaveOptions) {
+function getReactionEmojiPreset(provider: WebsocketProvider | null | undefined): string[] | null {
+  if (!provider) return null;
+  const yMap = provider.doc.getMap<string>(REACTION_EMOJI_PRESET_MAP_KEY);
+  const raw = yMap.get(REACTION_EMOJI_PRESET_EMOJIS_KEY);
+  if (!raw) return null;
+  try {
+    const arr = JSON.parse(raw) as unknown;
+    if (!Array.isArray(arr) || arr.length === 0) return null;
+    return arr.filter((e): e is string => typeof e === "string");
+  } catch {
+    return null;
+  }
+}
+
+export function useSnapshotSave({ store, provider, boardId, workspaceId, enabled }: UseSnapshotSaveOptions) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSaveRef = useRef<string>("");
 
   const save = (source: string) => {
     if (!store || !enabled) return;
     const records = getDocumentRecords(store);
-    const payload = JSON.stringify(records);
+    const reactions = provider ? getYMapEntries(provider, REACTIONS_MAP_KEY) : {};
+    const comments = provider ? getYMapEntries(provider, COMMENTS_MAP_KEY) : {};
+    const reactionEmojiPreset = getReactionEmojiPreset(provider);
+    const payload = JSON.stringify({ records, reactions, comments, reactionEmojiPreset });
     if (payload === lastSaveRef.current) return;
     lastSaveRef.current = payload;
 
     const url = `/api/workspaces/${workspaceId}/boards/${boardId}/snapshot`;
-    const body = JSON.stringify({ records });
+    const body = JSON.stringify({ records, reactions, comments, reactionEmojiPreset });
 
     if (source === "beforeunload") {
       fetch(url, {
@@ -102,5 +134,5 @@ export function useSnapshotSave({ store, boardId, workspaceId, enabled }: UseSna
       window.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [store, boardId, workspaceId, enabled]);
+  }, [store, provider, boardId, workspaceId, enabled]);
 }

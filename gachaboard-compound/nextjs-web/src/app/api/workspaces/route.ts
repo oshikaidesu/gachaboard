@@ -1,17 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireLogin, writeAuditLog } from "@/lib/authz";
+import { assertServerOwner, requireLogin, writeAuditLog } from "@/lib/authz";
 import { db } from "@/lib/db";
+import { env } from "@/lib/env";
+import { createWorkspaceSchema } from "@/lib/apiSchemas";
+import { formatZodError, parseJsonBody } from "@/lib/parseJsonBody";
+import { ZodError } from "zod";
 
-/** GET /api/workspaces - 全ワークスペース一覧（ログイン済み全員が閲覧可） */
+/** GET /api/workspaces - ワークスペース一覧。SERVER_OWNER_DISCORD_ID 設定時はサーバーオーナーの WS のみ */
 export async function GET(req: NextRequest) {
   const session = await requireLogin();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (env.SERVER_OWNER_DISCORD_ID.trim() && !env.E2E_TEST_MODE) {
+    const ctx = await assertServerOwner();
+    if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const includeDeleted = req.nextUrl.searchParams.get("includeDeleted") === "1";
 
   const workspaces = await db.workspace.findMany({
     where: {
-      // ownerUserId フィルタを削除 → 全ユーザーが全WSを閲覧可能
+      ...(env.SERVER_OWNER_DISCORD_ID.trim() && !env.E2E_TEST_MODE
+        ? { ownerUserId: session.user.id }
+        : {}),
       ...(includeDeleted ? {} : { deletedAt: null }),
     },
     include: {
@@ -30,21 +41,29 @@ export async function GET(req: NextRequest) {
   );
 }
 
-/** POST /api/workspaces - ワークスペース作成 */
+/** POST /api/workspaces - ワークスペース作成。SERVER_OWNER_DISCORD_ID 設定時はサーバーオーナーのみ */
 export async function POST(req: NextRequest) {
   const session = await requireLogin();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json() as { name: string; description?: string };
-  if (!body.name?.trim()) {
-    return NextResponse.json({ error: "name required" }, { status: 400 });
+  if (env.SERVER_OWNER_DISCORD_ID.trim() && !env.E2E_TEST_MODE) {
+    const ctx = await assertServerOwner();
+    if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  let body: { name: string; description?: string };
+  try {
+    body = await parseJsonBody(req, createWorkspaceSchema);
+  } catch (e) {
+    if (e instanceof ZodError) return NextResponse.json({ error: formatZodError(e) }, { status: 400 });
+    throw e;
   }
 
   const workspace = await db.workspace.create({
     data: {
       ownerUserId: session.user.id,
-      name: body.name.trim(),
-      description: body.description?.trim() ?? null,
+      name: body.name,
+      description: body.description ?? null,
     },
   });
 

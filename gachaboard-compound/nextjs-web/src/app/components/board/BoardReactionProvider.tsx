@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useCallback, useEffect, useRef, useState } from "react";
 import { useBoardContext } from "./BoardContext";
-import { POLLING_INTERVAL_REACTIONS, POLLING_INTERVAL_REACTIONS_SYNC } from "@shared/constants";
 import type { WebsocketProvider } from "y-websocket";
 
 type Reaction = {
@@ -16,25 +15,29 @@ type Reaction = {
 
 type BoardReactionContextValue = {
   getReactions: (shapeId: string) => Reaction[];
-  refresh: () => Promise<void>;
-  syncReactionToYjs: (reaction: Reaction) => void;
+  addReaction: (shapeId: string, emoji: string) => void;
+  removeReaction: (reactionId: string) => void;
 };
 
 const REACTIONS_MAP_KEY = "reactions";
 
 const BoardReactionContext = createContext<BoardReactionContextValue>({
   getReactions: () => [],
-  refresh: async () => {},
-  syncReactionToYjs: () => {},
+  addReaction: () => {},
+  removeReaction: () => {},
 });
 
 export function useBoardReactions(shapeId: string): {
   reactions: Reaction[];
-  refresh: () => Promise<void>;
-  syncReactionToYjs: (reaction: Reaction) => void;
+  addReaction: (emoji: string) => void;
+  removeReaction: (reactionId: string) => void;
 } {
-  const { getReactions, refresh, syncReactionToYjs } = useContext(BoardReactionContext);
-  return { reactions: getReactions(shapeId), refresh, syncReactionToYjs };
+  const { getReactions, addReaction, removeReaction } = useContext(BoardReactionContext);
+  return {
+    reactions: getReactions(shapeId),
+    addReaction: (emoji) => addReaction(shapeId, emoji),
+    removeReaction,
+  };
 }
 
 function reactionsToMap(all: Reaction[]): Map<string, Reaction[]> {
@@ -54,92 +57,75 @@ export function BoardReactionProvider({
   children: React.ReactNode;
   provider?: WebsocketProvider;
 }) {
-  const { boardId } = useBoardContext();
+  const { currentUserId, userName, avatarUrl } = useBoardContext();
   const [byShape, setByShape] = useState<Map<string, Reaction[]>>(new Map());
-  const abortRef = useRef<AbortController | null>(null);
   const byIdRef = useRef<Map<string, Reaction>>(new Map());
-  const yMapRef = useRef<{ forEach: (fn: (v: string, k: string) => void) => void } | null>(null);
 
-  const load = useCallback(async () => {
-    if (!boardId) return;
-    abortRef.current?.abort();
-    const ac = new AbortController();
-    abortRef.current = ac;
-    try {
-      const res = await fetch(`/api/reactions?boardId=${boardId}`, { signal: ac.signal });
-      if (!res.ok) return;
-      const all: Reaction[] = await res.json();
-      const byId = new Map<string, Reaction>();
-      for (const r of all) byId.set(r.id, r);
-      yMapRef.current?.forEach((value) => {
-        try {
-          const r = JSON.parse(value) as Reaction;
-          if (r?.id && r?.shapeId) {
-            byId.set(r.id, { ...r, user: r.user ?? { id: r.userId, discordName: "?", avatarUrl: null } });
-          }
-        } catch {
-          /* skip */
+  const applyYUpdate = useCallback((yMap: { forEach: (fn: (v: string, k: string) => void) => void }) => {
+    const byId = new Map<string, Reaction>();
+    yMap.forEach((value) => {
+      try {
+        const r = JSON.parse(value) as Reaction;
+        if (r && r.id && r.shapeId && !r.deletedAt) {
+          byId.set(r.id, {
+            ...r,
+            user: r.user ?? { id: r.userId, discordName: "?", avatarUrl: null },
+          });
         }
-      });
-      byIdRef.current = byId;
-      setByShape(reactionsToMap(Array.from(byId.values())));
-    } catch {
-      // abort or network error
-    }
-  }, [boardId]);
+      } catch {
+        /* skip parse error */
+      }
+    });
+    byIdRef.current = byId;
+    setByShape(reactionsToMap(Array.from(byId.values())));
+  }, []);
 
-  const syncReactionToYjs = useCallback(
-    (reaction: Reaction) => {
+  const addReaction = useCallback(
+    (shapeId: string, emoji: string) => {
+      if (!provider) return;
+      const id = crypto.randomUUID();
+      const reaction: Reaction = {
+        id,
+        shapeId,
+        emoji,
+        userId: currentUserId,
+        deletedAt: null,
+        user: { id: currentUserId, discordName: userName, avatarUrl: avatarUrl ?? null },
+      };
+      const ydoc = provider.doc;
+      const yMap = ydoc.getMap<string>(REACTIONS_MAP_KEY);
+      yMap.set(id, JSON.stringify(reaction));
+    },
+    [provider, currentUserId, userName, avatarUrl]
+  );
+
+  const removeReaction = useCallback(
+    (reactionId: string) => {
       if (!provider) return;
       const ydoc = provider.doc;
       const yMap = ydoc.getMap<string>(REACTIONS_MAP_KEY);
-      yMap.set(reaction.id, JSON.stringify(reaction));
+      const raw = yMap.get(reactionId);
+      if (!raw) return;
+      try {
+        const r = JSON.parse(raw) as Reaction;
+        yMap.set(reactionId, JSON.stringify({ ...r, deletedAt: new Date().toISOString() }));
+      } catch {
+        yMap.delete(reactionId);
+      }
     },
     [provider]
   );
-
-  const pollInterval = provider ? POLLING_INTERVAL_REACTIONS_SYNC : POLLING_INTERVAL_REACTIONS;
-  useEffect(() => {
-    load();
-    const timer = setInterval(load, pollInterval);
-    return () => {
-      clearInterval(timer);
-      abortRef.current?.abort();
-    };
-  }, [load, pollInterval]);
 
   useEffect(() => {
     if (!provider) return;
     const ydoc = provider.doc;
     const yMap = ydoc.getMap<string>(REACTIONS_MAP_KEY);
-    yMapRef.current = yMap;
 
-    const applyYUpdate = () => {
-      const byId = new Map(byIdRef.current);
-      yMap.forEach((value) => {
-        try {
-          const r = JSON.parse(value) as Reaction;
-          if (r && r.id && r.shapeId) {
-            byId.set(r.id, {
-              ...r,
-              user: r.user ?? { id: r.userId, discordName: "?", avatarUrl: null },
-            });
-          }
-        } catch {
-          // skip parse error
-        }
-      });
-      byIdRef.current = byId;
-      setByShape(reactionsToMap(Array.from(byId.values())));
-    };
-
-    applyYUpdate();
-    yMap.observe(applyYUpdate);
-    return () => {
-      yMapRef.current = null;
-      yMap.unobserve(applyYUpdate);
-    };
-  }, [provider]);
+    const handler = () => applyYUpdate(yMap);
+    handler();
+    yMap.observe(handler);
+    return () => yMap.unobserve(handler);
+  }, [provider, applyYUpdate]);
 
   const getReactions = useCallback(
     (shapeId: string) => byShape.get(shapeId) ?? [],
@@ -147,7 +133,7 @@ export function BoardReactionProvider({
   );
 
   return (
-    <BoardReactionContext.Provider value={{ getReactions, refresh: load, syncReactionToYjs }}>
+    <BoardReactionContext.Provider value={{ getReactions, addReaction, removeReaction }}>
       {children}
     </BoardReactionContext.Provider>
   );

@@ -13,8 +13,6 @@
 import type {
   UserModel,
   AssetModel,
-  MediaCommentModel,
-  ObjectReactionModel,
   WorkspaceModel,
   BoardModel,
 } from "../src/generated/prisma/models";
@@ -48,19 +46,25 @@ export type ApiAsset = Pick<
   "id" | "fileName" | "mimeType" | "kind" | "sizeBytes" | "lastKnownX" | "lastKnownY"
 >;
 
-/** コメント（タイムライン付き） */
-export type ApiComment = Pick<
-  Serialize<MediaCommentModel>,
-  "id" | "assetId" | "timeSec" | "body" | "createdAt" | "deletedAt"
-> & {
+/** コメント（タイムライン付き）。Y.Doc に保存。表示用 */
+export type ApiComment = {
+  id: string;
+  assetId: string;
+  timeSec: number;
+  body: string;
+  createdAt?: string;
+  deletedAt?: string | null;
   author: ApiUser;
+  authorUserId?: string;
 };
 
-/** シェイプへのリアクション */
-export type ApiReaction = Pick<
-  Serialize<ObjectReactionModel>,
-  "id" | "shapeId" | "emoji" | "userId" | "deletedAt"
-> & {
+/** シェイプへのリアクション。Y.Doc に保存。表示用 */
+export type ApiReaction = {
+  id: string;
+  shapeId: string;
+  emoji: string;
+  userId: string;
+  deletedAt?: string | null;
   user: ApiUser;
 };
 

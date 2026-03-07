@@ -9,6 +9,7 @@ import { defaultShapeUtils } from "@cmpd/compound";
 import type { TLRecord } from "@cmpd/tlschema";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
+import { IndexeddbPersistence } from "y-indexeddb";
 import { WebsocketProvider } from "y-websocket";
 
 const LOCAL_ORIGIN = Symbol("local-store");
@@ -64,6 +65,29 @@ type RecordsDiffLike = {
   updated: Record<string, [TLRecord, TLRecord]>;
   removed: Record<string, TLRecord>;
 };
+
+/**
+ * 変更が位置のみ（x,y）の更新かどうか。ドラッグ中の連続更新を検出する。
+ * ドラッグ中は Y.Doc に送らず、drop 時にまとめて送るため。
+ */
+function isPositionOnlyUpdate(changes: RecordsDiffLike): boolean {
+  if (Object.keys(changes.added).length > 0 || Object.keys(changes.removed).length > 0) {
+    return false;
+  }
+  const updated = Object.values(changes.updated);
+  if (updated.length === 0) return false;
+  for (const [from, to] of updated) {
+    const fromShape = from as unknown as { x?: number; y?: number; [k: string]: unknown };
+    const toShape = to as unknown as { x?: number; y?: number; [k: string]: unknown };
+    if (typeof fromShape.x !== "number" || typeof fromShape.y !== "number") return false;
+    if (typeof toShape.x !== "number" || typeof toShape.y !== "number") return false;
+    if (fromShape.x === toShape.x && fromShape.y === toShape.y) return false;
+    const fromRest = { ...fromShape, x: 0, y: 0 };
+    const toRest = { ...toShape, x: 0, y: 0 };
+    if (JSON.stringify(fromRest) !== JSON.stringify(toRest)) return false;
+  }
+  return true;
+}
 
 /**
  * RecordsDiff を Y.Map に書き込む（per-record 形式）。
@@ -136,7 +160,12 @@ type UseYjsStoreOptions = {
   /** Discord アバターURL。awareness で他ユーザーに共有 */
   avatarUrl?: string | null;
   /** Y.Doc が空のとき DB からスナップショットを取得して復元する。sync-server 再起動対策 */
-  fetchSnapshotWhenEmpty?: () => Promise<TLRecord[]>;
+  fetchSnapshotWhenEmpty?: () => Promise<{
+    records: TLRecord[];
+    reactions?: Record<string, string>;
+    comments?: Record<string, string>;
+    reactionEmojiPreset?: string[] | null;
+  }>;
 };
 
 /**
@@ -186,6 +215,47 @@ export function useYjsStore({
 
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
+
+    const persistence = new IndexeddbPersistence(roomId, ydoc);
+    persistence.on("synced", () => {
+      // IndexedDB から復元済み。空なら DB スナップショット取得（sync-server 再起動対策）
+      const hasData = yMap.size > 0;
+      if (!hasData && fetchSnapshotWhenEmpty) {
+        void fetchSnapshotWhenEmpty().then((snapshot) => {
+          const records = snapshot?.records ?? [];
+          const hasReactions = snapshot?.reactions && Object.keys(snapshot.reactions).length > 0;
+          const hasComments = snapshot?.comments && Object.keys(snapshot.comments).length > 0;
+          const hasReactionEmojiPreset =
+            Array.isArray(snapshot?.reactionEmojiPreset) && snapshot.reactionEmojiPreset.length > 0;
+          if (records.length === 0 && !hasReactions && !hasComments && !hasReactionEmojiPreset) return;
+          const store = getStore();
+          if (records.length > 0) {
+            store.mergeRemoteChanges(() => store.put(records));
+            restoreCameraFromLS(store, roomId);
+          }
+          isLocalUpdateRef.current = true;
+          ydoc.transact(() => {
+            for (const rec of records) {
+              yMap.set(rec.id, JSON.stringify(rec));
+            }
+            const reactionsMap = ydoc.getMap<string>("reactions");
+            for (const [k, v] of Object.entries(snapshot?.reactions ?? {})) {
+              reactionsMap.set(k, v);
+            }
+            const commentsMap = ydoc.getMap<string>("comments");
+            for (const [k, v] of Object.entries(snapshot?.comments ?? {})) {
+              commentsMap.set(k, v);
+            }
+            if (hasReactionEmojiPreset) {
+              const presetMap = ydoc.getMap<string>("reactionEmojiPreset");
+              presetMap.set("emojis", JSON.stringify(snapshot!.reactionEmojiPreset));
+            }
+          }, LOCAL_ORIGIN);
+          isLocalUpdateRef.current = false;
+        });
+      }
+      setStatus("synced-remote");
+    });
 
     const yMap = ydoc.getMap<string>("tldraw");
     const provider = new WebsocketProvider(wsUrl, roomId, ydoc, {
@@ -252,45 +322,19 @@ export function useYjsStore({
       });
     };
 
-    // 初回: per-record フルスキャン
-    const initialPut: TLRecord[] = [];
-    yMap.forEach((value) => {
-      try {
-        const record = typeof value === "string" ? JSON.parse(value) : value;
-        if (record && typeof record === "object" && record.id) {
-          initialPut.push(record);
-        }
-      } catch {
-        // パース失敗はスキップ
-      }
-    });
-    if (initialPut.length > 0) {
-      store.mergeRemoteChanges(() => store.put(initialPut));
-    } else if (fetchSnapshotWhenEmpty) {
-      // Y.Doc が空 → sync-server 再起動の可能性。DB から復元
-      void fetchSnapshotWhenEmpty().then((records) => {
-        if (records.length === 0) return;
-        store.mergeRemoteChanges(() => store.put(records));
-        isLocalUpdateRef.current = true;
-        ydoc.transact(() => {
-          for (const rec of records) {
-            yMap.set(rec.id, JSON.stringify(rec));
-          }
-        }, LOCAL_ORIGIN);
-        isLocalUpdateRef.current = false;
-      });
-    }
-    restoreCameraFromLS(store, roomId);
-    hasRestoredCamera = true;
-
+    // 初回ロードは IndexedDB persistence.synced で行う（y-indexeddb が IndexedDB から復元後に発火）
     yMap.observe(handleYUpdate);
 
     // Store → Y.Doc: RecordsDiff を per-record 形式で Y に反映（FPS スロットル）
+    // Phase 2: ドラッグ中（位置のみ更新）は Y に送らず、drop 時にまとめて送る
+    const DRAG_DEFER_MS = 100;
     let rafScheduled = false;
     let pendingChanges: RecordsDiffLike | null = null;
     let cameraSaveTimer: ReturnType<typeof setTimeout> | null = null;
+    let dragDeferTimer: ReturnType<typeof setTimeout> | null = null;
     const flushToY = () => {
       if (!pendingChanges) return;
+      provider.awareness.setLocalStateField("dragging", null);
       const changes = pendingChanges;
       pendingChanges = null;
       persistRecordsDiffToY(yMap, changes, isLocalUpdateRef, ydoc);
@@ -302,6 +346,13 @@ export function useYjsStore({
         rafScheduled = false;
         flushToY();
       });
+    };
+    const scheduleFlushDeferred = () => {
+      if (dragDeferTimer) clearTimeout(dragDeferTimer);
+      dragDeferTimer = setTimeout(() => {
+        dragDeferTimer = null;
+        flushToY();
+      }, DRAG_DEFER_MS);
     };
     const persistToY = (entry: { changes: RecordsDiffLike; source: string }) => {
       if (entry.source !== "user") return;
@@ -319,7 +370,27 @@ export function useYjsStore({
       Object.assign(pendingChanges.added, added);
       Object.assign(pendingChanges.updated, updated);
       Object.assign(pendingChanges.removed, removed);
-      scheduleFlush();
+      // 位置のみの更新（ドラッグ中）は drop まで遅延。それ以外は即時送信
+      if (isPositionOnlyUpdate(entry.changes)) {
+        const updated = Object.values(entry.changes.updated);
+        if (updated.length === 1) {
+          const [, to] = updated[0];
+          const shape = to as { id: string; x: number; y: number };
+          provider.awareness.setLocalStateField("dragging", {
+            shapeId: shape.id,
+            x: shape.x,
+            y: shape.y,
+          });
+        }
+        scheduleFlushDeferred();
+      } else {
+        provider.awareness.setLocalStateField("dragging", null);
+        if (dragDeferTimer) {
+          clearTimeout(dragDeferTimer);
+          dragDeferTimer = null;
+        }
+        scheduleFlush();
+      }
     };
 
     const unsubStore = store.listen(persistToY, {
@@ -356,17 +427,27 @@ export function useYjsStore({
     return () => {
       clearTimeout(connectTimer);
       if (cameraSaveTimer) clearTimeout(cameraSaveTimer);
-      saveCameraToLS(store, roomId);
+      if (dragDeferTimer) clearTimeout(dragDeferTimer);
       window.removeEventListener("beforeunload", handleBeforeUnload);
       unsubStore();
       yMap.unobserve(handleYUpdate);
       provider.off("status", handleStatus);
-      provider.destroy();
-      ydoc.destroy();
-      providerRef.current = null;
-      ydocRef.current = null;
+      // 重いクリーンアップは遅延実行し、遷移先の描画をブロックしない
+      const runHeavyCleanup = () => {
+        saveCameraToLS(store, roomId);
+        provider.destroy();
+        persistence.destroy();
+        ydoc.destroy();
+        providerRef.current = null;
+        ydocRef.current = null;
+      };
+      if (typeof requestIdleCallback !== "undefined") {
+        requestIdleCallback(runHeavyCleanup, { timeout: 500 });
+      } else {
+        setTimeout(runHeavyCleanup, 0);
+      }
     };
-  }, [roomId, wsUrl, getStore, userId, defaultName]);
+  }, [roomId, wsUrl, getStore, userId, defaultName, fetchSnapshotWhenEmpty]);
 
   // avatarUrl が後から取得された場合に awareness を更新
   useEffect(() => {

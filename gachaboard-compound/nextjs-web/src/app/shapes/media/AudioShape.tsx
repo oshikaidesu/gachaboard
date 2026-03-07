@@ -22,9 +22,9 @@ import {
   getStrokeHexForColorStyle,
 } from "../common";
 import { SHAPE_TYPE, type AudioShape } from "@shared/shapeDefs";
-import { POLLING_INTERVAL_COMMENTS } from "@shared/constants";
 import { useWaveform } from "@/app/hooks/useWaveform";
 import { useBoardContext } from "@/app/components/board/BoardContext";
+import { useBoardComments } from "@/app/components/board/BoardCommentProvider";
 import { useVisibility } from "@/app/hooks/useVisibility";
 import type { ApiComment } from "@shared/apiTypes";
 
@@ -42,6 +42,9 @@ const COMMENT_ROW_HEIGHT = 32;
 const COMMENT_GAP = 4;
 const COMMENT_LIST_OVERHEAD = 24;
 const MIN_COMMENT_LIST_H = COMMENT_LIST_OVERHEAD + COMMENT_ROW_HEIGHT + COMMENT_GAP;
+
+/** コメントリストの最大表示高さ（超えた分はスクロール） */
+const MAX_COMMENT_LIST_HEIGHT = COMMENT_LIST_OVERHEAD + 6 * (COMMENT_ROW_HEIGHT + COMMENT_GAP);
 
 // ---------- 波形 SVG ----------
 
@@ -336,12 +339,12 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
-  const { ref: visRef, visible } = useVisibility<HTMLDivElement>();
+  const { ref: visRef } = useVisibility<HTMLDivElement>();
+  const { comments, addComment, deleteComment } = useBoardComments(shape.props.assetId);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
-  const [comments, setComments] = useState<ApiComment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
   const [commentFocused, setCommentFocused] = useState(false);
@@ -355,9 +358,12 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
 
   const commentListH = Math.max(
     MIN_COMMENT_LIST_H,
-    comments.length > 0
-      ? COMMENT_LIST_OVERHEAD + comments.length * (COMMENT_ROW_HEIGHT + COMMENT_GAP)
-      : 0,
+    Math.min(
+      comments.length > 0
+        ? COMMENT_LIST_OVERHEAD + comments.length * (COMMENT_ROW_HEIGHT + COMMENT_GAP)
+        : 0,
+      MAX_COMMENT_LIST_HEIGHT,
+    ),
   );
   const naturalH = BASE_HEIGHT + commentListH;
 
@@ -398,26 +404,14 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
       ? shape.props.fileName.slice(0, 30) + "…"
       : shape.props.fileName;
 
-  const loadComments = useCallback(async () => {
-    const res = await fetch(`/api/comments?assetId=${shape.props.assetId}`);
-    if (res.ok) setComments(await res.json() as ApiComment[]);
-  }, [shape.props.assetId]);
-
-  const deleteComment = useCallback(async (commentId: string) => {
-    setDeleting(commentId);
-    const res = await fetch(`/api/comments/${commentId}`, { method: "DELETE" });
-    if (res.ok) {
-      setComments((prev) => prev.filter((c) => c.id !== commentId));
-    }
-    setDeleting(null);
-  }, []);
-
-  useEffect(() => {
-    loadComments();
-    if (!visible) return;
-    const id = setInterval(loadComments, POLLING_INTERVAL_COMMENTS);
-    return () => clearInterval(id);
-  }, [loadComments, visible]);
+  const handleDeleteComment = useCallback(
+    (commentId: string) => {
+      setDeleting(commentId);
+      deleteComment(commentId);
+      setDeleting(null);
+    },
+    [deleteComment]
+  );
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -435,24 +429,11 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
     audio.currentTime = sec;
   };
 
-  const postComment = async () => {
+  const postComment = () => {
     if (!newComment.trim()) return;
     setPosting(true);
-    const res = await fetch("/api/comments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        assetId: shape.props.assetId,
-        workspaceId,
-        boardId,
-        timeSec: currentTime,
-        body: newComment.trim(),
-      }),
-    });
-    if (res.ok) {
-      setNewComment("");
-      await loadComments();
-    }
+    addComment(currentTime, newComment.trim());
+    setNewComment("");
     setPosting(false);
   };
 
@@ -507,6 +488,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
       onPointerEnter={() => setIsPointerOver(true)}
       onPointerLeave={() => setIsPointerOver(false)}
       shapeId={shape.id}
+      selectOnEmptyClick
       style={{
         width: "100%",
         height: "100%",
@@ -614,11 +596,17 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         )}
       </div>
 
-      {/* コメント入力 */}
+      {/* コメント入力（入力欄/ボタン以外は選択に） */}
       <div
         style={{ display: "flex", gap: 4, alignItems: "center" }}
-        onMouseDown={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => {
+          const t = e.target as HTMLElement;
+          if (t.tagName === "INPUT" || t.tagName === "BUTTON" || t.tagName === "SPAN") e.stopPropagation();
+        }}
+        onPointerDown={(e) => {
+          const t = e.target as HTMLElement;
+          if (t.tagName === "INPUT" || t.tagName === "BUTTON" || t.tagName === "SPAN") e.stopPropagation();
+        }}
       >
         {commentFocused && (
           <span style={{ fontSize: 13, color: "#9ca3af", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
@@ -677,9 +665,10 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         )}
       </div>
 
-      {/* コメントリスト */}
+      {/* コメントリスト（項目クリックはシークに、余白クリックは選択に） */}
       {comments.length > 0 && (
         <div
+          className="comment-list"
           style={{
             borderTop: "1px solid #f3f4f6",
             paddingTop: 6,
@@ -688,7 +677,16 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
             gap: 2,
             flex: isCompact ? 1 : undefined,
             minHeight: 0,
-            ...(isCompact ? { overflowY: "auto", touchAction: "pan-y" } : {}),
+            overflowY: "auto",
+            touchAction: "pan-y",
+          }}
+          onMouseDown={(e) => {
+            const t = e.target as HTMLElement;
+            if (t.closest("[data-comment-row]") || t.closest("button")) e.stopPropagation();
+          }}
+          onPointerDown={(e) => {
+            const t = e.target as HTMLElement;
+            if (t.closest("[data-comment-row]") || t.closest("button")) e.stopPropagation();
           }}
           onTouchStart={(e) => e.stopPropagation()}
         >
@@ -699,6 +697,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
             return (
               <div
                 key={c.id}
+                data-comment-row
                 onClick={() => seekTo(c.timeSec)}
                 onTouchEnd={(e) => { e.stopPropagation(); seekTo(c.timeSec); }}
                 style={{
@@ -741,11 +740,11 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
                   {c.author.discordName}
                 </span>
                 <button
-                  onClick={(e) => { e.stopPropagation(); deleteComment(c.id); }}
+                  onClick={(e) => { e.stopPropagation(); handleDeleteComment(c.id); }}
                   onMouseDown={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}
                   onTouchStart={(e) => e.stopPropagation()}
-                  onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); deleteComment(c.id); }}
+                  onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); handleDeleteComment(c.id); }}
                   disabled={deleting === c.id}
                   style={{
                     fontSize: 13,

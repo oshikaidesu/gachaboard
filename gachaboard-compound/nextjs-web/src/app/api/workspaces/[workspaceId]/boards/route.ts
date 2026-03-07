@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireLogin, assertWorkspaceOwner, writeAuditLog } from "@/lib/authz";
+import { assertWorkspaceAccess, assertWorkspaceOwner, requireLogin, writeAuditLog } from "@/lib/authz";
 import { db } from "@/lib/db";
 
 type Params = { params: Promise<{ workspaceId: string }> };
 
-/** GET /api/workspaces/[workspaceId]/boards - ログイン済みなら誰でも取得可 */
+/** GET /api/workspaces/[workspaceId]/boards - SERVER_OWNER 設定時はオーナー or 招待メンバーのみ */
 export async function GET(req: NextRequest, { params }: Params) {
   const { workspaceId } = await params;
-  const session = await requireLogin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ctx = await assertWorkspaceAccess(workspaceId);
+  if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const includeDeleted = req.nextUrl.searchParams.get("includeDeleted") === "1";
 
@@ -26,15 +26,13 @@ export async function GET(req: NextRequest, { params }: Params) {
   return NextResponse.json(boards);
 }
 
-/** POST /api/workspaces/[workspaceId]/boards - ログイン済み全員が作成可 */
+/** POST /api/workspaces/[workspaceId]/boards - SERVER_OWNER 設定時はオーナー or 招待メンバーのみ */
 export async function POST(req: NextRequest, { params }: Params) {
   const { workspaceId } = await params;
-  const session = await requireLogin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ctx = await assertWorkspaceAccess(workspaceId);
+  if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const workspace = await db.workspace.findUnique({ where: { id: workspaceId } });
-  if (!workspace) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
+  const { session } = ctx;
   const body = await req.json() as { name: string };
   if (!body.name?.trim()) {
     return NextResponse.json({ error: "name required" }, { status: 400 });

@@ -23,8 +23,8 @@ import {
   getStrokeHexForColorStyle,
 } from "../common";
 import { SHAPE_TYPE, type VideoShape } from "@shared/shapeDefs";
-import { POLLING_INTERVAL_COMMENTS } from "@shared/constants";
 import { useBoardContext } from "@/app/components/board/BoardContext";
+import { useBoardComments } from "@/app/components/board/BoardCommentProvider";
 import { useVisibility } from "@/app/hooks/useVisibility";
 import type { ApiComment } from "@shared/apiTypes";
 
@@ -63,6 +63,9 @@ export const VIDEO_UI_OVERHEAD =
 
 export const MIN_COMMENT_LIST_H =
   COMMENT_LIST_OVERHEAD + COMMENT_ROW_HEIGHT + COMMENT_GAP;
+
+/** コメントリストの最大表示高さ（超えた分はスクロール） */
+const MAX_COMMENT_LIST_HEIGHT = COMMENT_LIST_OVERHEAD + 6 * (COMMENT_ROW_HEIGHT + COMMENT_GAP);
 
 // ---------- シークバー ----------
 
@@ -316,13 +319,13 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
-  const { ref: visRef, visible } = useVisibility<HTMLDivElement>();
+  const { ref: visRef } = useVisibility<HTMLDivElement>();
+  const { comments, addComment, deleteComment } = useBoardComments(props.assetId);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
-  const [comments, setComments] = useState<ApiComment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
   const [commentFocused, setCommentFocused] = useState(false);
@@ -336,9 +339,12 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
   const videoAreaH = Math.round(props.w / aspectRatio);
   const commentListH = Math.max(
     MIN_COMMENT_LIST_H,
-    comments.length > 0
-      ? COMMENT_LIST_OVERHEAD + comments.length * (COMMENT_ROW_HEIGHT + COMMENT_GAP)
-      : 0,
+    Math.min(
+      comments.length > 0
+        ? COMMENT_LIST_OVERHEAD + comments.length * (COMMENT_ROW_HEIGHT + COMMENT_GAP)
+        : 0,
+      MAX_COMMENT_LIST_HEIGHT,
+    ),
   );
   const naturalH = videoAreaH + VIDEO_UI_OVERHEAD + commentListH;
 
@@ -349,26 +355,14 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
       ? props.fileName.slice(0, 34) + "…"
       : props.fileName;
 
-  const loadComments = useCallback(async () => {
-    const res = await fetch(`/api/comments?assetId=${props.assetId}`);
-    if (res.ok) setComments(await res.json() as ApiComment[]);
-  }, [props.assetId]);
-
-  const deleteComment = useCallback(async (commentId: string) => {
-    setDeleting(commentId);
-    const res = await fetch(`/api/comments/${commentId}`, { method: "DELETE" });
-    if (res.ok) {
-      setComments((prev) => prev.filter((c) => c.id !== commentId));
-    }
-    setDeleting(null);
-  }, []);
-
-  useEffect(() => {
-    loadComments();
-    if (!visible) return;
-    const id = setInterval(loadComments, POLLING_INTERVAL_COMMENTS);
-    return () => clearInterval(id);
-  }, [loadComments, visible]);
+  const handleDeleteComment = useCallback(
+    (commentId: string) => {
+      setDeleting(commentId);
+      deleteComment(commentId);
+      setDeleting(null);
+    },
+    [deleteComment]
+  );
 
   // コメント数・アスペクト比に応じてシェイプの高さを自動更新（ユーザーが手動リサイズしていない場合のみ）
   useEffect(() => {
@@ -400,24 +394,11 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
     prevCommentCount.current = comments.length;
   }, [comments.length, isCompact]);
 
-  const postComment = async () => {
+  const postComment = () => {
     if (!newComment.trim()) return;
     setPosting(true);
-    const res = await fetch("/api/comments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        assetId: props.assetId,
-        workspaceId,
-        boardId,
-        timeSec: currentTime,
-        body: newComment.trim(),
-      }),
-    });
-    if (res.ok) {
-      setNewComment("");
-      await loadComments();
-    }
+    addComment(currentTime, newComment.trim());
+    setNewComment("");
     setPosting(false);
   };
 
@@ -520,9 +501,10 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
       onPointerEnter={() => setIsPointerOver(true)}
       onPointerLeave={() => setIsPointerOver(false)}
       shapeId={shape.id}
+      selectOnEmptyClick
       style={{
         width: "100%",
-        minHeight: "100%",
+        height: "100%",
         display: "flex",
         flexDirection: "column",
         gap: 0,
@@ -587,11 +569,30 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
           backgroundPosition: "0 0, 8px 8px",
           backgroundColor: "#f4f4f4",
         }}
-        onMouseDown={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
-        onClick={() => { if (playing) togglePlay(); }}
-        onTouchEnd={(e) => { if (playing) { e.stopPropagation(); e.preventDefault(); togglePlay(); } }}
+        onMouseDown={(e) => {
+          const t = e.target as HTMLElement;
+          if (t.tagName === "BUTTON" || t.tagName === "VIDEO") e.stopPropagation();
+        }}
+        onPointerDown={(e) => {
+          const t = e.target as HTMLElement;
+          if (t.tagName === "BUTTON" || t.tagName === "VIDEO") e.stopPropagation();
+        }}
+        onTouchStart={(e) => {
+          const t = e.target as HTMLElement;
+          if (t.tagName === "BUTTON" || t.tagName === "VIDEO") e.stopPropagation();
+        }}
+        onClick={(e) => {
+          const t = e.target as HTMLElement;
+          if ((t.tagName === "BUTTON" || t.tagName === "VIDEO") && playing) togglePlay();
+        }}
+        onTouchEnd={(e) => {
+          const t = e.target as HTMLElement;
+          if ((t.tagName === "BUTTON" || t.tagName === "VIDEO") && playing) {
+            e.stopPropagation();
+            e.preventDefault();
+            togglePlay();
+          }
+        }}
       >
         {/* 再生オーバーレイボタン（未再生時のみ表示） */}
         {!playing && (
@@ -670,7 +671,8 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
       {/* コントロールエリア */}
       <div
         style={{
-          flexShrink: 0,
+          flex: 1,
+          minHeight: 0,
           padding: "6px 10px 8px",
           display: "flex",
           flexDirection: "column",
@@ -679,8 +681,9 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
           borderTop: "1px solid #f1f5f9",
         }}
       >
-        {/* シークバー */}
-        <SeekBar currentTime={currentTime} duration={duration} onSeek={seekTo} comments={comments} />
+        {/* シークバー＋ボタン＋入力（まとめて flexShrink: 0） */}
+        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+          <SeekBar currentTime={currentTime} duration={duration} onSeek={seekTo} comments={comments} />
 
         {/* ボタン行 */}
         <div
@@ -765,13 +768,18 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
             />
           </div>
         </div>
-      </div>
 
-      {/* コメント入力 */}
-      <div
+        {/* コメント入力（入力欄/ボタン以外は選択に） */}
+        <div
         style={{ display: "flex", gap: 4, alignItems: "center", padding: "0 10px 6px", flexShrink: 0 }}
-        onMouseDown={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => {
+          const t = e.target as HTMLElement;
+          if (t.tagName === "INPUT" || t.tagName === "BUTTON" || t.tagName === "SPAN") e.stopPropagation();
+        }}
+        onPointerDown={(e) => {
+          const t = e.target as HTMLElement;
+          if (t.tagName === "INPUT" || t.tagName === "BUTTON" || t.tagName === "SPAN") e.stopPropagation();
+        }}
       >
         {commentFocused && (
           <span style={{ fontSize: 13, color: TEXT_MUTED, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
@@ -828,23 +836,32 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
             投稿
           </button>
         )}
+        </div>
       </div>
 
-      {/* コメントリスト */}
+      {/* コメントリスト（項目クリックはシークに、余白クリックは選択に） */}
       {comments.length > 0 && (
         <div
+          className="comment-list"
           style={{
             borderTop: "1px solid #f1f5f9",
             padding: "4px 10px 8px",
             display: "flex",
             flexDirection: "column",
             gap: 2,
-            flexShrink: isCompact ? 1 : 0,
+            flex: isCompact ? 1 : undefined,
             minHeight: 0,
-            ...(isCompact ? { overflowY: "auto" as const, touchAction: "pan-y" } : {}),
+            overflowY: "auto" as const,
+            touchAction: "pan-y",
           }}
-          onMouseDown={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => {
+            const t = e.target as HTMLElement;
+            if (t.closest("[data-comment-row]") || t.closest("button")) e.stopPropagation();
+          }}
+          onPointerDown={(e) => {
+            const t = e.target as HTMLElement;
+            if (t.closest("[data-comment-row]") || t.closest("button")) e.stopPropagation();
+          }}
           onTouchStart={(e) => e.stopPropagation()}
         >
           {comments.map((c) => {
@@ -854,6 +871,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
             return (
               <div
                 key={c.id}
+                data-comment-row
                 onClick={() => seekTo(c.timeSec)}
                 onTouchEnd={(e) => { e.stopPropagation(); seekTo(c.timeSec); }}
                 style={{
@@ -879,11 +897,11 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
                   {c.author.discordName}
                 </span>
                 <button
-                  onClick={(e) => { e.stopPropagation(); deleteComment(c.id); }}
+                  onClick={(e) => { e.stopPropagation(); handleDeleteComment(c.id); }}
                   onMouseDown={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}
                   onTouchStart={(e) => e.stopPropagation()}
-                  onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); deleteComment(c.id); }}
+                  onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); handleDeleteComment(c.id); }}
                   disabled={deleting === c.id}
                   style={{
                     fontSize: 13,
@@ -904,6 +922,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
           })}
         </div>
       )}
+      </div>
     </WheelGuard>
   );
 }

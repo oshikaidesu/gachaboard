@@ -201,6 +201,7 @@ drop    → Y.Update
 
 ## 9. 関連ドキュメント
 
+- [lightweighting-phase-plan.md](./lightweighting-phase-plan.md) - 軽量化フェーズ計画（実装順序）
 - [yjs-system-specification.md](./yjs-system-specification.md) - 元仕様
 - [performance-optimization-plan.md](./performance-optimization-plan.md) - 負荷対策
 - [sync-improvement-implementation-guide.md](./sync-improvement-implementation-guide.md) - 同期アーキテクチャ

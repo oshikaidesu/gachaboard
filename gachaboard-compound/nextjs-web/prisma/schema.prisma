@@ -8,46 +8,56 @@ datasource db {
 }
 
 model User {
-  id            String           @id @default(cuid())
-  discordId     String           @unique
-  discordName   String
-  avatarUrl     String?
-  workspaces    Workspace[]      @relation("WorkspaceOwner")
-  uploadedAssets Asset[]
-  mediaComments MediaComment[]
-  reactions     ObjectReaction[]
-  auditLogs     AuditLog[]
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id               String            @id @default(cuid())
+  discordId        String            @unique
+  discordName      String
+  avatarUrl        String?
+  workspaces       Workspace[]       @relation("WorkspaceOwner")
+  workspaceMembers WorkspaceMember[]
+  uploadedAssets   Asset[]
+  auditLogs        AuditLog[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }
 
 model Workspace {
-  id          String    @id @default(cuid())
+  id          String            @id @default(cuid())
   ownerUserId String
   name        String
   description String?
+  inviteToken String?           @unique
   deletedAt   DateTime?
-  owner       User      @relation("WorkspaceOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  owner       User              @relation("WorkspaceOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  members     WorkspaceMember[]
   boards      Board[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   @@index([ownerUserId, createdAt])
   @@index([deletedAt])
 }
 
+model WorkspaceMember {
+  id          String    @id @default(cuid())
+  workspaceId String
+  userId      String
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+}
+
 model Board {
-  id                   String           @id @default(cuid())
-  workspaceId          String
-  name                 String
-  snapshotData         Json?
-  reactionEmojiPreset  Json?            // string[] | null。null ならデフォルト使用
-  deletedAt            DateTime?
+  id           String    @id @default(cuid())
+  workspaceId  String
+  name         String
+  snapshotData Json?
+  deletedAt    DateTime?
   workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   assets        Asset[]
-  connectors    Connector[]
-  reactions     ObjectReaction[]
-  comments      MediaComment[]
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
@@ -71,69 +81,12 @@ model Asset {
   lastKnownY   Float?
   board        Board?         @relation(fields: [boardId], references: [id], onDelete: SetNull)
   uploader     User           @relation(fields: [uploaderId], references: [id], onDelete: Restrict)
-  comments     MediaComment[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
   @@index([workspaceId, createdAt])
   @@index([boardId, createdAt])
   @@index([deletedAt])
-}
-
-model MediaComment {
-  id           String    @id @default(cuid())
-  workspaceId  String
-  boardId      String?
-  assetId      String
-  authorUserId String
-  timeSec      Float
-  body         String
-  deletedAt    DateTime?
-  board        Board?    @relation(fields: [boardId], references: [id], onDelete: SetNull)
-  asset        Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  author       User      @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@index([workspaceId, createdAt])
-  @@index([assetId, timeSec])
-}
-
-model ObjectReaction {
-  id          String    @id @default(cuid())
-  workspaceId String
-  boardId     String
-  shapeId     String
-  emoji       String
-  userId      String
-  deletedAt   DateTime?
-  board       Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@unique([boardId, shapeId, emoji, userId])
-  @@index([workspaceId, createdAt])
-  @@index([boardId])
-}
-
-model Connector {
-  id            String    @id @default(cuid())
-  workspaceId   String
-  boardId       String
-  sourceShapeId String
-  sourceAnchor  String
-  targetShapeId String
-  targetAnchor  String
-  routingMode   String    @default("orthogonal")
-  waypoints     Json?
-  deletedAt     DateTime?
-  board         Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@index([workspaceId, createdAt])
-  @@index([boardId])
 }
 
 model S3UploadSession {

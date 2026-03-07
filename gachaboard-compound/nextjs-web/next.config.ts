@@ -4,8 +4,21 @@ import path from "path";
 const nextConfig: NextConfig = {
   // マルチ lockfile 環境でのパス解決を安定させる
   outputFileTracingRoot: path.resolve(process.cwd()),
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
+      },
+    ];
+  },
   experimental: {
-    serverActions: { bodySizeLimit: "50gb" },
+    serverActions: { bodySizeLimit: "100gb" },
   },
   allowedDevOrigins: ["uooooooooooo.tail16829c.ts.net", "desktop-hn7hdbv-1.tail16829c.ts.net"],
   images: {

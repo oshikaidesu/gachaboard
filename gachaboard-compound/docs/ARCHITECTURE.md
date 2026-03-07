@@ -54,8 +54,6 @@
 | `/api/auth/[...nextauth]` | NextAuth（Discord OAuth） |
 | `/api/workspaces`, `/api/workspaces/[id]/boards` | ワークスペース・ボード管理 |
 | `/api/assets`, `/api/assets/[id]` | アセット一覧・アップロード・配信・変換 |
-| `/api/comments` | メディアタイムラインコメント |
-| `/api/reactions` | シェイプリアクション |
 | `/api/ogp` | OGP プレビュー取得 |
 
 ### 2.3 ボード編集（CompoundBoard）
@@ -78,17 +76,19 @@
 
 ### 3.1 PostgreSQL（Prisma）
 
-- User, Account, Session（NextAuth）
-- Workspace, Board, BoardMember
-- Asset, MediaComment, ObjectReaction, Connector, AuditLog
+- User（NextAuth は JWT 戦略のため Account/Session なし）
+- Workspace, WorkspaceMember, Board, Asset, S3UploadSession, AuditLog
 
 ### 3.2 Y.Doc（Yjs）
 
 | キー | 内容 |
 |------|------|
-| `yMap["tldraw"]` | シェイプ・ページ・アセット等（永続化: sync-server メモリ） |
-| `yMap["reactions"]` | リアクション |
+| `yMap["tldraw"]` | シェイプ・ページ・アセット等 |
+| `yMap["reactions"]` | シェイプへのリアクション |
+| `yMap["comments"]` | メディアタイムラインコメント |
 | **Awareness** | カーソル・user・currentPageId（永続化しない） |
+
+永続化: IndexedDB（y-indexeddb）+ Board.snapshotData
 
 ### 3.3 ファイルストレージ
 

@@ -1,44 +1,30 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
 import { useReactionPreset } from "@/app/hooks/useReactionPreset";
-
-type Reaction = {
-  id: string;
-  shapeId: string;
-  emoji: string;
-  userId: string;
-  deletedAt: string | null;
-  user: { id: string; name: string | null; image: string | null };
-};
+import { useBoardReactions } from "@/app/components/board/BoardReactionProvider";
+import { useBoardContext } from "@/app/components/board/BoardContext";
 
 type Props = {
   boardId: string;
-  workspaceId: string;
   shapeId: string;
   currentUserId: string;
 };
 
-export default function ReactionPicker({ boardId, workspaceId, shapeId, currentUserId }: Props) {
-  const emojiList = useReactionPreset(boardId);
-  const [reactions, setReactions] = useState<Reaction[]>([]);
+export default function ReactionPicker({ boardId, shapeId, currentUserId }: Props) {
+  const { workspaceId, provider } = useBoardContext();
+  const emojiList = useReactionPreset({ boardId, workspaceId, provider });
   const [showPicker, setShowPicker] = useState(false);
+  const { reactions, addReaction, removeReaction } = useBoardReactions(shapeId);
 
-  const load = useCallback(async () => {
-    const res = await fetch(`/api/reactions?boardId=${boardId}&shapeId=${shapeId}`);
-    if (res.ok) setReactions(await res.json());
-  }, [boardId, shapeId]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const toggle = async (emoji: string) => {
-    await fetch("/api/reactions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ boardId, workspaceId, shapeId, emoji }),
-    });
-    await load();
+  const toggle = (emoji: string) => {
+    const reacted = reactions.find((r) => r.emoji === emoji && r.userId === currentUserId);
+    if (reacted) {
+      removeReaction(reacted.id);
+    } else {
+      addReaction(emoji);
+    }
     setShowPicker(false);
   };
 

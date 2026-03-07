@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireLogin } from "@/lib/authz";
 import { CHUNKS_DIR } from "@/lib/storage";
+import { isValidUploadId } from "@/lib/validators";
 import { existsSync, readdirSync } from "fs";
 import path from "path";
 
@@ -15,6 +16,9 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { uploadId } = await params;
+  if (!isValidUploadId(uploadId)) {
+    return NextResponse.json({ error: "Invalid uploadId" }, { status: 400 });
+  }
 
   const uploadDir = path.join(CHUNKS_DIR, uploadId);
   if (!existsSync(uploadDir)) {

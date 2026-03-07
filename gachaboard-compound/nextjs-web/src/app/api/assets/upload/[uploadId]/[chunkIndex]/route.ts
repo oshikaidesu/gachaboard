@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireLogin } from "@/lib/authz";
 import { CHUNKS_DIR } from "@/lib/storage";
+import { isValidChunkIndex, isValidUploadId } from "@/lib/validators";
 import { createWriteStream } from "fs";
 import { pipeline } from "stream/promises";
 import { Readable } from "stream";
@@ -18,6 +19,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { uploadId, chunkIndex } = await params;
+
+  if (!isValidUploadId(uploadId)) {
+    return NextResponse.json({ error: "Invalid uploadId" }, { status: 400 });
+  }
+  if (!isValidChunkIndex(chunkIndex)) {
+    return NextResponse.json({ error: "Invalid chunkIndex" }, { status: 400 });
+  }
 
   const uploadDir = path.join(CHUNKS_DIR, uploadId);
   if (!existsSync(uploadDir)) {

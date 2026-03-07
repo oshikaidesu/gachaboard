@@ -17,9 +17,7 @@ nextjs-web/
 │   │   ├── api/              # API Routes
 │   │   │   ├── assets/       # ファイルアップロード・取得・変換
 │   │   │   ├── auth/         # NextAuth エンドポイント
-│   │   │   ├── comments/     # タイムラインコメント
 │   │   │   ├── ogp/          # OGP プレビュー取得
-│   │   │   ├── reactions/    # シェイプリアクション
 │   │   │   └── workspaces/   # ワークスペース・ボード管理
 │   │   ├── board/[boardId]/  # ボード画面
 │   │   ├── workspace/        # ワークスペース詳細
@@ -43,9 +41,7 @@ nextjs-web/
 │   ├── shapeDefs.ts          # シェイプ定義（sync-server と共有）
 │   └── utils.ts              # 共通ユーティリティ
 ├── sync-server/
-│   ├── server.ts             # Fastify WebSocket サーバー
-│   ├── rooms.ts              # ルーム管理（SQLite）
-│   └── shapeSchema.ts        # カスタムシェイプスキーマ
+│   └── (y-websocket-server)  # Yjs WebSocket サーバー（メモリのみ）
 ├── prisma/
 │   └── schema.prisma         # DB スキーマ
 ├── uploads/                  # アップロードファイル保存先（Git管理外）
@@ -125,8 +121,11 @@ npm run dev
 | `NEXTAUTH_URL` | アクセス URL（ローカルは `http://localhost:3000`、Tailscale は `http://xxx.tail16829c.ts.net:3000`） |
 | `DATABASE_URL` | PostgreSQL 接続文字列 |
 | `SYNC_SERVER_URL` | sync-server の URL（Docker 内では `http://sync-server:5858`） |
+| `SERVER_OWNER_DISCORD_ID` | サーバーオーナーの Discord ID。未設定なら全員アクセス可。設定時はオーナーのみ WS にアクセス可。取得: 開発者モード ON → アイコン右クリック → ID をコピー |
 | `UPLOAD_DIR` | アップロード保存先（省略時は `uploads/assets`） |
 
 **NEXTAUTH_URL の切り替え**: ローカル開発と Tailscale（スマホからアクセス）で切り替えるときは `npm run env:local` / `npm run env:tailscale` を使う。詳細は [../docs/discord-auth-troubleshooting.md](../docs/discord-auth-troubleshooting.md) の「Tailscale 経由でスマホからアクセスする場合」を参照。
 
 **ローカル保存でプレビュー**: S3 系（`S3_BUCKET` 等）を設定しなければ、すべて `uploads/` に保存される。親 [../README.md](../README.md) の「ローカル保存でプレビュー・軽量化の確認」を参照。
+
+**サーバーオーナー（運用）**: `SERVER_OWNER_DISCORD_ID` を設定すると、オーナー以外はワークスペースにアクセスできずトップへリダイレクト。Tailscale 運用でサーバー管理者 1 人をオーナーにする想定。詳細は [ownership-design.md](../docs/ownership-design.md)。

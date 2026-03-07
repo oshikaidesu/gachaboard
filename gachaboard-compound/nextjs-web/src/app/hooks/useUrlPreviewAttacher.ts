@@ -31,7 +31,7 @@ export function useUrlPreviewAttacher() {
 
         prevEditingId = currentEditingId;
       },
-      { source: "all", scope: "session" }
+      { source: "user", scope: "session" }
     );
 
     return () => {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireLogin } from "@/lib/authz";
+import { assertWorkspaceWriteAccess, requireLogin } from "@/lib/authz";
+import { env } from "@/lib/env";
 import { db } from "@/lib/db";
 import { USER_SELECT } from "@/lib/prismaHelpers";
 import { createWriteStream } from "fs";
@@ -23,6 +24,12 @@ export async function POST(req: NextRequest) {
   if (!file) {
     return NextResponse.json({ error: "file is required" }, { status: 400 });
   }
+  if (file.size > env.MAX_UPLOAD_SIZE) {
+    return NextResponse.json(
+      { error: `File too large. Max ${Math.round(env.MAX_UPLOAD_SIZE / 1024 / 1024)}MB` },
+      { status: 400 }
+    );
+  }
 
   // boardId のみ渡された場合は DB から workspaceId を補完
   let resolvedWorkspaceId = workspaceId;
@@ -34,6 +41,9 @@ export async function POST(req: NextRequest) {
   if (!resolvedWorkspaceId) {
     return NextResponse.json({ error: "workspaceId or boardId is required" }, { status: 400 });
   }
+
+  const writeCtx = await assertWorkspaceWriteAccess(resolvedWorkspaceId);
+  if (!writeCtx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await ensureUploadDirs();
 
@@ -92,6 +102,19 @@ export async function GET(req: NextRequest) {
   const workspaceId = searchParams.get("workspaceId");
   const boardId = searchParams.get("boardId");
   const trash = searchParams.get("trash") === "1";
+
+  if (!workspaceId && !boardId) {
+    return NextResponse.json({ error: "workspaceId or boardId is required" }, { status: 400 });
+  }
+  if (boardId) {
+    const { assertBoardAccess } = await import("@/lib/authz");
+    const boardCtx = await assertBoardAccess(boardId);
+    if (!boardCtx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  } else if (workspaceId) {
+    const { assertWorkspaceAccess } = await import("@/lib/authz");
+    const wsCtx = await assertWorkspaceAccess(workspaceId);
+    if (!wsCtx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const assets = await db.asset.findMany({
     where: {

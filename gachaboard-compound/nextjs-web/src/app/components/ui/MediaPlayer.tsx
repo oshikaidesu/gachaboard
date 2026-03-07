@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import type { ApiComment } from "@shared/apiTypes";
+import { useRef, useState } from "react";
+import { useBoardComments } from "@/app/components/board/BoardCommentProvider";
+import { useBoardContext } from "@/app/components/board/BoardContext";
 
 type Props = {
   assetId: string;
@@ -16,20 +17,15 @@ export default function MediaPlayer({ assetId, mimeType, fileName, workspaceId, 
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [comments, setComments] = useState<ApiComment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
 
-  const isAudio = mimeType.startsWith("audio/") || isConverted;
+  const { currentUserId } = useBoardContext();
+  const { comments, addComment, deleteComment, isInProvider } = useBoardComments(assetId);
+
+  const isAudio = mimeType.startsWith("audio/") || !!isConverted;
   const isVideo = mimeType.startsWith("video/");
   const srcUrl = `/api/assets/${assetId}/file${isConverted ? "?converted=1" : ""}`;
-
-  const loadComments = useCallback(async () => {
-    const res = await fetch(`/api/comments?assetId=${assetId}`);
-    if (res.ok) setComments(await res.json() as ApiComment[]);
-  }, [assetId]);
-
-  useEffect(() => { loadComments(); }, [loadComments]);
 
   const handleTimeUpdate = () => {
     if (mediaRef.current) setCurrentTime(mediaRef.current.currentTime);
@@ -46,27 +42,14 @@ export default function MediaPlayer({ assetId, mimeType, fileName, workspaceId, 
     }
   };
 
-  const postComment = async () => {
+  const postComment = () => {
     if (!newComment.trim()) return;
     setPosting(true);
-    const res = await fetch("/api/comments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        assetId,
-        workspaceId,
-        boardId,
-        timeSec: currentTime,
-        body: newComment.trim(),
-      }),
-    });
-    if (res.ok) { setNewComment(""); await loadComments(); }
+    if (isInProvider) {
+      addComment(currentTime, newComment.trim());
+      setNewComment("");
+    }
     setPosting(false);
-  };
-
-  const deleteComment = async (commentId: string) => {
-    await fetch(`/api/comments/${commentId}`, { method: "DELETE" });
-    await loadComments();
   };
 
   const formatTime = (sec: number) => {
@@ -110,30 +93,32 @@ export default function MediaPlayer({ assetId, mimeType, fileName, workspaceId, 
               key={c.id}
               onClick={() => seekTo(c.timeSec)}
               title={`${formatTime(c.timeSec)}: ${c.body}`}
-              className="absolute top-1 h-6 w-1.5 rounded-full bg-orange-400 hover:bg-orange-600"
+              className="absolute top-0 h-6 w-1.5 rounded-full bg-orange-400 hover:bg-orange-600"
               style={{ left: `${(c.timeSec / duration) * 100}%` }}
             />
           ))}
         </div>
       )}
 
-      <div className="flex gap-2">
-        <span className="text-xs text-zinc-400 shrink-0 pt-2">{formatTime(currentTime)}</span>
-        <input
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && postComment()}
-          placeholder="この時点にコメントを追加..."
-          className="flex-1 rounded border border-zinc-300 px-3 py-1.5 text-sm outline-none focus:border-zinc-500"
-        />
-        <button
-          onClick={postComment}
-          disabled={posting || !newComment.trim()}
-          className="rounded bg-black px-3 py-1.5 text-xs text-white disabled:opacity-40"
-        >
-          投稿
-        </button>
-      </div>
+      {isInProvider && (
+        <div className="flex gap-2">
+          <span className="text-xs text-zinc-400 shrink-0 pt-2">{formatTime(currentTime)}</span>
+          <input
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && postComment()}
+            placeholder="この時点にコメントを追加..."
+            className="flex-1 rounded border border-zinc-300 px-3 py-1.5 text-sm outline-none focus:border-zinc-500"
+          />
+          <button
+            onClick={postComment}
+            disabled={posting || !newComment.trim()}
+            className="rounded bg-black px-3 py-1.5 text-xs text-white disabled:opacity-40"
+          >
+            投稿
+          </button>
+        </div>
+      )}
 
       {comments.length > 0 && (
         <ul className="flex flex-col gap-1 max-h-48 overflow-y-auto">
@@ -147,12 +132,14 @@ export default function MediaPlayer({ assetId, mimeType, fileName, workspaceId, 
               </button>
               <span className="flex-1 text-sm text-zinc-700">{c.body}</span>
               <span className="text-xs text-zinc-400 shrink-0">{c.author.discordName}</span>
-              <button
-                onClick={() => deleteComment(c.id)}
-                className="hidden text-xs text-zinc-300 hover:text-red-400 group-hover:block"
-              >
-                ✕
-              </button>
+              {isInProvider && c.authorUserId === currentUserId ? (
+                <button
+                  onClick={() => deleteComment(c.id)}
+                  className="hidden text-xs text-zinc-300 hover:text-red-400 group-hover:block"
+                >
+                  ✕
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>

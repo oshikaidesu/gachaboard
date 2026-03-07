@@ -31,6 +31,67 @@ export async function requireLogin() {
   return session;
 }
 
+/** サーバーオーナーか確認。SERVER_OWNER_DISCORD_ID 未設定時は全員 true */
+function isServerOwner(session: { user: { discordId?: string | null } } | null): boolean {
+  if (!session?.user?.discordId) return false;
+  const id = env.SERVER_OWNER_DISCORD_ID.trim();
+  if (!id) return true; // 未設定なら制限なし（従来どおり）
+  return session.user.discordId === id;
+}
+
+/** サーバーオーナーであることを要求。違反時は null。E2E 時はスキップ */
+export async function assertServerOwner() {
+  const session = await requireLogin();
+  if (!session) return null;
+  if (env.E2E_TEST_MODE) return { session };
+  if (!isServerOwner(session)) return null;
+  return { session };
+}
+
+/** ワークスペースオーナーまたは招待メンバーか */
+async function hasWorkspaceAccess(workspaceId: string, userId: string): Promise<boolean> {
+  const workspace = await db.workspace.findUnique({
+    where: { id: workspaceId },
+    select: { ownerUserId: true },
+  });
+  if (!workspace) return false;
+  if (workspace.ownerUserId === userId) return true;
+  const member = await db.workspaceMember.findUnique({
+    where: { workspaceId_userId: { workspaceId, userId } },
+  });
+  return !!member;
+}
+
+/** アセットからワークスペースを取得。board.workspace があればそれを、なければ workspaceId で取得 */
+async function getAssetWorkspace(asset: {
+  board?: { workspace: Awaited<ReturnType<typeof db.workspace.findUnique>> } | null;
+  workspaceId: string;
+}) {
+  if (asset.board?.workspace) return asset.board.workspace;
+  return db.workspace.findUnique({ where: { id: asset.workspaceId } });
+}
+
+/** ワークスペースへアクセス可能か（オーナー or 招待メンバー） */
+export async function assertWorkspaceAccess(workspaceId: string) {
+  const session = await requireLogin();
+  if (!session) return null;
+
+  if (env.E2E_TEST_MODE) {
+    const workspace = await db.workspace.findUnique({ where: { id: workspaceId } });
+    return workspace ? { session, workspace } : null;
+  }
+
+  const workspace = await db.workspace.findUnique({ where: { id: workspaceId } });
+  if (!workspace) return null;
+
+  if (env.SERVER_OWNER_DISCORD_ID.trim()) {
+    const ok = workspace.ownerUserId === session.user.id || (await hasWorkspaceAccess(workspaceId, session.user.id));
+    if (!ok) return null;
+  }
+
+  return { session, workspace };
+}
+
 /** Workspace のオーナーか確認。違反時は null */
 export async function assertWorkspaceOwner(workspaceId: string) {
   const session = await requireLogin();
@@ -44,7 +105,7 @@ export async function assertWorkspaceOwner(workspaceId: string) {
   return { session, workspace };
 }
 
-/** Board が存在しログイン済みか確認（アクセスはログインのみ必須） */
+/** Board が存在しログイン済みか。サーバーオーナーモード時は WS オーナー or 招待メンバー */
 export async function assertBoardAccess(boardId: string) {
   const session = await requireLogin();
   if (!session) return null;
@@ -55,7 +116,83 @@ export async function assertBoardAccess(boardId: string) {
   });
   if (!board) return null;
 
+  if (env.E2E_TEST_MODE) return { session, board };
+
+  if (env.SERVER_OWNER_DISCORD_ID.trim()) {
+    const ok =
+      board.workspace.ownerUserId === session.user.id ||
+      (await hasWorkspaceAccess(board.workspaceId, session.user.id));
+    if (!ok) return null;
+  }
+
   return { session, board };
+}
+
+/**
+ * アセットの読み取り権限を確認。
+ * ワークスペースオーナー、アップロード者、または所属ボードへアクセス可能なユーザーを許可。
+ */
+export async function assertAssetReadAccess(assetId: string) {
+  const session = await requireLogin();
+  if (!session) return null;
+
+  const asset = await db.asset.findUnique({
+    where: { id: assetId },
+    include: { board: { include: { workspace: true } } },
+  });
+  if (!asset) return null;
+
+  const workspace = await getAssetWorkspace(asset);
+  if (!workspace) return null;
+
+  if (workspace.ownerUserId === session.user.id) return { session, asset };
+  if (asset.uploaderId === session.user.id) return { session, asset };
+  if (await hasWorkspaceAccess(asset.workspaceId, session.user.id)) return { session, asset };
+  if (asset.boardId) {
+    const boardAccess = await assertBoardAccess(asset.boardId);
+    if (boardAccess) return { session, asset };
+  }
+  return null;
+}
+
+/**
+ * アセットの書き込み権限を確認（trash/restore/delete 用）。
+ * ワークスペースオーナーまたはアップロード者のみ許可。
+ */
+export async function assertAssetWriteAccess(assetId: string) {
+  const session = await requireLogin();
+  if (!session) return null;
+
+  const asset = await db.asset.findUnique({
+    where: { id: assetId },
+    include: { board: { include: { workspace: true } } },
+  });
+  if (!asset) return null;
+
+  const workspace = await getAssetWorkspace(asset);
+  if (!workspace) return null;
+
+  if (workspace.ownerUserId === session.user.id) return { session, asset };
+  if (asset.uploaderId === session.user.id) return { session, asset };
+  if (await hasWorkspaceAccess(asset.workspaceId, session.user.id)) return { session, asset };
+  return null;
+}
+
+/**
+ * ワークスペースへの書き込み権限を確認（オーナー or 招待メンバー）。
+ * アップロード等で使用。
+ */
+export async function assertWorkspaceWriteAccess(workspaceId: string) {
+  const session = await requireLogin();
+  if (!session) return null;
+
+  const workspace = await db.workspace.findUnique({ where: { id: workspaceId } });
+  if (!workspace) return null;
+  if (workspace.ownerUserId === session.user.id) return { session, workspace };
+  if (env.SERVER_OWNER_DISCORD_ID.trim() && (await hasWorkspaceAccess(workspaceId, session.user.id))) {
+    return { session, workspace };
+  }
+  return null;
 }
 
 /** 監査ログ書き込み */

@@ -285,10 +285,13 @@ tldraw 組み込み型: image, note, geo, text, arrow, draw, highlight, line, fr
 | **Workspace** | ownerUserId, name, description, deletedAt | プロジェクト単位（3〜4 個想定） |
 | **Board** | workspaceId, name, snapshotData, deletedAt | ボード（ソフト削除対応） |
 | **Asset** | boardId, uploaderId, kind, mimeType, storageKey, storageBackend, lastKnownX/Y | アップロードファイル |
-| **MediaComment** | assetId, authorUserId, timeSec, body | メディアのタイムスタンプ付きコメント |
-| **ObjectReaction** | boardId, shapeId, emoji, userId | シェイプへの絵文字リアクション |
-| **Connector** | boardId, sourceShapeId, targetShapeId, routingMode, waypoints | アロー接続（DB 永続） |
 | **S3UploadSession** | uploadId, s3Key, storageKey, boardId, uploaderId | S3 マルチパートアップロード |
+
+**Y.Doc に統合**（DB テーブルなし）:
+| yMap キー | 内容 |
+|-----------|------|
+| `reactions` | シェイプへの絵文字リアクション |
+| `comments` | メディアのタイムスタンプ付きコメント |
 | **AuditLog** | userId, workspaceId, action, target, metadata | 監査ログ |
 
 ---
@@ -327,8 +330,8 @@ tldraw 組み込み型: image, note, geo, text, arrow, draw, highlight, line, fr
 |------|------|----------|
 | **マルチカーソル** | Awareness で他ユーザーのカーソルをリアルタイム表示 | Awareness（60 fps） |
 | **ユーザー一覧** | 接続中ユーザーをパネル表示 | Awareness |
-| **シェイプリアクション** | 絵文字リアクション（Twemoji） | DB + Yjs ハイブリッド |
-| **タイムラインコメント** | メディアの再生位置に紐づくコメント | REST API（DB） |
+| **シェイプリアクション** | 絵文字リアクション（Twemoji） | Y.Doc のみ |
+| **タイムラインコメント** | メディアの再生位置に紐づくコメント | Y.Doc のみ |
 | **OGP プレビュー** | geo シェイプ内 URL の OGP / YouTube iframe / X(Twitter) | REST API + キャッシュ |
 | **コネクトハンドル** | シェイプ選択時にアロー接続用ハンドルを表示 | TLStore + DB |
 | **アロー連鎖削除** | シェイプ削除時に接続アローを自動削除 | TLStore |
@@ -339,10 +342,9 @@ tldraw 組み込み型: image, note, geo, text, arrow, draw, highlight, line, fr
 
 | 対象 | 間隔 |
 |------|------|
-| リアクション（Yjs 接続時） | **2,000 ms** |
-| リアクション（未接続時） | **15,000 ms** |
-| コメント | **30,000 ms** |
 | AssetLoader | **1,500 ms** |
+
+（リアクション・コメントは Y.Doc でリアルタイム同期のためポーリング不要）
 
 ---
 
@@ -366,10 +368,9 @@ tldraw 組み込み型: image, note, geo, text, arrow, draw, highlight, line, fr
 | `/api/assets/upload/s3/init` | POST | S3 マルチパート初期化 |
 | `/api/assets/upload/s3/presign` | POST | Presigned PUT URL |
 | `/api/assets/upload/s3/complete` | POST | S3 アップロード完了 |
-| `/api/comments` | GET / POST | メディアコメント取得・作成 |
-| `/api/comments/[id]` | PATCH / DELETE | コメント更新・削除 |
-| `/api/reactions` | GET / POST | リアクション取得・トグル |
 | `/api/ogp` | GET | OGP 取得（URL パラメータ） |
+
+（リアクション・コメントは Y.Doc に統合済み。API なし）
 
 ---
 
@@ -467,6 +468,7 @@ nextjs-web は compose に含まず、`npm run dev` で別途起動（ポート 
 
 ## 19. 関連ドキュメント
 
+- [lightweighting-phase-plan.md](./lightweighting-phase-plan.md) - 軽量化フェーズ計画（実装順序・依存関係）
 - [yjs-improvement-selection.md](./yjs-improvement-selection.md) - 改善ライブラリ・選定（Hocuspocus, Y-Sweet, y-indexeddb 等）
 - [performance-optimization-plan.md](./performance-optimization-plan.md) - 負荷対策の詳細
 - [multi-cursor-implementation-guide.md](./multi-cursor-implementation-guide.md) - Awareness 実装

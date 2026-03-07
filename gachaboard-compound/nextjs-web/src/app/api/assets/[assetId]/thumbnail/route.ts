@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireLogin } from "@/lib/authz";
+import { assertAssetReadAccess } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { getThumbnailPath } from "@/lib/storage";
 import { getObjectStream, headS3Object, s3KeyThumbnail } from "@/lib/s3";
@@ -15,12 +15,11 @@ type Params = { params: Promise<{ assetId: string }> };
  */
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
-    if (!env.E2E_TEST_MODE) {
-      const session = await requireLogin();
-      if (!session) return new NextResponse(null, { status: 401 });
-    }
-
     const { assetId } = await params;
+    if (!env.E2E_TEST_MODE) {
+      const ctx = await assertAssetReadAccess(assetId);
+      if (!ctx) return new NextResponse(null, { status: 401 });
+    }
     const asset = await db.asset.findUnique({ where: { id: assetId } });
     if (!asset || asset.deletedAt) return new NextResponse(null, { status: 404 });
 

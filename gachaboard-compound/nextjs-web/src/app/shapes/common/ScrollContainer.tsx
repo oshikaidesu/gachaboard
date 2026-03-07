@@ -3,12 +3,17 @@
 import { useRef, useEffect, forwardRef } from "react";
 import { useEditor } from "@cmpd/compound";
 
+const INTERACTIVE_SELECTORS =
+  "button, input, textarea, select, a, [data-volume-slider], [data-comment-row], canvas";
+
 type Props = {
   shapeId: string;
   style?: React.CSSProperties;
   children: React.ReactNode;
   onPointerEnter?: () => void;
   onPointerLeave?: () => void;
+  /** 空白クリックで選択する場合は true（再生ボタン横の余白など） */
+  selectOnEmptyClick?: boolean;
 };
 
 /**
@@ -17,7 +22,7 @@ type Props = {
  * 内部のoverflow:autoなdivのスクロールだけが効くようにする。
  */
 export const WheelGuard = forwardRef<HTMLDivElement, Props>(
-  function WheelGuard({ shapeId, style, children, onPointerEnter, onPointerLeave }, forwardedRef) {
+  function WheelGuard({ shapeId, style, children, onPointerEnter, onPointerLeave, selectOnEmptyClick }, forwardedRef) {
     const editor = useEditor();
     const internalRef = useRef<HTMLDivElement>(null);
 
@@ -95,13 +100,23 @@ export const WheelGuard = forwardRef<HTMLDivElement, Props>(
       else if (forwardedRef) forwardedRef.current = node;
     };
 
+    const handlePointerDown = (e: React.PointerEvent) => {
+      if (!selectOnEmptyClick) return;
+      const t = e.target as HTMLElement;
+      if (t.tagName === "VIDEO" || t.tagName === "AUDIO") return;
+      if (t.closest(INTERACTIVE_SELECTORS)) return;
+      editor.select(shapeId as never);
+    };
+
     return (
       <div
         ref={setRef}
-        style={style}
+        style={{ ...style, ...(selectOnEmptyClick ? { cursor: "grab" } : undefined) }}
         data-shape-frame
+        {...(selectOnEmptyClick ? { "data-drag-handle": "" } : {})}
         onPointerEnter={onPointerEnter}
         onPointerLeave={onPointerLeave}
+        onPointerDown={handlePointerDown}
       >
         {children}
       </div>

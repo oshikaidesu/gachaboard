@@ -22,7 +22,10 @@ export default async function BoardPage({ params, searchParams }: Props) {
   const testUserName = query.testUserName?.trim();
   const testAvatarUrl = query.testAvatarUrl?.trim();
 
-  const boardRecord = await db.board.findUnique({ where: { id: boardId } });
+  const boardRecord = await db.board.findUnique({
+    where: { id: boardId },
+    select: { id: true, workspaceId: true, name: true, deletedAt: true },
+  });
   if (!boardRecord && !isE2eMode) notFound();
 
   if (isE2eMode && testUserId && testUserName) {
@@ -45,6 +48,12 @@ export default async function BoardPage({ params, searchParams }: Props) {
   if (!board) notFound();
   if (!session?.user?.id) {
     redirect(`/?callbackUrl=${encodeURIComponent(`/board/${boardId}`)}`);
+  }
+
+  const { assertBoardAccess } = await import("@/lib/authz");
+  const boardCtx = await assertBoardAccess(boardId);
+  if (!boardCtx) {
+    redirect("/access-denied");
   }
 
   const rawName = session?.user?.name ?? "";

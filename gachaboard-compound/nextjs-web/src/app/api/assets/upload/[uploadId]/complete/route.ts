@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireLogin } from "@/lib/authz";
 import { db } from "@/lib/db";
+import { isValidUploadId } from "@/lib/validators";
 import {
   CHUNKS_DIR,
   UPLOAD_DIR,
@@ -27,6 +28,9 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { uploadId } = await params;
+  if (!isValidUploadId(uploadId)) {
+    return NextResponse.json({ error: "Invalid uploadId" }, { status: 400 });
+  }
   const { totalChunks } = await req.json() as { totalChunks: number };
 
   const uploadDir = path.join(CHUNKS_DIR, uploadId);

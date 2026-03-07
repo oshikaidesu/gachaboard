@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireLogin } from "@/lib/authz";
+import { env } from "@/lib/env";
 import { db } from "@/lib/db";
 import { isS3Enabled, createMultipartUpload, getPresignedPutUrl, s3KeyAssets } from "@/lib/s3";
 import { randomUUID } from "crypto";
@@ -28,6 +29,12 @@ export async function POST(req: NextRequest) {
 
     if (!fileName || !mimeType || !totalSize || !boardId) {
       return NextResponse.json({ error: "fileName, mimeType, totalSize, boardId are required" }, { status: 400 });
+    }
+    if (totalSize > env.MAX_UPLOAD_SIZE) {
+      return NextResponse.json(
+        { error: `File too large. Max ${Math.round(env.MAX_UPLOAD_SIZE / 1024 / 1024)}MB` },
+        { status: 400 }
+      );
     }
 
     const board = await db.board.findUnique({ where: { id: boardId }, select: { workspaceId: true } });

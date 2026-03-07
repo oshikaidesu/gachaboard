@@ -35,6 +35,7 @@ cp nextjs-web/env.local.template nextjs-web/.env.local
 | `NEXTAUTH_URL` | ○ | アプリ URL（ローカル: `http://localhost:3000`） |
 | `DATABASE_URL` | ○ | PostgreSQL 接続文字列 |
 | `NEXT_PUBLIC_SYNC_WS_URL` | - | sync-server の WebSocket URL（例: `ws://localhost:5858`） |
+| `SERVER_OWNER_DISCORD_ID` | - | サーバーオーナーの Discord ID。未設定なら全員アクセス可。設定時はオーナーのみ WS にアクセス。運用詳細は [ownership-design.md](ownership-design.md) |
 | `S3_BUCKET` 等 | - | 未設定ならローカル `uploads/` に保存 |
 
 **Docker Compose 利用時の DATABASE_URL 例:**

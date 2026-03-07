@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireLogin } from "@/lib/authz";
+import { assertAssetReadAccess } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { getWaveformPath } from "@/lib/storage";
 import { getObjectStream, headS3Object, s3KeyWaveform } from "@/lib/s3";
@@ -9,10 +9,9 @@ import { readFile } from "fs/promises";
 type Params = { params: Promise<{ assetId: string }> };
 
 export async function GET(_req: NextRequest, { params }: Params) {
-  const session = await requireLogin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   const { assetId } = await params;
+  const ctx = await assertAssetReadAccess(assetId);
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const asset = await db.asset.findUnique({ where: { id: assetId } });
   if (!asset) return NextResponse.json({ error: "Not found" }, { status: 404 });
 

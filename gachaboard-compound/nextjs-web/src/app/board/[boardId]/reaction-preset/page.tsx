@@ -18,7 +18,7 @@ export default async function ReactionPresetPage({ params }: Props) {
         id: true,
         name: true,
         workspaceId: true,
-        reactionEmojiPreset: true,
+        snapshotData: true,
       },
     }),
     getServerSession(authOptions),
@@ -30,9 +30,11 @@ export default async function ReactionPresetPage({ params }: Props) {
     redirect(`/?callbackUrl=${encodeURIComponent(`/board/${boardId}/reaction-preset`)}`);
   }
 
-  const initialEmojis = Array.isArray(board.reactionEmojiPreset) && board.reactionEmojiPreset.length > 0
-    ? (board.reactionEmojiPreset as string[])
-    : null;
+  const data = board.snapshotData as { reactionEmojiPreset?: string[] | null } | null;
+  const initialEmojis =
+    Array.isArray(data?.reactionEmojiPreset) && data.reactionEmojiPreset.length > 0
+      ? data.reactionEmojiPreset
+      : null;
 
   return (
     <ReactionPresetClient

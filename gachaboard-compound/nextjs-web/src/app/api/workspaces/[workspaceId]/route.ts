@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { assertWorkspaceOwner, requireLogin, writeAuditLog } from "@/lib/authz";
+import { assertWorkspaceAccess, assertWorkspaceOwner, requireLogin, writeAuditLog } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { deleteFile } from "@/lib/storage";
 
 type Params = { params: Promise<{ workspaceId: string }> };
 
-/** GET /api/workspaces/[workspaceId] - ワークスペース詳細（ログイン済み全員） */
+/** GET /api/workspaces/[workspaceId] - ワークスペース詳細。SERVER_OWNER 設定時はオーナー or 招待メンバーのみ */
 export async function GET(_req: NextRequest, { params }: Params) {
   const { workspaceId } = await params;
-  const session = await requireLogin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ctx = await assertWorkspaceAccess(workspaceId);
+  if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const workspace = await db.workspace.findUnique({
     where: { id: workspaceId },
@@ -23,13 +23,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
 /** PATCH /api/workspaces/[workspaceId] - trash, restore, or rename */
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { workspaceId } = await params;
-  const session = await requireLogin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ctx = await assertWorkspaceOwner(workspaceId);
+  if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const { session, workspace } = ctx;
   const body = await req.json() as { action: "trash" | "restore" | "rename"; name?: string; description?: string };
-
-  const workspace = await db.workspace.findUnique({ where: { id: workspaceId } });
-  if (!workspace) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   if (body.action === "rename") {
     if (!body.name?.trim()) return NextResponse.json({ error: "name required" }, { status: 400 });
@@ -42,10 +40,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     });
     await writeAuditLog(session.user.id, workspaceId, "workspace.rename", workspaceId);
     return NextResponse.json(updated);
-  }
-
-  if (workspace.ownerUserId !== session.user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const updated = await db.workspace.update({

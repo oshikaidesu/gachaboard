@@ -21,10 +21,11 @@ export function AwarenessSync({ provider, localUserId }: AwarenessSyncProps) {
   const rafRef = useRef<number | null>(null);
   const pendingRef = useRef<{ x: number; y: number } | null>(null);
 
-  // リモート awareness → store の instance_presence に同期
+  // リモート awareness → store の instance_presence に同期（RAF で 1 フレームに 1 回にスロットル）
   useEffect(() => {
     const store = editor.store;
     const localClientId = provider.doc.clientID;
+    let syncRafId: number | null = null;
 
     const syncRemoteToStore = () => {
       const states = awareness.getStates();
@@ -56,6 +57,7 @@ export function AwarenessSync({ provider, localUserId }: AwarenessSyncProps) {
       byUserId.forEach((state, userId) => {
         const user = state?.user as { id?: string; name?: string; color?: string; avatarUrl?: string | null } | undefined;
         const cursor = state?.cursor as { x: number; y: number; type?: string; rotation?: number } | null | undefined;
+        const dragging = state?.dragging as { shapeId: string; x: number; y: number } | null | undefined;
         const userName = user?.name ?? "Unknown";
         const color = user?.color ?? "#888888";
         const presenceId = InstancePresenceRecordType.createId(userId);
@@ -84,7 +86,7 @@ export function AwarenessSync({ provider, localUserId }: AwarenessSyncProps) {
             brush: null,
             scribbles: [],
             chatMessage: "",
-            meta: { avatarUrl: user?.avatarUrl ?? null },
+            meta: { avatarUrl: user?.avatarUrl ?? null, dragging: dragging ?? null },
           })
         );
       });
@@ -105,10 +107,18 @@ export function AwarenessSync({ provider, localUserId }: AwarenessSyncProps) {
     };
 
     syncRemoteToStore();
-    awareness.on("change", syncRemoteToStore);
+    const throttledSync = () => {
+      if (syncRafId !== null) return;
+      syncRafId = requestAnimationFrame(() => {
+        syncRafId = null;
+        syncRemoteToStore();
+      });
+    };
+    awareness.on("change", throttledSync);
 
     return () => {
-      awareness.off("change", syncRemoteToStore);
+      if (syncRafId !== null) cancelAnimationFrame(syncRafId);
+      awareness.off("change", throttledSync);
     };
   }, [editor, awareness, provider.doc.clientID]);
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Compound } from "@cmpd/compound";
 import type { Editor } from "@cmpd/editor";
 import "@cmpd/compound/compound.css";
@@ -14,6 +15,7 @@ import { CollaboratorCursorWithName } from "@/app/components/collaboration/Colla
 import { BrushModeToolbarSync } from "./BrushModeToolbarSync";
 import { BoardContext } from "./BoardContext";
 import { BoardReactionProvider } from "./BoardReactionProvider";
+import { BoardCommentProvider } from "./BoardCommentProvider";
 import { AwarenessSync } from "@/app/components/collaboration/AwarenessSync";
 import { UserSharePanel } from "@/app/components/collaboration/UserSharePanel";
 import { ConnectHandles } from "./ConnectHandles";
@@ -49,6 +51,12 @@ export default function CompoundBoard({
 }: Props) {
   const [preview, setPreview] = useState<ApiAsset | null>(null);
   const [headerActionsEl, setHeaderActionsEl] = useState<HTMLDivElement | null>(null);
+  const router = useRouter();
+
+  // 戻る遷移を高速化するため、ワークスペースをプリフェッチ
+  useEffect(() => {
+    router.prefetch(`/workspace/${workspaceId}`);
+  }, [router, workspaceId]);
 
   const isE2eMode =
     typeof window !== "undefined" &&
@@ -65,6 +73,28 @@ export default function CompoundBoard({
     syncWsUrl.length > 0 &&
     !syncWsUrl.startsWith("__placeholder");
 
+  const fetchSnapshotWhenEmpty = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/boards/${boardId}/snapshot`);
+      if (!res.ok) return { records: [], reactions: {}, comments: {}, reactionEmojiPreset: null };
+      const json = (await res.json()) as {
+        records?: unknown[];
+        reactions?: Record<string, string>;
+        comments?: Record<string, string>;
+        reactionEmojiPreset?: string[] | null;
+      };
+      const records = Array.isArray(json?.records) ? json.records : [];
+      return {
+        records: records as import("@cmpd/tlschema").TLRecord[],
+        reactions: json?.reactions ?? {},
+        comments: json?.comments ?? {},
+        reactionEmojiPreset: json?.reactionEmojiPreset ?? null,
+      };
+    } catch {
+      return { records: [], reactions: {}, comments: {}, reactionEmojiPreset: null };
+    }
+  }, [workspaceId, boardId]);
+
   const yjsStore = useYjsStore({
     roomId: boardId,
     wsUrl: useSync ? syncWsUrl : "",
@@ -72,19 +102,12 @@ export default function CompoundBoard({
     defaultName: userName,
     userId: currentUserId,
     avatarUrl: avatarUrl ?? undefined,
-    fetchSnapshotWhenEmpty: useSync
-      ? async () => {
-          const res = await fetch(`/api/workspaces/${workspaceId}/boards/${boardId}/snapshot`);
-          if (!res.ok) return [];
-          const json = (await res.json()) as { snapshotData?: unknown[] };
-          const records = Array.isArray(json?.snapshotData) ? json.snapshotData : [];
-          return records as import("@cmpd/tlschema").TLRecord[];
-        }
-      : undefined,
+    fetchSnapshotWhenEmpty: useSync ? fetchSnapshotWhenEmpty : undefined,
   });
 
   useSnapshotSave({
     store: yjsStore.status === "synced-remote" ? yjsStore.store : null,
+    provider: yjsStore.provider ?? undefined,
     boardId,
     workspaceId,
     enabled: useSync,
@@ -206,10 +229,12 @@ export default function CompoundBoard({
       boardId,
       workspaceId,
       currentUserId,
+      userName,
       avatarUrl: avatarUrl ?? null,
       userInfoAtom: null,
+      provider: useSync ? yjsStore.provider : undefined,
     }),
-    [boardId, workspaceId, currentUserId, avatarUrl]
+    [boardId, workspaceId, currentUserId, userName, avatarUrl, useSync, yjsStore.provider]
   );
 
   const headerRef = useRef<HTMLDivElement>(null);
@@ -261,6 +286,7 @@ export default function CompoundBoard({
   return (
     <BoardContext.Provider value={boardContextValue}>
       <BoardReactionProvider provider={useSync ? yjsStore.provider : undefined}>
+        <BoardCommentProvider provider={useSync ? yjsStore.provider : undefined}>
         <div className="flex h-screen flex-col">
           <div
             ref={headerRef}
@@ -398,6 +424,7 @@ assetUrls={{
             />
           )}
         </div>
+        </BoardCommentProvider>
       </BoardReactionProvider>
     </BoardContext.Provider>
   );

@@ -1,12 +1,18 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import emojiRegex from "emoji-regex";
+import * as Y from "yjs";
+import { WebsocketProvider } from "y-websocket";
+import { IndexeddbPersistence } from "y-indexeddb";
 import {
   DEFAULT_REACTION_EMOJI_LIST,
   FIXED_EMOJI_LIST,
 } from "@shared/constants";
+
+const REACTION_EMOJI_PRESET_MAP_KEY = "reactionEmojiPreset";
+const REACTION_EMOJI_PRESET_EMOJIS_KEY = "emojis";
 
 /** 固定5つを除いたカスタム絵文字のみを抽出 */
 function getCustomEmojis(full: string[]): string[] {
@@ -16,6 +22,19 @@ function getCustomEmojis(full: string[]): string[] {
 /** 固定5つ + カスタムを結合（保存用） */
 function toFullEmojiList(custom: string[]): string[] {
   return [...FIXED_EMOJI_LIST, ...custom];
+}
+
+function getSyncWsUrl(): string {
+  if (typeof window === "undefined") return "";
+  const isLocal =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1";
+  if (!isLocal) {
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    return `${protocol}://${window.location.host}/ws`;
+  }
+  const url = process.env.NEXT_PUBLIC_SYNC_WS_URL ?? "ws://localhost:5858";
+  return url.startsWith("__placeholder") ? "" : url;
 }
 
 type Props = {
@@ -42,6 +61,27 @@ export default function ReactionPresetClient({
   const [text, setText] = useState(() => initialCustom.join(""));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const providerRef = useRef<WebsocketProvider | null>(null);
+  const ydocRef = useRef<Y.Doc | null>(null);
+
+  const wsUrl = getSyncWsUrl();
+  const useSync = Boolean(wsUrl);
+
+  useEffect(() => {
+    if (!useSync || typeof window === "undefined") return;
+    const ydoc = new Y.Doc();
+    ydocRef.current = ydoc;
+    new IndexeddbPersistence(boardId, ydoc);
+    const provider = new WebsocketProvider(wsUrl, boardId, ydoc, { connect: false });
+    provider.connect();
+    providerRef.current = provider;
+    return () => {
+      provider.disconnect();
+      provider.destroy();
+      providerRef.current = null;
+      ydocRef.current = null;
+    };
+  }, [boardId, wsUrl, useSync]);
 
   // 初期値変更時（例: 別ボードへ遷移）にテキストを同期
   useEffect(() => {
@@ -62,14 +102,23 @@ export default function ReactionPresetClient({
   const save = useCallback(async () => {
     setSaving(true);
     setSaved(false);
-    const res = await fetch(`/api/boards/${boardId}/reaction-preset`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ emojis: fullEmojis }),
-    });
+
+    if (providerRef.current) {
+      const yMap = providerRef.current.doc.getMap<string>(REACTION_EMOJI_PRESET_MAP_KEY);
+      yMap.set(REACTION_EMOJI_PRESET_EMOJIS_KEY, JSON.stringify(fullEmojis));
+    }
+
+    const res = await fetch(
+      `/api/workspaces/${workspaceId}/boards/${boardId}/snapshot`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reactionEmojiPreset: fullEmojis }),
+      }
+    );
     setSaving(false);
     if (res.ok) setSaved(true);
-  }, [boardId, fullEmojis]);
+  }, [boardId, workspaceId, fullEmojis]);
 
   const copyToClipboard = useCallback(() => {
     navigator.clipboard.writeText(fullEmojis.join(""));

@@ -1,5 +1,7 @@
+import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { assertWorkspaceAccess } from "@/lib/authz";
 import WorkspaceDetailClient from "./WorkspaceDetailClient";
 
 type Props = { params: Promise<{ workspaceId: string }> };
@@ -7,7 +9,10 @@ type Props = { params: Promise<{ workspaceId: string }> };
 export default async function WorkspacePage({ params }: Props) {
   const { workspaceId } = await params;
   const session = await getServerSession(authOptions);
-  const currentUserId = session?.user?.id ?? "";
+  if (!session?.user?.id) redirect(`/?callbackUrl=${encodeURIComponent(`/workspace/${workspaceId}`)}`);
 
-  return <WorkspaceDetailClient workspaceId={workspaceId} currentUserId={currentUserId} />;
+  const ctx = await assertWorkspaceAccess(workspaceId);
+  if (!ctx) redirect("/access-denied");
+
+  return <WorkspaceDetailClient workspaceId={workspaceId} currentUserId={session.user.id} />;
 }

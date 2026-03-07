@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireLogin, assertWorkspaceOwner, writeAuditLog } from "@/lib/authz";
+import { assertWorkspaceAccess, assertWorkspaceOwner, requireLogin, writeAuditLog } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { deleteFile } from "@/lib/storage";
 import { env } from "@/lib/env";
 
 type Params = { params: Promise<{ workspaceId: string; boardId: string }> };
 
-/** PATCH /api/workspaces/[workspaceId]/boards/[boardId] - trash, restore, or rename（全ログインユーザー可） */
+/** PATCH /api/workspaces/[workspaceId]/boards/[boardId] - trash, restore, or rename */
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { workspaceId, boardId } = await params;
-  const session = await requireLogin();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ctx = await assertWorkspaceAccess(workspaceId);
+  if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const { session } = ctx;
 
   const body = await req.json() as { action: "trash" | "restore" | "rename"; name?: string };
 

@@ -49,6 +49,7 @@ cp nextjs-web/env.local.template nextjs-web/.env.local
 - `NEXTAUTH_SECRET`（任意の長いランダム文字列）
 - `NEXTAUTH_URL`（ローカルなら `http://localhost:3000`）
 - `DATABASE_URL`（PostgreSQL 接続文字列）
+- `SERVER_OWNER_DISCORD_ID`（任意）サーバーオーナーの Discord ID。未設定なら全ログインユーザーが WS にアクセス可。設定時はオーナーのみ WS 一覧・作成が可能。詳しくは [ownership-design.md](docs/ownership-design.md)
 
 ### 3. インフラを起動（Docker）
 
