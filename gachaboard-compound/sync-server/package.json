@@ -1,0 +1,14 @@
+{
+  "name": "gachaboard-compound-sync",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "y-websocket-server",
+    "dev": "y-websocket-server"
+  },
+  "dependencies": {
+    "y-websocket": "^2.1.0",
+    "yjs": "^13.6.0"
+  }
+}

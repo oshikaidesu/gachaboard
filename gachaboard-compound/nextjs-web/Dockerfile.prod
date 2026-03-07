@@ -1,0 +1,43 @@
+# 本番ビルド用 Dockerfile
+# next build を実行し、next start で起動する
+
+FROM node:20-bookworm AS builder
+
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+# prisma generate は DB に接続しないのでダミー URL で可
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+RUN npx prisma generate && npm run build
+
+# -----------------------------------------------------------------------------
+# runner: 本番実行用
+# -----------------------------------------------------------------------------
+FROM node:20-bookworm AS runner
+
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# 本番に必要なファイルのみコピー
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/next.config.ts ./
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./
+COPY --from=builder /app/src/generated ./src/generated
+
+EXPOSE 3000
+
+# 起動時に DB スキーマを適用してから Next.js を起動
+CMD ["sh", "-c", "npx prisma db push --url \"$DATABASE_URL\" --skip-generate 2>/dev/null || true && exec npm run start -- --hostname 0.0.0.0 --port 3000"]

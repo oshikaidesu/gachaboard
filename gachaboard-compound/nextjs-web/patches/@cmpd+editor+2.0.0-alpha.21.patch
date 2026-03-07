@@ -1,0 +1,348 @@
+diff --git a/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js b/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js
+index a589b0a..90e765a 100644
+--- a/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js
++++ b/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js
+@@ -87,6 +87,18 @@ function Canvas({ className }) {
+     [editor]
+   );
+   const events = (0, import_useCanvasEvents.useCanvasEvents)();
++  const { onTouchStart, onTouchEnd, ...restEvents } = events;
++  import_react.default.useEffect(() => {
++    const el = rCanvas.current;
++    if (!el || !onTouchStart || !onTouchEnd) return;
++    const opts = { passive: false };
++    el.addEventListener("touchstart", onTouchStart, opts);
++    el.addEventListener("touchend", onTouchEnd, opts);
++    return () => {
++      el.removeEventListener("touchstart", onTouchStart);
++      el.removeEventListener("touchend", onTouchEnd);
++    };
++  }, [onTouchStart, onTouchEnd]);
+   const shapeSvgDefs = (0, import_state.useValue)(
+     "shapeSvgDefs",
+     () => {
+@@ -117,7 +129,7 @@ function Canvas({ className }) {
+       draggable: false,
+       className: (0, import_classnames.default)("tl-canvas", className),
+       "data-testid": "canvas",
+-      ...events,
++      ...restEvents,
+       children: [
+         Background && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Background, {}),
+         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(GridWrapper, {}),
+diff --git a/node_modules/@cmpd/editor/dist-cjs/lib/components/LiveCollaborators.js b/node_modules/@cmpd/editor/dist-cjs/lib/components/LiveCollaborators.js
+index cc9390c..4c2afd0 100644
+--- a/node_modules/@cmpd/editor/dist-cjs/lib/components/LiveCollaborators.js
++++ b/node_modules/@cmpd/editor/dist-cjs/lib/components/LiveCollaborators.js
+@@ -97,7 +97,8 @@ const Collaborator = (0, import_state.track)(function Collaborator2({
+         color,
+         zoom: zoomLevel,
+         name: userName !== "New User" ? userName : null,
+-        chatMessage
++        chatMessage,
++        meta: latestPresence.meta ?? {}
+       },
+       userId + "_cursor"
+     ) : CollaboratorHint ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+diff --git a/node_modules/@cmpd/editor/dist-cjs/lib/editor/Editor.js b/node_modules/@cmpd/editor/dist-cjs/lib/editor/Editor.js
+index 46ae2f7..4846e7a 100644
+--- a/node_modules/@cmpd/editor/dist-cjs/lib/editor/Editor.js
++++ b/node_modules/@cmpd/editor/dist-cjs/lib/editor/Editor.js
+@@ -128,9 +128,6 @@ class Editor extends import_eventemitter3.EventEmitter {
+     this.shapeUtils = _shapeUtils;
+     this.styleProps = _styleProps;
+     for (const Tool of [...tools]) {
+-      if ((0, import_utils.hasOwnProperty)(this.root.children, Tool.id)) {
+-        throw Error(`Can't override tool with id "${Tool.id}"`);
+-      }
+       this.root.children[Tool.id] = new Tool(this, this.root);
+     }
+     this.environment = new import_EnvironmentManager.EnvironmentManager(this);
+@@ -7079,25 +7076,10 @@ reason:${result.reason}`
+           switch (info.name) {
+             case "key_down": {
+               inputs.keys.add(info.code);
+-              if (!info.ctrlKey && info.code === "Space") {
+-                if (!this.inputs.isPanning) {
+-                  this._prevCursor = this.getInstanceState().cursor.type;
+-                }
+-                this.inputs.isPanning = true;
+-                this.updateInstanceState({
+-                  cursor: { type: this.inputs.isPointing ? "grabbing" : "grab", rotation: 0 }
+-                });
+-              }
+               break;
+             }
+             case "key_up": {
+               inputs.keys.delete(info.code);
+-              if (info.code === "Space" && !this.inputs.buttons.has(1)) {
+-                this.inputs.isPanning = false;
+-                this.updateInstanceState({
+-                  cursor: { type: this._prevCursor, rotation: 0 }
+-                });
+-              }
+               break;
+             }
+             case "key_repeat": {
+diff --git a/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useGestureEvents.js b/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useGestureEvents.js
+index 393e273..8b358a9 100644
+--- a/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useGestureEvents.js
++++ b/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useGestureEvents.js
+@@ -78,7 +78,7 @@ function useGestureEvents(ref) {
+       }
+       (0, import_dom.preventDefault)(event);
+       const delta = (0, import_normalizeWheel.normalizeWheel)(event);
+-      if (delta.x === 0 && delta.y === 0)
++      if (delta.x === 0 && delta.y === 0 && (delta.z ?? 0) === 0)
+         return;
+       const container = editor.getContainer().getBoundingClientRect();
+       const info = {
+@@ -91,7 +91,7 @@ function useGestureEvents(ref) {
+         }),
+         shiftKey: event.shiftKey,
+         altKey: event.altKey,
+-        ctrlKey: event.metaKey || event.ctrlKey
++        ctrlKey: true
+       };
+       editor.dispatch(info);
+     };
+diff --git a/node_modules/@cmpd/editor/dist-cjs/lib/utils/normalizeWheel.js b/node_modules/@cmpd/editor/dist-cjs/lib/utils/normalizeWheel.js
+index 0b10d51..b93caf9 100644
+--- a/node_modules/@cmpd/editor/dist-cjs/lib/utils/normalizeWheel.js
++++ b/node_modules/@cmpd/editor/dist-cjs/lib/utils/normalizeWheel.js
+@@ -22,27 +22,15 @@ __export(normalizeWheel_exports, {
+ });
+ module.exports = __toCommonJS(normalizeWheel_exports);
+ const MAX_ZOOM_STEP = 10;
+-const IS_DARWIN = /Mac|iPod|iPhone|iPad/.test(
+-  // eslint-disable-next-line deprecation/deprecation
+-  typeof window === "undefined" ? "node" : window.navigator.platform
+-);
+ function normalizeWheel(event) {
+-  let { deltaY, deltaX } = event;
+-  let deltaZ = 0;
+-  if (event.ctrlKey || event.altKey || event.metaKey) {
+-    const signY = Math.sign(event.deltaY);
+-    const absDeltaY = Math.abs(event.deltaY);
+-    let dy = deltaY;
+-    if (absDeltaY > MAX_ZOOM_STEP) {
+-      dy = MAX_ZOOM_STEP * signY;
+-    }
+-    deltaZ = dy / 100;
+-  } else {
+-    if (event.shiftKey && !IS_DARWIN) {
+-      deltaX = deltaY;
+-      deltaY = 0;
+-    }
++  let { deltaY } = event;
++  const signY = Math.sign(deltaY);
++  const absDeltaY = Math.abs(deltaY);
++  let dy = deltaY;
++  if (absDeltaY > MAX_ZOOM_STEP) {
++    dy = MAX_ZOOM_STEP * signY;
+   }
+-  return { x: -deltaX, y: -deltaY, z: -deltaZ };
++  const deltaZ = dy / 100;
++  return { x: 0, y: 0, z: -deltaZ };
+ }
+ //# sourceMappingURL=normalizeWheel.js.map
+diff --git a/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs b/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs
+index 9ac80d5..d8e9a4f 100644
+--- a/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs
++++ b/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs
+@@ -50,6 +50,18 @@ function Canvas({ className }) {
+     [editor]
+   );
+   const events = useCanvasEvents();
++  const { onTouchStart, onTouchEnd, ...restEvents } = events;
++  React.useEffect(() => {
++    const el = rCanvas.current;
++    if (!el || !onTouchStart || !onTouchEnd) return;
++    const opts = { passive: false };
++    el.addEventListener("touchstart", onTouchStart, opts);
++    el.addEventListener("touchend", onTouchEnd, opts);
++    return () => {
++      el.removeEventListener("touchstart", onTouchStart);
++      el.removeEventListener("touchend", onTouchEnd);
++    };
++  }, [onTouchStart, onTouchEnd]);
+   const shapeSvgDefs = useValue(
+     "shapeSvgDefs",
+     () => {
+@@ -80,7 +92,7 @@ function Canvas({ className }) {
+       draggable: false,
+       className: classNames("tl-canvas", className),
+       "data-testid": "canvas",
+-      ...events,
++      ...restEvents,
+       children: [
+         Background && /* @__PURE__ */ jsx(Background, {}),
+         /* @__PURE__ */ jsx(GridWrapper, {}),
+diff --git a/node_modules/@cmpd/editor/dist-esm/lib/components/LiveCollaborators.mjs b/node_modules/@cmpd/editor/dist-esm/lib/components/LiveCollaborators.mjs
+index 865c753..9e631f5 100644
+--- a/node_modules/@cmpd/editor/dist-esm/lib/components/LiveCollaborators.mjs
++++ b/node_modules/@cmpd/editor/dist-esm/lib/components/LiveCollaborators.mjs
+@@ -78,7 +78,8 @@ const Collaborator = track(function Collaborator2({
+         color,
+         zoom: zoomLevel,
+         name: userName !== "New User" ? userName : null,
+-        chatMessage
++        chatMessage,
++        meta: latestPresence.meta ?? {}
+       },
+       userId + "_cursor"
+     ) : CollaboratorHint ? /* @__PURE__ */ jsx(
+diff --git a/node_modules/@cmpd/editor/dist-esm/lib/editor/Editor.mjs b/node_modules/@cmpd/editor/dist-esm/lib/editor/Editor.mjs
+index beccefa..f2674b7 100644
+--- a/node_modules/@cmpd/editor/dist-esm/lib/editor/Editor.mjs
++++ b/node_modules/@cmpd/editor/dist-esm/lib/editor/Editor.mjs
+@@ -160,9 +160,6 @@ class Editor extends EventEmitter {
+     this.shapeUtils = _shapeUtils;
+     this.styleProps = _styleProps;
+     for (const Tool of [...tools]) {
+-      if (hasOwnProperty(this.root.children, Tool.id)) {
+-        throw Error(`Can't override tool with id "${Tool.id}"`);
+-      }
+       this.root.children[Tool.id] = new Tool(this, this.root);
+     }
+     this.environment = new EnvironmentManager(this);
+@@ -7119,25 +7116,10 @@ reason:${result.reason}`
+           switch (info.name) {
+             case "key_down": {
+               inputs.keys.add(info.code);
+-              if (!info.ctrlKey && info.code === "Space") {
+-                if (!this.inputs.isPanning) {
+-                  this._prevCursor = this.getInstanceState().cursor.type;
+-                }
+-                this.inputs.isPanning = true;
+-                this.updateInstanceState({
+-                  cursor: { type: this.inputs.isPointing ? "grabbing" : "grab", rotation: 0 }
+-                });
+-              }
+               break;
+             }
+             case "key_up": {
+               inputs.keys.delete(info.code);
+-              if (info.code === "Space" && !this.inputs.buttons.has(1)) {
+-                this.inputs.isPanning = false;
+-                this.updateInstanceState({
+-                  cursor: { type: this._prevCursor, rotation: 0 }
+-                });
+-              }
+               break;
+             }
+             case "key_repeat": {
+diff --git a/node_modules/@cmpd/editor/dist-esm/lib/hooks/useGestureEvents.mjs b/node_modules/@cmpd/editor/dist-esm/lib/hooks/useGestureEvents.mjs
+index e6a1429..6fd6cd4 100644
+--- a/node_modules/@cmpd/editor/dist-esm/lib/hooks/useGestureEvents.mjs
++++ b/node_modules/@cmpd/editor/dist-esm/lib/hooks/useGestureEvents.mjs
+@@ -45,7 +45,7 @@ function useGestureEvents(ref) {
+       }
+       preventDefault(event);
+       const delta = normalizeWheel(event);
+-      if (delta.x === 0 && delta.y === 0)
++      if (delta.x === 0 && delta.y === 0 && (delta.z ?? 0) === 0)
+         return;
+       const container = editor.getContainer().getBoundingClientRect();
+       const info = {
+@@ -58,7 +58,7 @@ function useGestureEvents(ref) {
+         }),
+         shiftKey: event.shiftKey,
+         altKey: event.altKey,
+-        ctrlKey: event.metaKey || event.ctrlKey
++        ctrlKey: true
+       };
+       editor.dispatch(info);
+     };
+diff --git a/node_modules/@cmpd/editor/dist-esm/lib/utils/normalizeWheel.mjs b/node_modules/@cmpd/editor/dist-esm/lib/utils/normalizeWheel.mjs
+index b223bab..f6b68e3 100644
+--- a/node_modules/@cmpd/editor/dist-esm/lib/utils/normalizeWheel.mjs
++++ b/node_modules/@cmpd/editor/dist-esm/lib/utils/normalizeWheel.mjs
+@@ -1,26 +1,14 @@
+ const MAX_ZOOM_STEP = 10;
+-const IS_DARWIN = /Mac|iPod|iPhone|iPad/.test(
+-  // eslint-disable-next-line deprecation/deprecation
+-  typeof window === "undefined" ? "node" : window.navigator.platform
+-);
+ function normalizeWheel(event) {
+-  let { deltaY, deltaX } = event;
+-  let deltaZ = 0;
+-  if (event.ctrlKey || event.altKey || event.metaKey) {
+-    const signY = Math.sign(event.deltaY);
+-    const absDeltaY = Math.abs(event.deltaY);
+-    let dy = deltaY;
+-    if (absDeltaY > MAX_ZOOM_STEP) {
+-      dy = MAX_ZOOM_STEP * signY;
+-    }
+-    deltaZ = dy / 100;
+-  } else {
+-    if (event.shiftKey && !IS_DARWIN) {
+-      deltaX = deltaY;
+-      deltaY = 0;
+-    }
++  let { deltaY } = event;
++  const signY = Math.sign(deltaY);
++  const absDeltaY = Math.abs(deltaY);
++  let dy = deltaY;
++  if (absDeltaY > MAX_ZOOM_STEP) {
++    dy = MAX_ZOOM_STEP * signY;
+   }
+-  return { x: -deltaX, y: -deltaY, z: -deltaZ };
++  const deltaZ = dy / 100;
++  return { x: 0, y: 0, z: -deltaZ };
+ }
+ export {
+   normalizeWheel
+diff --git a/node_modules/@cmpd/editor/src/lib/editor/Editor.ts b/node_modules/@cmpd/editor/src/lib/editor/Editor.ts
+index 390a3a4..7e7d0f5 100644
+--- a/node_modules/@cmpd/editor/src/lib/editor/Editor.ts
++++ b/node_modules/@cmpd/editor/src/lib/editor/Editor.ts
+@@ -262,12 +262,8 @@ export class Editor extends EventEmitter<TLEventMap> {
+ 		this.styleProps = _styleProps
+ 
+ 		// Tools.
+-		// Accept tools from constructor parameters which may not conflict with the root note's default or
+-		// "baked in" tools, select and zoom.
++		// Accept tools from constructor parameters. Later tools may override earlier ones (e.g. custom select).
+ 		for (const Tool of [...tools]) {
+-			if (hasOwnProperty(this.root.children!, Tool.id)) {
+-				throw Error(`Can't override tool with id "${Tool.id}"`)
+-			}
+ 			this.root.children![Tool.id] = new Tool(this, this.root)
+ 		}
+ 
+@@ -9295,34 +9291,11 @@ export class Editor extends EventEmitter<TLEventMap> {
+ 
+ 					switch (info.name) {
+ 						case 'key_down': {
+-							// Add the key from the keys set
+ 							inputs.keys.add(info.code)
+-
+-							// If the space key is pressed (but meta / control isn't!) activate panning
+-							if (!info.ctrlKey && info.code === 'Space') {
+-								if (!this.inputs.isPanning) {
+-									this._prevCursor = this.getInstanceState().cursor.type
+-								}
+-
+-								this.inputs.isPanning = true
+-								this.updateInstanceState({
+-									cursor: { type: this.inputs.isPointing ? 'grabbing' : 'grab', rotation: 0 },
+-								})
+-							}
+-
+ 							break
+ 						}
+ 						case 'key_up': {
+-							// Remove the key from the keys set
+ 							inputs.keys.delete(info.code)
+-
+-							if (info.code === 'Space' && !this.inputs.buttons.has(1)) {
+-								this.inputs.isPanning = false
+-								this.updateInstanceState({
+-									cursor: { type: this._prevCursor, rotation: 0 },
+-								})
+-							}
+-
+ 							break
+ 						}
+ 						case 'key_repeat': {

@@ -1,0 +1,44 @@
+diff --git a/node_modules/@cmpd/tlschema/dist-cjs/styles/TLColorStyle.js b/node_modules/@cmpd/tlschema/dist-cjs/styles/TLColorStyle.js
+index 5273098..53d5b54 100644
+--- a/node_modules/@cmpd/tlschema/dist-cjs/styles/TLColorStyle.js
++++ b/node_modules/@cmpd/tlschema/dist-cjs/styles/TLColorStyle.js
+@@ -145,12 +145,12 @@ const DefaultColorThemePalette = {
+       }
+     },
+     yellow: {
+-      solid: "#fff9b1",
+-      semi: "#fffcd9",
+-      pattern: "#fecb92",
++      solid: "#facc15",
++      semi: "#fde047",
++      pattern: "#f59e0b",
+       highlight: {
+-        srgb: "#fddd00",
+-        p3: "color(display-p3 0.972 0.8705 0.05)"
++        srgb: "#b8860b",
++        p3: "color(display-p3 0.7 0.55 0.02)"
+       }
+     }
+   },
+diff --git a/node_modules/@cmpd/tlschema/dist-esm/styles/TLColorStyle.mjs b/node_modules/@cmpd/tlschema/dist-esm/styles/TLColorStyle.mjs
+index b8028f5..3216038 100644
+--- a/node_modules/@cmpd/tlschema/dist-esm/styles/TLColorStyle.mjs
++++ b/node_modules/@cmpd/tlschema/dist-esm/styles/TLColorStyle.mjs
+@@ -119,12 +119,12 @@ const DefaultColorThemePalette = {
+       }
+     },
+     yellow: {
+-      solid: "#fff9b1",
+-      semi: "#fffcd9",
+-      pattern: "#fecb92",
++      solid: "#facc15",
++      semi: "#fde047",
++      pattern: "#f59e0b",
+       highlight: {
+-        srgb: "#fddd00",
+-        p3: "color(display-p3 0.972 0.8705 0.05)"
++        srgb: "#b8860b",
++        p3: "color(display-p3 0.7 0.55 0.02)"
+       }
+     }
+   },

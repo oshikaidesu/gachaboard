@@ -1,0 +1,12 @@
+---
+description: gachaboard-compound 作業時は dev サーバーを port 3000 で起動しておく
+globs: gachaboard-compound/**/*
+alwaysApply: false
+---
+
+# gachaboard-compound 開発サーバー
+
+gachaboard-compound/nextjs-web で作業する際は、確認・修正の完了まで開発サーバーがポート 3000 で動いていることを前提にする。
+
+- 作業開始時または動作確認前に `npm run dev` を実行する（`gachaboard-compound/nextjs-web` で）
+- ポート 3000 が使用中なら既に起動済み → http://localhost:3000 で確認

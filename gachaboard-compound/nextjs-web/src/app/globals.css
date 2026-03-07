@@ -1,0 +1,209 @@
+@import "tailwindcss";
+
+/* クラスベースのダークモード（.dark を html に付与） */
+@variant dark (&:where(.dark, .dark *));
+
+/* ライトモード・目に優しい配色（柔らかいトーン） */
+:root {
+  --background: #f5f5f4;
+  --foreground: #44403c;
+  color-scheme: light;
+}
+
+/* ダークモード */
+.dark {
+  --background: #1c1917;
+  --foreground: #e7e5e4;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* テキスト選択を通常のWebと同じ見た目に */
+::selection {
+  background: #b3d4fc !important;
+  color: inherit !important;
+}
+::-moz-selection {
+  background: #b3d4fc !important;
+  color: inherit !important;
+}
+/* tldraw 内のテキスト選択も同様に */
+.tl-text-label ::selection,
+.tl-text ::selection,
+.tl-text-content ::selection,
+.tl-rich-text ::selection,
+[class^="tl-"] ::selection,
+[class*=" tl-"] ::selection {
+  background: #b3d4fc !important;
+  color: inherit !important;
+}
+.tl-text-label ::-moz-selection,
+.tl-text ::-moz-selection,
+.tl-text-content ::-moz-selection,
+.tl-rich-text ::-moz-selection,
+[class^="tl-"] ::-moz-selection,
+[class*=" tl-"] ::-moz-selection {
+  background: #b3d4fc !important;
+  color: inherit !important;
+}
+
+/* tldraw テキストエディタ内のリンク青字・下線を無効化 */
+.tl-text a,
+.tl-text-content a,
+.tl-rich-text a,
+[class^="tl-"] a,
+[class*=" tl-"] a {
+  color: inherit !important;
+  text-decoration: none !important;
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+/* リッチテキストツールバーのリンクボタンを非表示 */
+button[data-testid="rich-text.link"] {
+  display: none !important;
+}
+
+/* PeopleMenu の自分の行（新規ユーザー欄）を非表示 */
+.tlui-people-menu__user {
+  display: none !important;
+}
+
+/* トリガーボタンの自分のアバター（常に末尾に追加される）を非表示 */
+.tlui-people-menu__avatars .tlui-people-menu__avatar:last-child {
+  display: none !important;
+}
+
+/* ホワイトボード背景: うっすい方眼（ライト） */
+.tl-canvas .tl-background {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px !important;
+}
+
+/* ダークモード時は compound の tl-theme__dark が適用されるためここでは不要 */
+
+/* モバイル: ドラッグハンドルで shape ドラッグを確実に（touch-action でブラウザのスクロール/ズームを無効化） */
+.tl-shape[data-shape-type='video-player'] [data-drag-handle],
+.tl-shape[data-shape-type='audio-player'] [data-drag-handle] {
+  touch-action: none;
+  min-height: 44px;
+}
+
+/* モバイル: カスタムシェイプ内のインタラクティブ要素でtldrawのパン操作を防ぐ */
+.tl-shape[data-shape-type='video-player'] button,
+.tl-shape[data-shape-type='video-player'] input[type='range'],
+.tl-shape[data-shape-type='audio-player'] button,
+.tl-shape[data-shape-type='audio-player'] input[type='range'],
+.tl-shape[data-shape-type='audio-player'] canvas {
+  touch-action: none;
+}
+
+/* モバイル: 音量バーを確実にタッチ可能に（当たり判定を広げる） */
+.tl-shape[data-shape-type='video-player'] [data-volume-slider],
+.tl-shape[data-shape-type='audio-player'] [data-volume-slider] {
+  pointer-events: auto !important;
+  min-height: 44px;
+}
+.tl-shape[data-shape-type='video-player'] [data-volume-slider] input,
+.tl-shape[data-shape-type='audio-player'] [data-volume-slider] input {
+  pointer-events: auto !important;
+  min-height: 28px;
+}
+
+/* モバイル: コメントリストは縦スクロールのみ許可 */
+.tl-shape[data-shape-type='video-player'] .comment-list,
+.tl-shape[data-shape-type='audio-player'] .comment-list {
+  touch-action: pan-y;
+}
+
+/* geo シェイプ: テキストの白縁（text-shadow）を無効化 */
+.tl-shape[data-shape-type='geo'] .tl-text-label {
+  text-shadow: none !important;
+}
+
+/* geo シェイプ: 編集中のみテキストラベルに pointer-events を復元 */
+.tl-shape[data-shape-type='geo'] .tl-text-label[data-isediting='true'],
+.tl-shape[data-shape-type='geo'] .tl-text-label[data-isediting='true'] .tl-text-label__inner {
+  pointer-events: auto !important;
+}
+
+/* geo SVG-only レイヤー: TextLabel を完全に非表示（display:none の要素は focus 不可→ IME 競合防止） */
+.geo-svg-only .tl-text-label {
+  display: none !important;
+}
+
+/* 画像シェイプ: object-fit を contain に変更してクロップを防ぐ */
+.tl-image {
+  object-fit: contain !important;
+  background-size: contain !important;
+}
+
+/* 巻き戻し系（Undo/Redo/Trash等）を少し小さく */
+.tlui-toolbar__extras__controls .tlui-button__icon,
+.tlui-menu-zone .tlui-buttons__horizontal > .tlui-button__icon {
+  height: 32px !important;
+  width: 32px !important;
+  min-height: 32px !important;
+  min-width: 32px !important;
+}
+.tlui-toolbar__extras__controls .tlui-button__icon::after,
+.tlui-menu-zone .tlui-buttons__horizontal > .tlui-button__icon::after {
+  inset: 2px !important;
+}
+
+/* tldraw デフォルトのリサイズハンドルを非表示（シェイプ内ハンドルに統合済み） */
+.tl-corner-handle {
+  display: none !important;
+}
+
+/* 回転ハンドルを非表示 */
+.tl-rotate-corner,
+.tl-mobile-rotate__bg,
+.tl-mobile-rotate__fg {
+  display: none !important;
+}
+
+/* カスタム動画シェイプのネイティブコントロールを完全非表示 */
+.tl-shape[data-shape-type='video-player'] video {
+  pointer-events: none !important;
+  -webkit-appearance: none !important;
+  background: transparent !important;
+}
+.tl-shape[data-shape-type='video-player'] video::-webkit-media-controls,
+.tl-shape[data-shape-type='video-player'] video::-webkit-media-controls-enclosure,
+.tl-shape[data-shape-type='video-player'] video::-webkit-media-controls-panel,
+.tl-shape[data-shape-type='video-player'] video::-webkit-media-controls-overlay-play-button,
+.tl-shape[data-shape-type='video-player'] video::-webkit-media-controls-start-playback-button,
+.tl-shape[data-shape-type='video-player'] video::-webkit-media-controls-play-button,
+.tl-shape[data-shape-type='video-player'] video::-webkit-media-controls-timeline,
+.tl-shape[data-shape-type='video-player'] video::-webkit-media-controls-current-time-display,
+.tl-shape[data-shape-type='video-player'] video::-webkit-media-controls-time-remaining-display,
+.tl-shape[data-shape-type='video-player'] video::-webkit-media-controls-mute-button,
+.tl-shape[data-shape-type='video-player'] video::-webkit-media-controls-volume-slider,
+.tl-shape[data-shape-type='video-player'] video::-webkit-media-controls-fullscreen-button {
+  display: none !important;
+  -webkit-appearance: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}

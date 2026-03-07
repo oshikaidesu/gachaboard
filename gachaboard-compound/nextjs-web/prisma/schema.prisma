@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String           @id @default(cuid())
+  discordId     String           @unique
+  discordName   String
+  avatarUrl     String?
+  workspaces    Workspace[]      @relation("WorkspaceOwner")
+  uploadedAssets Asset[]
+  mediaComments MediaComment[]
+  reactions     ObjectReaction[]
+  auditLogs     AuditLog[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+model Workspace {
+  id          String    @id @default(cuid())
+  ownerUserId String
+  name        String
+  description String?
+  deletedAt   DateTime?
+  owner       User      @relation("WorkspaceOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  boards      Board[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([ownerUserId, createdAt])
+  @@index([deletedAt])
+}
+
+model Board {
+  id                   String           @id @default(cuid())
+  workspaceId          String
+  name                 String
+  snapshotData         Json?
+  reactionEmojiPreset  Json?            // string[] | null。null ならデフォルト使用
+  deletedAt            DateTime?
+  workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  assets        Asset[]
+  connectors    Connector[]
+  reactions     ObjectReaction[]
+  comments      MediaComment[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([workspaceId, createdAt])
+  @@index([deletedAt])
+}
+
+model Asset {
+  id              String         @id @default(cuid())
+  workspaceId     String
+  boardId         String?
+  uploaderId      String
+  kind            String
+  mimeType        String
+  fileName        String
+  sizeBytes       BigInt
+  storageKey      String         @unique
+  storageBackend  String         @default("local") // "local" | "s3"
+  deletedAt       DateTime?
+  lastKnownX   Float?
+  lastKnownY   Float?
+  board        Board?         @relation(fields: [boardId], references: [id], onDelete: SetNull)
+  uploader     User           @relation(fields: [uploaderId], references: [id], onDelete: Restrict)
+  comments     MediaComment[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([workspaceId, createdAt])
+  @@index([boardId, createdAt])
+  @@index([deletedAt])
+}
+
+model MediaComment {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  boardId      String?
+  assetId      String
+  authorUserId String
+  timeSec      Float
+  body         String
+  deletedAt    DateTime?
+  board        Board?    @relation(fields: [boardId], references: [id], onDelete: SetNull)
+  asset        Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  author       User      @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([workspaceId, createdAt])
+  @@index([assetId, timeSec])
+}
+
+model ObjectReaction {
+  id          String    @id @default(cuid())
+  workspaceId String
+  boardId     String
+  shapeId     String
+  emoji       String
+  userId      String
+  deletedAt   DateTime?
+  board       Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([boardId, shapeId, emoji, userId])
+  @@index([workspaceId, createdAt])
+  @@index([boardId])
+}
+
+model Connector {
+  id            String    @id @default(cuid())
+  workspaceId   String
+  boardId       String
+  sourceShapeId String
+  sourceAnchor  String
+  targetShapeId String
+  targetAnchor  String
+  routingMode   String    @default("orthogonal")
+  waypoints     Json?
+  deletedAt     DateTime?
+  board         Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([workspaceId, createdAt])
+  @@index([boardId])
+}
+
+model S3UploadSession {
+  id          String   @id @default(cuid())
+  uploadId    String   @unique
+  s3Key       String
+  storageKey  String
+  boardId     String
+  uploaderId  String
+  fileName    String
+  mimeType    String
+  totalSize   BigInt
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  workspaceId String?
+  action      String
+  target      String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([action, createdAt])
+}

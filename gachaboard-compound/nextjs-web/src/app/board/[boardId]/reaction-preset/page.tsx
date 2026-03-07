@@ -1,0 +1,45 @@
+import { db } from "@/lib/db";
+import { notFound, redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import ReactionPresetClient from "./ReactionPresetClient";
+
+type Props = {
+  params: Promise<{ boardId: string }>;
+};
+
+export default async function ReactionPresetPage({ params }: Props) {
+  const { boardId } = await params;
+
+  const [board, session] = await Promise.all([
+    db.board.findUnique({
+      where: { id: boardId },
+      select: {
+        id: true,
+        name: true,
+        workspaceId: true,
+        reactionEmojiPreset: true,
+      },
+    }),
+    getServerSession(authOptions),
+  ]);
+
+  if (!board) notFound();
+
+  if (!session?.user?.id) {
+    redirect(`/?callbackUrl=${encodeURIComponent(`/board/${boardId}/reaction-preset`)}`);
+  }
+
+  const initialEmojis = Array.isArray(board.reactionEmojiPreset) && board.reactionEmojiPreset.length > 0
+    ? (board.reactionEmojiPreset as string[])
+    : null;
+
+  return (
+    <ReactionPresetClient
+      boardId={board.id}
+      boardName={board.name}
+      workspaceId={board.workspaceId}
+      initialEmojis={initialEmojis}
+    />
+  );
+}
