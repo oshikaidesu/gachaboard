@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import type { ApiWorkspace } from "@shared/apiTypes";
 import { Identicon, getMinidenticonColor } from "../components/ui/Identicon";
+import { InviteLinkInline } from "../components/ui/InviteLinkInline";
 import { MoreVerticalIcon } from "../components/ui/MoreVerticalIcon";
 import { RenameModal } from "../components/ui/RenameModal";
 
@@ -179,21 +180,25 @@ export default function WorkspacesClient({ currentUserId }: { currentUserId: str
             return (
               <li key={ws.id} className="group relative">
                 {tab === "active" ? (
-                  <Link href={`/workspace/${ws.id}`}
-                    className="flex flex-col gap-2 rounded-lg border-2 bg-stone-100 p-5 pr-12 transition hover:border-zinc-400 hover:bg-stone-200/50 dark:bg-[#212529] dark:hover:border-slate-500 dark:hover:bg-slate-800/80"
-                    style={{ borderColor: getMinidenticonColor(ws.id, 45, 58) }}>
-                    <div className="flex items-center gap-3">
-                      <Identicon value={ws.id} size={36} />
-                      <span className="font-semibold dark:text-slate-200">{ws.name}</span>
-                    </div>
-                    {ws.description && <span className="text-xs text-zinc-500 dark:text-slate-400">{ws.description}</span>}
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-zinc-400 dark:text-slate-500">ボード {ws._count.boards}件</span>
-                      <span className="text-xs text-zinc-400 dark:text-slate-500">
-                        {isOwner ? "自分" : ws.ownerName}
-                      </span>
-                    </div>
-                  </Link>
+                  <div
+                    className="flex flex-col rounded-lg border-2 bg-stone-100 p-5 pr-12 transition hover:border-zinc-400 hover:bg-stone-200/50 dark:bg-[#212529] dark:hover:border-slate-500 dark:hover:bg-slate-800/80"
+                    style={{ borderColor: getMinidenticonColor(ws.id, 45, 58) }}
+                  >
+                    <Link href={`/workspace/${ws.id}`} className="flex flex-col gap-2">
+                      <div className="flex items-center gap-3">
+                        <Identicon value={ws.id} size={36} />
+                        <span className="font-semibold dark:text-slate-200">{ws.name}</span>
+                      </div>
+                      {ws.description && <span className="text-xs text-zinc-500 dark:text-slate-400">{ws.description}</span>}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-zinc-400 dark:text-slate-500">ボード {ws._count.boards}件</span>
+                        <span className="text-xs text-zinc-400 dark:text-slate-500">
+                          {isOwner ? "自分" : ws.ownerName}
+                        </span>
+                      </div>
+                    </Link>
+                    {isOwner && <InviteLinkInline workspaceId={ws.id} />}
+                  </div>
                 ) : (
                   <div className="flex flex-col gap-2 rounded-lg border-2 bg-stone-100 p-5 pr-12 opacity-60 dark:bg-[#212529]"
                     style={{ borderColor: getMinidenticonColor(ws.id, 45, 58) }}>
