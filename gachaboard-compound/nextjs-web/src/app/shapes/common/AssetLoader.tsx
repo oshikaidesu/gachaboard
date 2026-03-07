@@ -2,11 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { POLLING_INTERVAL_ASSET_LOADER } from "@shared/constants";
+import { useBoardContext } from "@/app/components/board/BoardContext";
 
 type Props = {
   assetId: string;
   children: React.ReactNode;
   converted?: boolean;
+  /** 削除済み表示時にファイル名を表示する（任意） */
+  fileName?: string | null;
 };
 
 type Status = "loading" | "transcoding" | "ready" | "unavailable";
@@ -15,8 +18,9 @@ type Status = "loading" | "transcoding" | "ready" | "unavailable";
  * アセットファイルが取得可能になるまでローディング表示を出す共通ラッパー。
  * HEAD 200 → ready、HEAD 202 → 変換中（ポーリング継続）、HEAD 404/410 等 → 利用不可（削除済み等）、HEAD その他 → ローディング継続
  */
-export function AssetLoader({ assetId, children, converted }: Props) {
+export function AssetLoader({ assetId, children, converted, fileName }: Props) {
   const [status, setStatus] = useState<Status>("loading");
+  const { boardId, workspaceId } = useBoardContext();
 
   useEffect(() => {
     // assetId が空 = アップロード中。親がシェイプを更新するまで待つだけ
@@ -56,23 +60,48 @@ export function AssetLoader({ assetId, children, converted }: Props) {
   if (status === "ready") return <>{children}</>;
 
   if (status === "unavailable") {
+    const showRestoreLink = boardId && workspaceId;
     return (
-      <div style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        borderRadius: 8,
-        background: "rgba(0,0,0,0.06)",
-        color: "#94a3b8",
-        fontSize: 12,
-        fontFamily: "system-ui, sans-serif",
-      }}>
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          borderRadius: 8,
+          background: "rgba(0,0,0,0.06)",
+          color: "#94a3b8",
+          fontSize: 12,
+          fontFamily: "system-ui, sans-serif",
+          pointerEvents: "auto",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
         <span style={{ opacity: 0.6, fontSize: 16 }}>⚠</span>
         <span>ファイルが削除されたか存在しません</span>
+        {fileName?.trim() && (
+          <span style={{ fontSize: 11, opacity: 0.9, maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            「{fileName}」
+          </span>
+        )}
+        {showRestoreLink && (
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              window.location.href = `/board/${boardId}/trash`;
+            }}
+            className="mt-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700 cursor-pointer"
+            style={{ pointerEvents: "auto", position: "relative", zIndex: 2 }}
+          >
+            ゴミ箱から復元する
+          </button>
+        )}
       </div>
     );
   }
@@ -89,11 +118,10 @@ export function AssetLoader({ assetId, children, converted }: Props) {
       justifyContent: "center",
       gap: 8,
       borderRadius: 8,
-      // 変換中はサムネイルを背景に薄く表示
-      backgroundImage: isTranscoding ? `url(/api/assets/${assetId}/thumbnail)` : undefined,
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      background: isTranscoding ? undefined : "rgba(0,0,0,0.06)",
+      backgroundColor: isTranscoding ? "transparent" : "rgba(0,0,0,0.06)",
+      backgroundImage: isTranscoding ? `url(/api/assets/${assetId}/thumbnail)` : "none",
+      backgroundSize: isTranscoding ? "cover" : undefined,
+      backgroundPosition: isTranscoding ? "center" : undefined,
       color: "#94a3b8",
       fontSize: 12,
       fontFamily: "system-ui, sans-serif",

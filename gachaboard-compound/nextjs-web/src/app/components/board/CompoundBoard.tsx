@@ -156,9 +156,25 @@ export default function CompoundBoard({
       const cleanUrl = window.location.pathname;
       window.history.replaceState({}, "", cleanUrl);
 
+      /** キャンバスに既にこの assetId を参照するシェイプがあるか */
+      const hasShapeForAsset = (dbAssetId: string): boolean => {
+        for (const shape of editor.getCurrentPageShapes()) {
+          const aid = (shape.props as { assetId?: string }).assetId;
+          if (!aid) continue;
+          if (aid === dbAssetId) return true;
+          if (aid.startsWith("asset:")) {
+            const assetRecord = editor.store.get(aid as never);
+            const src = (assetRecord as { props?: { src?: string } } | undefined)?.props?.src ?? "";
+            if (src.includes(`/api/assets/${dbAssetId}/file`)) return true;
+          }
+        }
+        return false;
+      };
+
       let lastPosition: { x: number; y: number } | null = null;
 
       for (const assetId of assetIds) {
+        if (hasShapeForAsset(assetId)) continue;
         try {
           const res = await fetch(`/api/assets/${assetId}`);
           if (!res.ok) continue;

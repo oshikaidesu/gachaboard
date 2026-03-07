@@ -80,7 +80,7 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
         }}
       >
         <CreatorLabel name={getCreatedBy(shape)} rank={getCreationRank(editor, shape)} />
-        <AssetLoader assetId={shape.props.assetId}>
+        <AssetLoader assetId={shape.props.assetId} fileName={shape.props.fileName}>
         <WheelGuard
           shapeId={shape.id}
           style={{

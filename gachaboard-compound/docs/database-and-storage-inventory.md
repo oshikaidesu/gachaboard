@@ -48,6 +48,14 @@ flowchart TB
 | **Board** | ホワイトボード | `snapshotData`（records + reactions + comments + reactionEmojiPreset） |
 | **Asset** | アップロードファイルメタ | `workspaceId` + `boardId?`。`storageKey` で実体参照 |
 | **S3UploadSession** | S3 マルチパート再開用 | `uploadId` 一意。完了後に削除 |
+
+#### Asset trash の 10 分猶予
+
+キャンバス上のシェイプ削除時、アセットは**即座に trash されない**。10 分の猶予を持たせる。その間に Undo されたら trash をキャンセルする。タブを閉じる / ボード離脱時は即時フラッシュ。
+
+- **理由**: Undo（元に戻す）時に DB がすでに trash 済みだと、ファイル API が 404 を返し「ファイルが削除されました」となる問題を避けるため
+- **実装**: `useShapeDeletePositionCapture`
+- **補足**: 削除してからゴミ箱に反映されるまで最大 10 分かかる場合がある。同期エラーではない
 | **AuditLog** | 監査ログ | `action`, `target`, `metadata` |
 
 **注**: リアクション・コメントは Y.Doc に統合済み（ObjectReaction, MediaComment テーブルは削除）。Connector も削除（アローは tldraw shape で Y.Doc 内）。

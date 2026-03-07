@@ -508,7 +508,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
         display: "flex",
         flexDirection: "column",
         gap: 0,
-        borderRadius: 10,
+        borderRadius: 12,
         background: BG,
         border: "1px solid #e2e8f0",
         boxSizing: "border-box",
@@ -982,7 +982,7 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<VideoShape & TLBaseBoxShape
         }}
       >
         <CreatorLabel name={getCreatedBy(shape)} rank={getCreationRank(editor, shape)} />
-        <AssetLoader assetId={p.assetId}>
+        <AssetLoader assetId={p.assetId} fileName={p.fileName}>
           <VideoPlayer shape={shape} />
         </AssetLoader>
         <ShapeReactionPanel shapeId={shape.id} />

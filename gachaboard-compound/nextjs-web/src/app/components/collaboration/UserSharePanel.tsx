@@ -15,12 +15,14 @@ type User = { id: string; name: string; color: string; avatarUrl?: string | null
 
 function getUsers(provider: WebsocketProvider): User[] {
   const states = provider.awareness.getStates();
+  const seen = new Set<string>();
   const users: User[] = [];
   states.forEach((state) => {
     const user = state?.user as { id?: string; name?: string; color?: string; avatarUrl?: string | null } | undefined;
-    if (user?.name) {
+    if (user?.name && user.id && !seen.has(user.id)) {
+      seen.add(user.id);
       users.push({
-        id: user.id ?? "unknown",
+        id: user.id,
         name: user.name,
         color: user.color ?? "#888888",
         avatarUrl: user.avatarUrl ?? null,

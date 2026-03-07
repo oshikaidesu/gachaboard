@@ -497,7 +497,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         gap: 6,
         borderRadius: 12,
         background: "#ffffff",
-        border: "1px solid #e5e7eb",
+        border: "1px solid #e2e8f0",
         padding: "10px 12px",
         boxSizing: "border-box",
         boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
@@ -837,7 +837,7 @@ export class AudioShapeUtil extends BaseBoxShapeUtil<AudioShape> {
         }}
       >
         <CreatorLabel name={getCreatedBy(shape)} rank={getCreationRank(editor, shape)} />
-        <AssetLoader assetId={shape.props.assetId} converted={isWav}>
+        <AssetLoader assetId={shape.props.assetId} converted={isWav} fileName={shape.props.fileName}>
           <AudioPlayer shape={shape} />
         </AssetLoader>
         <ShapeReactionPanel shapeId={shape.id} />

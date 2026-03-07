@@ -201,7 +201,7 @@ export class FileIconShapeUtil extends BaseBoxShapeUtil<FileIconShape> {
             h={shape.props.h}
           />
         ) : (
-          <AssetLoader assetId={shape.props.assetId}>
+          <AssetLoader assetId={shape.props.assetId} fileName={shape.props.fileName}>
             <FileIconContent shape={shape} />
           </AssetLoader>
         )}
