@@ -495,7 +495,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         display: "flex",
         flexDirection: "column",
         gap: 6,
-        borderRadius: 12,
+        borderRadius: 9,
         background: "#ffffff",
         border: "1px solid #e2e8f0",
         padding: "10px 12px",

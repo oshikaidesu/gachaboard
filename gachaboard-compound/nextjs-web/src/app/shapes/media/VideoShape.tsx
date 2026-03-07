@@ -508,7 +508,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
         display: "flex",
         flexDirection: "column",
         gap: 0,
-        borderRadius: 12,
+        borderRadius: 9,
         background: BG,
         border: "1px solid #e2e8f0",
         boxSizing: "border-box",
