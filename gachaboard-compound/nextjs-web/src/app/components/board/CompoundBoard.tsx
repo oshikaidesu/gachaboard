@@ -267,17 +267,17 @@ export default function CompoundBoard({
             onWheel={handleHeaderWheel}
             onMouseDown={handleHeaderMouseDown}
             onClickCapture={handleHeaderClickCapture}
-            className="flex touch-pan-x flex-nowrap select-none items-center gap-3 overflow-x-auto border-b border-zinc-200 bg-white px-4 py-2 z-10 whitespace-nowrap [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [-webkit-overflow-scrolling:touch] dark:border-zinc-700 dark:bg-zinc-900"
+            className="flex touch-pan-x flex-nowrap select-none items-center gap-3 overflow-x-auto border-b border-zinc-200 bg-white px-4 py-2 z-10 whitespace-nowrap [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [-webkit-overflow-scrolling:touch] dark:border-slate-600 dark:bg-slate-900"
           >
-            <Link href={`/workspace/${workspaceId}`} className="text-xs text-zinc-500 hover:underline dark:text-zinc-400 dark:hover:text-zinc-300">
+            <Link href={`/workspace/${workspaceId}`} className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline dark:text-slate-300 dark:hover:text-white">
               ← 戻る
             </Link>
             <div className="flex items-center gap-2">
               <Identicon value={boardId} size={24} />
-              <span className="text-xs text-zinc-600 font-medium dark:text-zinc-300">{boardName || "無題のボード"}</span>
-              <span className="text-xs text-zinc-400 dark:text-zinc-500">({boardId.slice(0, 8)})</span>
+              <span className="text-xs font-medium text-zinc-900 dark:text-white">{boardName || "無題のボード"}</span>
+              <span className="text-xs text-zinc-400 dark:text-slate-400">({boardId.slice(0, 8)})</span>
             </div>
-            <span className="ml-auto flex items-center gap-3 text-xs text-zinc-400 dark:text-zinc-500">
+            <span className="ml-auto flex items-center gap-3 text-xs text-zinc-500 dark:text-slate-400">
               {syncStatus ?? "ローカル保存"}
             </span>
             <div ref={setHeaderActionsEl} className="contents" />
@@ -291,7 +291,7 @@ export default function CompoundBoard({
               onClick={() =>
                 navigator.clipboard.writeText(typeof window !== "undefined" ? window.location.href : "")
               }
-              className="rounded-md border border-zinc-300 bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-800 shadow-sm hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+              className="rounded-md border border-zinc-300 bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-200 dark:border-slate-600 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
             >
               URLをコピー
             </button>

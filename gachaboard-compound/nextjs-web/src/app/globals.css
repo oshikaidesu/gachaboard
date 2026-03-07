@@ -91,6 +91,19 @@ button[data-testid="rich-text.link"] {
   display: none !important;
 }
 
+/* ワークフロー選択ページ: うっすい方眼（ホワイトボードと同じ） */
+.bg-grid-subtle {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.dark .bg-grid-subtle {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+}
+
 /* ホワイトボード背景: うっすい方眼（ライト） */
 .tl-canvas .tl-background {
   background-image:

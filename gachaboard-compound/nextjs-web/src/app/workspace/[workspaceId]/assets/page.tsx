@@ -109,48 +109,51 @@ export default function AssetsPage() {
 
   return (
     <main
-      className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 p-8"
+      className="flex min-h-screen flex-col bg-stone-100 bg-grid-subtle dark:bg-[#212529]"
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
     >
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold dark:text-zinc-100">アセット管理</h1>
-          <Link href={`/workspace/${workspaceId}`} className="text-xs text-zinc-400 hover:underline dark:text-zinc-500 dark:hover:text-zinc-400">
-            ← ボード一覧に戻る
-          </Link>
-        </div>
-        {tab === "active" && (
-          <div className="flex flex-col items-end gap-1">
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              className="rounded bg-black px-4 py-2 text-sm text-white hover:bg-zinc-800 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
-              {uploading ? "アップロード中..." : "+ アップロード"}
-            </button>
-            <span className="text-xs text-zinc-400 dark:text-zinc-500">またはここにファイルをドロップ</span>
+      {/* ヘッダー（ライト: 白、ダーク: ネイビー） */}
+      <header className="border-b border-zinc-200 bg-white px-4 py-4 dark:border-slate-600 dark:bg-slate-900">
+        <div className="mx-auto flex max-w-5xl items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-zinc-900 dark:text-white">アセット管理</h1>
+            <Link href={`/workspace/${workspaceId}`} className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline dark:text-slate-300 dark:hover:text-white">
+              ← ボード一覧に戻る
+            </Link>
           </div>
-        )}
-        {/* webkitdirectory を付けないことでディレクトリ選択を防ぐ */}
+          {tab === "active" && (
+            <div className="flex flex-col items-end gap-1">
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-40 dark:bg-white/20 dark:hover:bg-white/30"
+              >
+                {uploading ? "アップロード中..." : "+ アップロード"}
+              </button>
+              <span className="text-xs text-zinc-400 dark:text-slate-400">またはここにファイルをドロップ</span>
+            </div>
+          )}
+        </div>
+        <div className="mx-auto mt-3 flex max-w-5xl gap-2 border-t border-zinc-200 pt-3 dark:border-slate-600/50">
+          {(["active", "trash"] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-4 py-2 text-sm font-medium ${tab === t ? "border-b-2 border-zinc-900 text-zinc-900 dark:border-white dark:text-white" : "text-zinc-500 hover:text-zinc-700 dark:text-slate-400 dark:hover:text-slate-200"}`}>
+              {t === "active" ? "アクティブ" : <><TwemojiImg emoji="🗑" size={14} style={{ verticalAlign: "text-bottom" }} /> ゴミ箱</>}
+            </button>
+          ))}
+        </div>
         <input ref={fileRef} type="file" multiple className="hidden"
           onChange={(e) => e.target.files && upload(e.target.files)}
         />
       </header>
 
-      <div className="flex gap-2 border-b border-zinc-200 dark:border-zinc-700">
-        {(["active", "trash"] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium ${tab === t ? "border-b-2 border-black text-black dark:border-zinc-100 dark:text-zinc-100" : "text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-400"}`}>
-            {t === "active" ? "アクティブ" : <><TwemojiImg emoji="🗑" size={14} style={{ verticalAlign: "text-bottom" }} /> ゴミ箱</>}
-          </button>
-        ))}
-      </div>
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-8">
 
       {/* プレビューモーダル */}
       {preview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/80" onClick={() => setPreview(null)}>
-          <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl dark:border dark:border-zinc-700 dark:bg-zinc-900" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl dark:border dark:border-slate-600 dark:bg-slate-800" onClick={(e) => e.stopPropagation()}>
             {preview.kind === "image" || preview.kind === "gif" ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={`/api/assets/${preview.id}/file`} alt={preview.fileName} className="max-h-[70vh] w-full object-contain rounded" />
@@ -163,17 +166,17 @@ export default function AssetsPage() {
                 isConverted={preview.mimeType === "audio/wav"}
               />
             ) : (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">プレビューできないファイルです。</p>
+              <p className="text-sm text-zinc-500 dark:text-slate-400">プレビューできないファイルです。</p>
             )}
-            <button onClick={() => setPreview(null)} className="mt-4 text-sm text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-400">閉じる</button>
+            <button onClick={() => setPreview(null)} className="mt-4 text-sm text-zinc-400 hover:text-zinc-600 dark:text-slate-400 dark:hover:text-slate-300">閉じる</button>
           </div>
         </div>
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-sm text-zinc-400 dark:text-zinc-500">読み込み中...</div>
+        <div className="flex items-center justify-center py-16 text-sm text-zinc-400 dark:text-slate-400">読み込み中...</div>
       ) : assets.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-zinc-600 dark:text-zinc-400">
+        <div className="rounded-lg border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-slate-600 dark:text-slate-400">
           {tab === "active"
             ? "アセットがありません。「+ アップロード」またはファイルをここにドロップしてください。"
             : "ゴミ箱は空です。"}
@@ -181,10 +184,10 @@ export default function AssetsPage() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {assets.map((a) => (
-            <div key={a.id} className={`group relative rounded-lg border border-zinc-200 p-4 dark:border-zinc-700 dark:bg-zinc-900/50 ${tab === "trash" ? "opacity-60" : ""}`}>
+            <div key={a.id} className={`group relative rounded-lg border border-zinc-200 bg-stone-100 p-4 dark:border-slate-600 dark:bg-[#212529] ${tab === "trash" ? "opacity-60" : ""}`}>
               {/* サムネイル */}
               <div
-                className={`mb-3 flex h-32 items-center justify-center rounded bg-zinc-100 overflow-hidden dark:bg-zinc-800 ${isMedia(a) ? "cursor-pointer" : ""}`}
+                className={`mb-3 flex h-32 items-center justify-center rounded bg-zinc-100 overflow-hidden dark:bg-slate-700 ${isMedia(a) ? "cursor-pointer" : ""}`}
                 onClick={() => isMedia(a) && setPreview(a)}
               >
                 {a.kind === "image" || a.kind === "gif" ? (
@@ -195,15 +198,15 @@ export default function AssetsPage() {
                 )}
               </div>
 
-              <p className="truncate text-sm font-medium dark:text-zinc-200" title={a.fileName}>{a.fileName}</p>
-              <p className="text-xs text-zinc-400 dark:text-zinc-500">{formatSize(a.sizeBytes)} · {a.uploader.name}</p>
+              <p className="truncate text-sm font-medium dark:text-slate-200" title={a.fileName}>{a.fileName}</p>
+              <p className="text-xs text-zinc-400 dark:text-slate-500">{formatSize(a.sizeBytes)} · {a.uploader.name}</p>
 
               <div className="mt-2 flex gap-1 flex-wrap">
                 {tab === "active" && (
                   <a
                     href={`/api/assets/${a.id}/file`}
                     download={a.fileName}
-                    className="rounded border border-zinc-200 px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                    className="rounded border border-zinc-200 px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
                     onClick={(e) => e.stopPropagation()}
                   >
                     DL
@@ -211,17 +214,17 @@ export default function AssetsPage() {
                 )}
                 {tab === "active" ? (
                   <button onClick={() => trash(a.id)}
-                    className="rounded border border-zinc-200 px-2 py-1 text-xs text-zinc-400 hover:bg-red-50 hover:text-red-500 dark:border-zinc-600 dark:hover:bg-red-950/50 dark:hover:text-red-400">
+                    className="rounded border border-zinc-200 px-2 py-1 text-xs text-zinc-400 hover:bg-red-50 hover:text-red-500 dark:border-slate-600 dark:hover:bg-red-950/50 dark:hover:text-red-400">
                     ゴミ箱へ
                   </button>
                 ) : (
                   <>
                     <button onClick={() => restore(a.id)}
-                      className="rounded border border-zinc-200 px-2 py-1 text-xs text-zinc-500 hover:bg-green-50 hover:text-green-600 dark:border-zinc-600 dark:hover:bg-green-950/50 dark:hover:text-green-400">
+                      className="rounded border border-zinc-200 px-2 py-1 text-xs text-zinc-500 hover:bg-green-50 hover:text-green-600 dark:border-slate-600 dark:hover:bg-green-950/50 dark:hover:text-green-400">
                       復元
                     </button>
                     <button onClick={() => deletePermanently(a.id, a.fileName)}
-                      className="rounded border border-zinc-200 px-2 py-1 text-xs text-red-400 hover:bg-red-50 hover:text-red-600 dark:border-zinc-600 dark:hover:bg-red-950/50 dark:hover:text-red-300">
+                      className="rounded border border-zinc-200 px-2 py-1 text-xs text-red-400 hover:bg-red-50 hover:text-red-600 dark:border-slate-600 dark:hover:bg-red-950/50 dark:hover:text-red-300">
                       完全削除
                     </button>
                   </>
@@ -231,6 +234,7 @@ export default function AssetsPage() {
           ))}
         </div>
       )}
+      </div>
     </main>
   );
 }

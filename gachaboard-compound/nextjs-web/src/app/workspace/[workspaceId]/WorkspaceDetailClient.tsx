@@ -124,70 +124,76 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
   const list = tab === "active" ? active : trashed;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-6 p-8">
-      <header className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <Identicon value={workspaceId} size={40} />
-            <h1 className="text-2xl font-semibold dark:text-zinc-100">
-              {wsInfo ? wsInfo.name : "ボード一覧"}
-            </h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link href="/workspaces" className="text-xs text-zinc-400 hover:underline dark:text-zinc-500 dark:hover:text-zinc-400">
-              ← ワークスペース一覧に戻る
-            </Link>
-            <Link href={`/workspace/${workspaceId}/assets`} className="text-xs text-zinc-400 hover:underline dark:text-zinc-500 dark:hover:text-zinc-400">
-              アセット管理 →
-            </Link>
-            {wsInfo && (
-              <span className="text-xs text-zinc-400 dark:text-zinc-500">
-                オーナー: {isOwner ? "自分" : wsInfo.ownerName}
-              </span>
+    <main className="flex min-h-screen flex-col bg-stone-100 bg-grid-subtle dark:bg-[#212529]">
+      {/* ヘッダー（ライト: 白、ダーク: ネイビー） */}
+      <header className="border-b border-zinc-200 bg-white px-4 py-4 dark:border-slate-600 dark:bg-slate-900">
+        <div className="mx-auto flex max-w-4xl flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3">
+                <Identicon value={workspaceId} size={40} />
+                <h1 className="text-2xl font-semibold text-zinc-900 dark:text-white">
+                  {wsInfo ? wsInfo.name : "ボード一覧"}
+                </h1>
+              </div>
+              <div className="mt-1 flex items-center gap-3">
+                <Link href="/workspaces" className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline dark:text-slate-300 dark:hover:text-white">
+                  ← ワークスペース一覧に戻る
+                </Link>
+                <Link href={`/workspace/${workspaceId}/assets`} className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline dark:text-slate-300 dark:hover:text-white">
+                  アセット管理 →
+                </Link>
+                {wsInfo && (
+                  <span className="text-xs text-zinc-400 dark:text-slate-400">
+                    オーナー: {isOwner ? "自分" : wsInfo.ownerName}
+                  </span>
+                )}
+              </div>
+            </div>
+            {tab === "active" && (
+              <button onClick={() => setShowForm(true)}
+                className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-white/20 dark:hover:bg-white/30">
+                + 新規ボード
+              </button>
             )}
           </div>
+          <div className="flex gap-2 border-t border-zinc-200 pt-3 dark:border-slate-600/50">
+            <button onClick={() => setTab("active")}
+              className={`px-4 py-2 text-sm font-medium ${tab === "active" ? "border-b-2 border-zinc-900 text-zinc-900 dark:border-white dark:text-white" : "text-zinc-500 hover:text-zinc-700 dark:text-slate-400 dark:hover:text-slate-200"}`}>
+              アクティブ ({active.length})
+            </button>
+            <button onClick={() => setTab("trash")}
+              className={`px-4 py-2 text-sm font-medium ${tab === "trash" ? "border-b-2 border-zinc-900 text-zinc-900 dark:border-white dark:text-white" : "text-zinc-500 hover:text-zinc-700 dark:text-slate-400 dark:hover:text-slate-200"}`}>
+              ゴミ箱 ({trashed.length})
+            </button>
+          </div>
         </div>
-        {tab === "active" && (
-          <button onClick={() => setShowForm(true)}
-            className="rounded bg-black px-4 py-2 text-sm text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">
-            + 新規ボード
-          </button>
-        )}
       </header>
 
-      <div className="flex gap-2 border-b border-zinc-200 dark:border-zinc-700">
-        <button onClick={() => setTab("active")}
-          className={`px-4 py-2 text-sm font-medium ${tab === "active" ? "border-b-2 border-black text-black dark:border-zinc-100 dark:text-zinc-100" : "text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-400"}`}>
-          アクティブ ({active.length})
-        </button>
-        <button onClick={() => setTab("trash")}
-          className={`px-4 py-2 text-sm font-medium ${tab === "trash" ? "border-b-2 border-black text-black dark:border-zinc-100 dark:text-zinc-100" : "text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-400"}`}>
-          ゴミ箱 ({trashed.length})
-        </button>
-      </div>
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 p-8">
 
       {showForm && tab === "active" && (
-        <div className="flex gap-2 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700 dark:bg-zinc-900/50">
+        <div className="flex gap-2 rounded-lg border border-zinc-200 p-4 dark:border-slate-600 dark:bg-slate-800/80">
           <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && create()}
             placeholder="ボード名"
-            className="flex-1 rounded border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-zinc-500"
+            className="flex-1 rounded border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-slate-500"
           />
           <button onClick={create} disabled={creating || !newName.trim()}
-            className="rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900">
+            className="rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-40 dark:bg-white/20 dark:hover:bg-white/30">
             {creating ? "作成中..." : "作成"}
           </button>
           <button onClick={() => { setShowForm(false); setNewName(""); }}
-            className="rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800">
+            className="rounded border border-zinc-300 px-3 py-2 text-sm dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700">
             キャンセル
           </button>
         </div>
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-sm text-zinc-400 dark:text-zinc-500">読み込み中...</div>
+        <div className="flex items-center justify-center py-16 text-sm text-zinc-400 dark:text-slate-400">読み込み中...</div>
       ) : list.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-zinc-600 dark:text-zinc-400">
+        <div className="rounded-lg border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-slate-600 dark:text-slate-400">
           {tab === "active" ? "ボードがありません。「+ 新規ボード」から作成してください。" : "ゴミ箱は空です。"}
         </div>
       ) : (
@@ -196,22 +202,22 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
             <li key={b.id} className="group relative">
               {tab === "active" ? (
                 <Link href={`/board/${b.id}`}
-                  className="flex flex-col gap-1 rounded-lg border-2 p-5 pr-10 transition hover:border-zinc-400 hover:bg-zinc-50 dark:hover:border-zinc-500 dark:hover:bg-zinc-800/50"
+                  className="flex flex-col gap-1 rounded-lg border-2 bg-stone-100 p-5 pr-10 transition hover:border-zinc-400 hover:bg-stone-200/50 dark:bg-[#212529] dark:hover:border-slate-500 dark:hover:bg-slate-800/80"
                   style={{ borderColor: getMinidenticonColor(b.id, 45, 58) }}>
                   <div className="flex items-center gap-3">
                     <Identicon value={b.id} size={32} />
-                    <span className="font-semibold dark:text-zinc-200">{b.name}</span>
+                    <span className="font-semibold dark:text-slate-200">{b.name}</span>
                   </div>
-                  <span className="text-xs text-zinc-400 dark:text-zinc-500">{new Date(b.createdAt).toLocaleDateString("ja-JP")}</span>
+                  <span className="text-xs text-zinc-400 dark:text-slate-500">{new Date(b.createdAt).toLocaleDateString("ja-JP")}</span>
                 </Link>
               ) : (
-                <div className="flex flex-col gap-1 rounded-lg border-2 bg-zinc-50 p-5 pr-10 opacity-60 dark:bg-zinc-800/50"
+                <div className="flex flex-col gap-1 rounded-lg border-2 bg-stone-100 p-5 pr-10 opacity-60 dark:bg-[#212529]"
                   style={{ borderColor: getMinidenticonColor(b.id, 45, 58) }}>
                   <div className="flex items-center gap-3">
                     <Identicon value={b.id} size={32} />
-                    <span className="font-semibold dark:text-zinc-200">{b.name}</span>
+                    <span className="font-semibold dark:text-slate-200">{b.name}</span>
                   </div>
-                  <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                  <span className="text-xs text-zinc-400 dark:text-slate-500">
                     削除日: {new Date(b.deletedAt!).toLocaleDateString("ja-JP")}
                   </span>
                 </div>
@@ -221,43 +227,43 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
               <div ref={(el) => { if (el) menuRefs.current.set(b.id, el); else menuRefs.current.delete(b.id); }} className="absolute right-2 top-2">
                 <button
                   onClick={(e) => { e.preventDefault(); setOpenMenu(openMenu === b.id ? null : b.id); }}
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-800 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 ${openMenu === b.id ? "bg-zinc-50 ring-1 ring-zinc-300 dark:bg-zinc-700 dark:ring-zinc-600" : ""}`}
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-800 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 ${openMenu === b.id ? "bg-zinc-50 ring-1 ring-zinc-300 dark:bg-slate-600 dark:ring-slate-500" : ""}`}
                   aria-label="メニューを開く"
                 >
                   <MoreVerticalIcon className="w-5 h-5" />
                 </button>
 
                 {openMenu === b.id && (
-                  <div className="absolute right-0 top-8 z-20 min-w-[160px] rounded-lg border border-zinc-200 bg-white py-1 dark:border-zinc-600 dark:bg-zinc-800">
+                  <div className="absolute right-0 top-8 z-20 min-w-[160px] rounded-lg border border-zinc-200 bg-white py-1 dark:border-slate-600 dark:bg-slate-800">
                     {tab === "active" ? (
                       <>
                         <button
                           onClick={(e) => { e.preventDefault(); openRenameBoard(b.id, b.name); }}
-                          className="w-full px-4 py-2 text-left text-sm text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                          className="w-full px-4 py-2 text-left text-sm text-zinc-600 hover:bg-zinc-50 dark:text-slate-200 dark:hover:bg-slate-700"
                         >
                           名前を変更
                         </button>
                         <button
                           onClick={(e) => { e.preventDefault(); copyBoardUrl(b.id); setOpenMenu(null); }}
-                          className="w-full px-4 py-2 text-left text-sm text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                          className="w-full px-4 py-2 text-left text-sm text-zinc-600 hover:bg-zinc-50 dark:text-slate-200 dark:hover:bg-slate-700"
                         >
                           {copied === b.id ? "✓ コピー済み" : "URLをコピー"}
                         </button>
                         <Link
                           href={`/board/${b.id}/trash`}
                           onClick={() => setOpenMenu(null)}
-                          className="block px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                          className="block px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 dark:text-slate-200 dark:hover:bg-slate-700"
                         >
                           アセットのゴミ箱
                         </Link>
                         <Link
                           href={`/board/${b.id}/reaction-preset`}
                           onClick={() => setOpenMenu(null)}
-                          className="block px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                          className="block px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 dark:text-slate-200 dark:hover:bg-slate-700"
                         >
                           リアクション絵文字をカスタマイズ
                         </Link>
-                        <div className="my-1 border-t border-zinc-100 dark:border-zinc-700" />
+                        <div className="my-1 border-t border-zinc-100 dark:border-slate-600" />
                         <button
                           onClick={(e) => { e.preventDefault(); trash(b.id); setOpenMenu(null); }}
                           className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/50"
@@ -269,11 +275,11 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
                       <>
                         <button
                           onClick={(e) => { e.preventDefault(); restore(b.id); setOpenMenu(null); }}
-                          className="w-full px-4 py-2 text-left text-sm text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                          className="w-full px-4 py-2 text-left text-sm text-zinc-600 hover:bg-zinc-50 dark:text-slate-200 dark:hover:bg-slate-700"
                         >
                           復元
                         </button>
-                        <div className="my-1 border-t border-zinc-100 dark:border-zinc-700" />
+                        <div className="my-1 border-t border-zinc-100 dark:border-slate-600" />
                         <button
                           onClick={(e) => { e.preventDefault(); deletePermanently(b.id, b.name); setOpenMenu(null); }}
                           className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/50"
@@ -281,8 +287,8 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
                           完全削除
                         </button>
                       </>
-                    )}
-                  </div>
+)}
+              </div>
                 )}
               </div>
             </li>
@@ -290,7 +296,7 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
         </ul>
       )}
 
-      {renaming && (
+        {renaming && (
         <RenameModal
           title="ボード名を変更"
           nameLabel="ボード名"
@@ -301,6 +307,7 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
           saving={renameSaving}
         />
       )}
+      </div>
     </main>
   );
 }
