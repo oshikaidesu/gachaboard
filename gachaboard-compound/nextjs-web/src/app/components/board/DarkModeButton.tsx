@@ -23,7 +23,7 @@ const SunIcon = () => (
 
 /**
  * ダークモード切り替えボタン。
- * ライトモード時は月アイコン（クリックでダークへ）、ダークモード時は太陽アイコン（クリックでライトへ）。
+ * ダークモード時は月アイコン、ライトモード時は太陽アイコン（現在の状態を表示）。
  */
 export function DarkModeButton({ portalTarget }: Props) {
   const editor = useEditor();
@@ -49,7 +49,7 @@ export function DarkModeButton({ portalTarget }: Props) {
       className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-300 bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:border-slate-600 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
       title={isDarkMode ? "ライトモードにする" : "ダークモードにする"}
     >
-      {isDarkMode ? <SunIcon /> : <MoonIcon />}
+      {isDarkMode ? <MoonIcon /> : <SunIcon />}
     </button>
   );
 

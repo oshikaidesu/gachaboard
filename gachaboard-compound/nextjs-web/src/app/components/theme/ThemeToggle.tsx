@@ -47,7 +47,7 @@ export function ThemeToggle() {
       className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-300 bg-zinc-100 text-zinc-800 hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
       title={isDarkMode ? "ライトモードにする" : "ダークモードにする"}
     >
-      {isDarkMode ? <SunIcon /> : <MoonIcon />}
+      {isDarkMode ? <MoonIcon /> : <SunIcon />}
     </button>
   );
 }
