@@ -61,12 +61,12 @@ nextjs-web/
 
 | 用途 | ライブラリ |
 |---|---|
-| フレームワーク | Next.js 15 (App Router) |
-| ホワイトボード | tldraw |
+| フレームワーク | Next.js 16 (App Router) |
+| ホワイトボード | compound (@cmpd/compound, @cmpd/editor) |
 | 認証 | NextAuth (Auth.js) + Discord Provider |
 | DB ORM | Prisma |
-| WebSocket サーバー | Fastify + @fastify/websocket |
-| tldraw 同期 | @tldraw/sync-core |
+| 同期 | Yjs + y-websocket |
+| sync-server | y-websocket-server（nextjs-web/sync-server 内） |
 | メディア変換 | fluent-ffmpeg |
 | スタイリング | Tailwind CSS |
 
@@ -99,12 +99,12 @@ npx prisma db push
 npm run dev
 ```
 
-sync-server も別ターミナルで起動する。
+sync-server は Docker で起動する（`docker compose up -d postgres sync-server`）。単体起動する場合:
 
 ```bash
 cd nextjs-web/sync-server
 npm install
-npm run dev
+PORT=5858 HOST=0.0.0.0 npm start
 ```
 
 ---
@@ -120,7 +120,7 @@ npm run dev
 | `NEXTAUTH_SECRET` | セッション暗号化キー |
 | `NEXTAUTH_URL` | アクセス URL（ローカルは `http://localhost:3000`、Tailscale は `http://xxx.tail16829c.ts.net:3000`） |
 | `DATABASE_URL` | PostgreSQL 接続文字列 |
-| `SYNC_SERVER_URL` | sync-server の URL（Docker 内では `http://sync-server:5858`） |
+| `NEXT_PUBLIC_SYNC_WS_URL` | sync-server の WebSocket URL（例: `ws://localhost:5858`） |
 | `SERVER_OWNER_DISCORD_ID` | サーバーオーナーの Discord ID。未設定なら全員アクセス可。設定時はオーナーのみ WS にアクセス可。取得: 開発者モード ON → アイコン右クリック → ID をコピー |
 | `UPLOAD_DIR` | アップロード保存先（省略時は `uploads/assets`） |
 

@@ -15,7 +15,7 @@ per-record Y.Map 方式への移行、マルチカーソル（Awareness）、リ
 | 優先度 | 箇所 | 問題 |
 |--------|------|------|
 | **最高** | ドラッグ中のシェイプ同期 | ドラッグの全軌跡が Y.Doc の CRDT 履歴に蓄積され、Y.Doc が急速に肥大化 |
-| **最高** | リロード時の初期ロード | y-indexeddb 未導入のため、リロードのたびにサーバーから Y.Doc 全体を再受信 |
+| **最高** | リロード時の初期ロード | y-indexeddb 導入済み。IndexedDB から即時復元（※ドラッグ最適化・その他は未対応） |
 | **高** | `useUrlPreviewAttacher` | `source: "all"` + `scope: "session"` でカーソル移動のたびにコールバック実行 |
 | **中** | `AwarenessSync` の `syncRemoteToStore` | awareness 変更ごとに呼ばれ、30 人で最大 1,800 回/秒 |
 | **中** | `BoardReactionProvider` の `applyYUpdate` | スロットルなし・全件走査・毎回 `setByShape` |
@@ -36,11 +36,16 @@ per-record Y.Map 方式への移行、マルチカーソル（Awareness）、リ
 | **requestAnimationFrame** | スロットル | `useYjsStore.ts` / `AwarenessSync.tsx` で使用 |
 | **@cmpd/store** | 状態管理 | compound の TLStore が SyncedStore / mutative-yjs の役割を担う |
 
+### 採用済み（2026-03 時点）
+
+| ライブラリ | 用途 |
+|-----------|------|
+| **y-indexeddb** (`^9.0.12`) | ブラウザ永続化 + オフライン対応 + リロード即時復元（導入済み） |
+
 ### 新規導入（推奨）
 
 | ライブラリ | 用途 | 優先度 |
 |-----------|------|--------|
-| **y-indexeddb** (`^9.0.12`) | ブラウザ永続化 + オフライン対応 + リロード高速化 | **最高** |
 | **Awareness 拡張**（ドラッグ一時座標） | ドラッグ中の座標同期を Y.Doc から分離 | **最高** |
 
 ### 見送り（30 人規模では不要）
@@ -98,9 +103,9 @@ per-record Y.Map 方式への移行、マルチカーソル（Awareness）、リ
 
 ---
 
-### Phase 2: y-indexeddb 導入（即時・最高効果）
+### Phase 2: y-indexeddb 導入（即時・最高効果）※導入済み
 
-**現状の問題**:
+**現状の問題**（y-indexeddb 導入により解消済み）:
 
 - y-websocket-server はメモリのみ → サーバー再起動でデータ消失
 - リロード時、サーバーから Y.Doc 全体を再受信 → 1000 シェイプで遅延

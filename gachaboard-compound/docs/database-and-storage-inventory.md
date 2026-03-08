@@ -182,18 +182,12 @@ flowchart LR
 
 ## 7. 不整合・注意点
 
-### 7.1 ドキュメントと実装の差異
-
-| ドキュメント | 記載 | 実態 |
-|--------------|------|------|
-| `ARCHITECTURE.md` | BoardMember | スキーマには WorkspaceMember のみ |
-
-### 7.2 スキーマと認証
+### 7.1 スキーマと認証
 
 - Account / Session テーブルは Prisma スキーマに**含まれていない**（JWT 戦略のため）
 - `@auth/prisma-adapter` は依存にあるが、auth.ts では使用していない
 
-### 7.3 冗長 workspaceId
+### 7.2 冗長 workspaceId
 
 - Asset の `workspaceId` は denormalized（未配置アセット一覧用）
 

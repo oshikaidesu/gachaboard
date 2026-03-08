@@ -12,7 +12,7 @@ npm install
 PORT=5858 HOST=0.0.0.0 npm start
 ```
 
-デフォルト: `localhost:1234`
+デフォルトポート: 5858（`PORT=5858` 指定時）
 
 ## クライアント統合
 

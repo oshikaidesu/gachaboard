@@ -45,6 +45,8 @@
 | `/workspace/[id]` | ワークスペース詳細（ボード一覧） |
 | `/board/[id]` | ボード編集画面 |
 | `/board/[id]/trash` | ゴミ箱 |
+| `/board/[id]/reaction-preset` | リアクション絵文字プリセット |
+| `/access-denied` | アクセス拒否（オーナー制限・招待外時） |
 | `/auth/signin` | Discord サインイン |
 
 ### 2.2 API ルート
@@ -53,6 +55,8 @@
 |----------------|------|
 | `/api/auth/[...nextauth]` | NextAuth（Discord OAuth） |
 | `/api/workspaces`, `/api/workspaces/[id]/boards` | ワークスペース・ボード管理 |
+| `/api/workspaces/[id]/invite`, `/api/workspaces/[id]/members` | 招待リンク・メンバー一覧・キック |
+| `/api/invite/[token]`, `/api/invite/[token]/join` | 招待参加 |
 | `/api/assets`, `/api/assets/[id]` | アセット一覧・アップロード・配信・変換 |
 | `/api/ogp` | OGP プレビュー取得 |
 

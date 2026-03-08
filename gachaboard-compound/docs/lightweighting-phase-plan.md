@@ -44,7 +44,7 @@ flowchart TB
 | 順 | 施策 | 工数 | 効果 | 対象ファイル |
 |----|------|------|------|--------------|
 | 1 | useUrlPreviewAttacher `source: "all"` → `"user"` | 1行 | 1,800回/秒 → 0（リモートカーソルで発火しない） | [useUrlPreviewAttacher.ts](../nextjs-web/src/app/hooks/useUrlPreviewAttacher.ts) |
-| 2 | y-indexeddb 導入 | 数行 | リロード即時復元、オフライン編集、Y.Doc 差分のみ同期 | [useYjsStore.ts](../nextjs-web/src/app/hooks/useYjsStore.ts) |
+| 2 | y-indexeddb 導入 | 数行 | リロード即時復元、オフライン編集、Y.Doc 差分のみ同期（**導入済み**） | [useYjsStore.ts](../nextjs-web/src/app/hooks/useYjsStore.ts) |
 | 3 | AwarenessSync `syncRemoteToStore` に RAF スロットル | 小 | 1,800回/秒 → 60回/秒 | [AwarenessSync.tsx](../nextjs-web/src/app/components/collaboration/AwarenessSync.tsx) |
 
 **依存**: なし。並行実施可能。  

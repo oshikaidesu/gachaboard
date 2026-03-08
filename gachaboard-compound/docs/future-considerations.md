@@ -12,7 +12,7 @@
 - 認可チェック強化（assertAssetAccess, assertWorkspaceOwner 等）
 - Zod 入力バリデーション（comments, workspaces, s3/complete）
 - セキュリティヘッダー（X-Frame-Options, X-Content-Type-Options 等）
-- ファイルアップロードサイズ制限（MAX_UPLOAD_SIZE, デフォルト 500MB）
+- ファイルアップロードサイズ制限（MAX_UPLOAD_SIZE, デフォルト 100GB）
 - puppeteer を devDependencies へ移動
 
 ---

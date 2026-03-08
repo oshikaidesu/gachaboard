@@ -244,7 +244,7 @@
 | **cheerio** | 軽量 HTML パース。OGP 取得にフルブラウザ不要 | 動的 JS レンダリングのサイトには対応不可。一部サイトで OGP 取得失敗 |
 | **Twemoji** | Twitter 系絵文字で一貫表示。CDN または自前ホスト可 | 外部 CDN 依存の場合は可用性に影響。自前ホストなら OK |
 | **Playwright** | モダンな E2E。複数ブラウザ対応。CI 組み込み容易 | 認証バイパス（E2E_TEST_MODE）が本番で有効になるリスクに注意 |
-| **y-indexeddb** | （未導入）リロード時の即時復元、オフライン編集対応 | Mobile Safari で fetch 失敗の報告あり（2025 年）。導入後は検証必須 |
+| **y-indexeddb** | （導入済み）リロード時の即時復元、オフライン編集対応。useYjsStore で IndexeddbPersistence を利用 | Mobile Safari で fetch 失敗の報告あり（2025 年）。検証推奨 |
 
 **見送り技術と理由**:
 
@@ -357,6 +357,10 @@ tldraw 組み込み型: image, note, geo, text, arrow, draw, highlight, line, fr
 | `/api/workspaces/[id]` | GET / PATCH / DELETE | ワークスペース詳細・更新・削除 |
 | `/api/workspaces/[id]/boards` | GET / POST | ボード一覧・作成 |
 | `/api/workspaces/[id]/boards/[boardId]` | PATCH / DELETE | ボード trash/restore・完全削除 |
+| `/api/workspaces/[id]/invite` | GET / POST | 招待リンク発行・リセット |
+| `/api/workspaces/[id]/members` | GET / DELETE | メンバー一覧・キック |
+| `/api/invite/[token]` | GET | 招待トークン検証・WS 情報 |
+| `/api/invite/[token]/join` | POST | メンバー参加 |
 | `/api/assets` | GET / POST | アセット一覧・アップロード |
 | `/api/assets/[id]` | GET / DELETE | アセット詳細・削除 |
 | `/api/assets/[id]/file` | HEAD / GET | ファイル配信（converted=1, download=1） |
@@ -446,7 +450,7 @@ nextjs-web は compose に含まず、`npm run dev` で別途起動（ポート 
 
 | 要因 | 数値 | 困りそうな例 |
 |------|------|--------------|
-| **Y.Doc 初期同期** | 1000 シェイプ全件 | 未圧縮 or 圧縮率低い場合。y-indexeddb なしだと毎回フル受信 |
+| **Y.Doc 初期同期** | 1000 シェイプ全件 | y-indexeddb 導入済みのため IndexedDB から即時復元。初回・新規ボード時のみサーバーから受信 |
 | **Awareness** | 60 fps × 30 人 | 30 クライアント分の cursor 受信・適用。RAF 落ちるとキュー詰まり |
 | **アセット取得** | 100 MB/パート、§12 | S3 マルチパート。複数アセット同時で並列リクエスト数・帯域 |
 
