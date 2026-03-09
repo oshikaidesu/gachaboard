@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import getYouTubeID from "get-youtube-id";
 import { requireLogin } from "@/lib/authz";
 import { env } from "@/lib/env";
 
@@ -13,13 +14,6 @@ type OgpData = {
   isYoutube?: boolean;
   youtubeId?: string;
 };
-
-function extractYoutubeId(url: string): string | null {
-  const match = url.match(
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/
-  );
-  return match?.[1] ?? null;
-}
 
 /** x.com / twitter.com を fxtwitter.com に変換して OGP を正しく取得できるようにする */
 function toFxTwitterUrl(url: string): string {
@@ -69,7 +63,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(cached.data);
   }
 
-  const youtubeId = extractYoutubeId(url);
+  const youtubeId = getYouTubeID(url);
   if (youtubeId) {
     const data: OgpData = {
       url: rawUrl,
