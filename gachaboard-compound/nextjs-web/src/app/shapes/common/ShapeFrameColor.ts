@@ -2,11 +2,12 @@
  * シェイプ枠線用の色ユーティリティ。
  * Geo / Arrow と同じ色ルールで、カスタムシェイプにも枠を適用する。
  *
- * getColorForShape: シェイプIDから TLDefaultColorStyle を決定
+ * getColorForShape: シェイプIDから TLDefaultColorStyle を決定（color-hash 使用）
  * getStrokeHexForColorStyle: DefaultColorThemePalette lightMode の solid 値（矢印描画と同じ色）
  */
 
 import type { TLDefaultColorStyle } from "@cmpd/compound";
+import ColorHash from "color-hash";
 
 /** Geo / Arrow で使っている pastel パレットと同じ */
 const PASTEL_COLORS: TLDefaultColorStyle[] = [
@@ -21,16 +22,15 @@ const PASTEL_COLORS: TLDefaultColorStyle[] = [
   "violet",
 ];
 
+const shapeColorHash = new ColorHash();
+
 /**
  * シェイプIDから色スタイルを決定（矢印も同じルールで個別色を割り当て済み）
  */
 export function getColorForShape(shapeId: string): TLDefaultColorStyle {
-  let hash = 0;
-  for (let i = 0; i < shapeId.length; i++) {
-    hash = (hash << 5) - hash + shapeId.charCodeAt(i);
-    hash = hash & hash;
-  }
-  return PASTEL_COLORS[Math.abs(hash) % PASTEL_COLORS.length];
+  const [hue] = shapeColorHash.hsl(shapeId);
+  const index = Math.floor((hue / 360) * PASTEL_COLORS.length) % PASTEL_COLORS.length;
+  return PASTEL_COLORS[index];
 }
 
 /**

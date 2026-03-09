@@ -4,6 +4,7 @@
  */
 
 import type { TLRecord } from "@cmpd/tlschema";
+import ColorHash from "color-hash";
 
 const CAMERA_LS_PREFIX = "gachaboard-camera:";
 
@@ -122,26 +123,8 @@ export function persistRecordsDiffToY(
   isLocalUpdateRef.current = false;
 }
 
-const USER_COLORS = [
-  "#FF802B",
-  "#EC5E41",
-  "#F2555A",
-  "#F04F88",
-  "#E34BA9",
-  "#BD54C6",
-  "#9D5BD2",
-  "#7B66DC",
-  "#02B1CC",
-  "#11B3A3",
-  "#39B178",
-  "#55B467",
-];
+const userColorHash = new ColorHash();
 
 export function getUserColor(userId: string): string {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    hash = (hash << 5) - hash + userId.charCodeAt(i);
-    hash |= 0;
-  }
-  return USER_COLORS[Math.abs(hash) % USER_COLORS.length];
+  return userColorHash.hex(userId);
 }
