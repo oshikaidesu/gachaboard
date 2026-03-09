@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireLogin } from "@/lib/authz";
-import { db } from "@/lib/db";
+import { requireLogin, getS3UploadSessionForUser } from "@/lib/authz";
 import { isS3Enabled, listParts } from "@/lib/s3";
 
 /**
@@ -19,12 +18,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "uploadId is required" }, { status: 400 });
   }
 
-  const row = await db.s3UploadSession.findUnique({
-    where: { uploadId },
-  });
-  if (!row || row.uploaderId !== session.user.id) {
-    return NextResponse.json({ error: "Upload session not found" }, { status: 404 });
-  }
+  const row = await getS3UploadSessionForUser(uploadId, session.user.id);
+  if (!row) return NextResponse.json({ error: "Upload session not found" }, { status: 404 });
 
   const parts = await listParts(row.s3Key, uploadId);
 

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireLogin } from "@/lib/authz";
-import { db } from "@/lib/db";
+import { requireLogin, getS3UploadSessionForUser } from "@/lib/authz";
 import { isS3Enabled, getPresignedPutUrl } from "@/lib/s3";
 
 /**
@@ -21,12 +20,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "uploadId and partNumbers are required" }, { status: 400 });
   }
 
-  const row = await db.s3UploadSession.findUnique({
-    where: { uploadId },
-  });
-  if (!row || row.uploaderId !== session.user.id) {
-    return NextResponse.json({ error: "Upload session not found" }, { status: 404 });
-  }
+  const row = await getS3UploadSessionForUser(uploadId, session.user.id);
+  if (!row) return NextResponse.json({ error: "Upload session not found" }, { status: 404 });
 
   const presignedUrls: Record<number, string> = {};
   for (const partNumber of partNumbers) {

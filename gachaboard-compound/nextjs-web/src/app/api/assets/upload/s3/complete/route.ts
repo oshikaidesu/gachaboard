@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireLogin } from "@/lib/authz";
+import { requireLogin, getS3UploadSessionForUser } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { s3CompleteSchema } from "@/lib/apiSchemas";
 import { formatZodError, parseJsonBody } from "@/lib/parseJsonBody";
@@ -29,11 +29,8 @@ export async function POST(req: NextRequest) {
 
   const { uploadId, key, parts } = body;
 
-  const row = await db.s3UploadSession.findUnique({ where: { uploadId } });
+  const row = await getS3UploadSessionForUser(uploadId, session.user.id);
   if (!row) return NextResponse.json({ error: "Upload session not found" }, { status: 404 });
-  if (row.uploaderId !== session.user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   const { storageKey, fileName, mimeType, totalSize, boardId } = row;
 

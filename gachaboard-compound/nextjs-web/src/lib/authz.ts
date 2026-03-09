@@ -195,6 +195,18 @@ export async function assertWorkspaceWriteAccess(workspaceId: string) {
   return null;
 }
 
+/**
+ * S3 アップロードセッションを取得。uploaderId が一致する場合のみ返す。
+ * 認可チェック用。requireLogin は呼び出し元で行うこと。
+ */
+export async function getS3UploadSessionForUser(uploadId: string, userId: string) {
+  const row = await db.s3UploadSession.findUnique({
+    where: { uploadId },
+  });
+  if (!row || row.uploaderId !== userId) return null;
+  return row;
+}
+
 /** 監査ログ書き込み */
 export async function writeAuditLog(
   userId: string | null,
