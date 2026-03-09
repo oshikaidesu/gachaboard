@@ -12,7 +12,7 @@ export default defineConfig({
   webServer: {
     command: "npm run e2e:server",
     url: "http://localhost:3010",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: process.env.E2E_REUSE_SERVER === "1" || !process.env.CI,
     timeout: 90_000,
   },
 });

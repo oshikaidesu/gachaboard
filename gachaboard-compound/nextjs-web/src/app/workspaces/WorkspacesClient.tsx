@@ -9,11 +9,15 @@ import { InviteLinkInline } from "../components/ui/InviteLinkInline";
 import { MoreVerticalIcon } from "../components/ui/MoreVerticalIcon";
 import { RenameModal } from "../components/ui/RenameModal";
 import { useWorkspaces } from "@/app/hooks/workspace/useWorkspaces";
+import type { E2EHeaders } from "@/lib/e2eFetch";
+import { withE2EHeaders } from "@/lib/e2eFetch";
 
 type Workspace = ApiWorkspace;
 
-export default function WorkspacesClient({ currentUserId }: { currentUserId: string }) {
-  const { workspaces, loading, load } = useWorkspaces();
+type Props = { currentUserId: string; e2eHeaders?: E2EHeaders | null };
+
+export default function WorkspacesClient({ currentUserId, e2eHeaders }: Props) {
+  const { workspaces, loading, load } = useWorkspaces(e2eHeaders);
   const [showForm, setShowForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
@@ -39,7 +43,7 @@ export default function WorkspacesClient({ currentUserId }: { currentUserId: str
     setCreating(true);
     const res = await fetch("/api/workspaces", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: withE2EHeaders({ "Content-Type": "application/json" }, e2eHeaders),
       body: JSON.stringify({ name: newName.trim(), description: newDesc.trim() || undefined }),
     });
     if (res.ok) { setNewName(""); setNewDesc(""); setShowForm(false); await load(); }
@@ -49,7 +53,7 @@ export default function WorkspacesClient({ currentUserId }: { currentUserId: str
   const trash = async (id: string) => {
     await fetch(`/api/workspaces/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: withE2EHeaders({ "Content-Type": "application/json" }, e2eHeaders),
       body: JSON.stringify({ action: "trash" }),
     });
     await load();
@@ -58,7 +62,7 @@ export default function WorkspacesClient({ currentUserId }: { currentUserId: str
   const restore = async (id: string) => {
     await fetch(`/api/workspaces/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: withE2EHeaders({ "Content-Type": "application/json" }, e2eHeaders),
       body: JSON.stringify({ action: "restore" }),
     });
     await load();
@@ -66,7 +70,10 @@ export default function WorkspacesClient({ currentUserId }: { currentUserId: str
 
   const deletePermanently = async (id: string, name: string) => {
     if (!confirm(`「${name}」を完全に削除しますか？\nこの操作は取り消せません。`)) return;
-    await fetch(`/api/workspaces/${id}`, { method: "DELETE" });
+    await fetch(`/api/workspaces/${id}`, {
+      method: "DELETE",
+      headers: withE2EHeaders({}, e2eHeaders),
+    });
     await load();
   };
 
@@ -82,7 +89,7 @@ export default function WorkspacesClient({ currentUserId }: { currentUserId: str
     setRenameSaving(true);
     const res = await fetch(`/api/workspaces/${renaming.id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: withE2EHeaders({ "Content-Type": "application/json" }, e2eHeaders),
       body: JSON.stringify({ action: "rename", name: renameName.trim(), description: renameDesc.trim() || undefined }),
     });
     setRenameSaving(false);
@@ -174,7 +181,10 @@ export default function WorkspacesClient({ currentUserId }: { currentUserId: str
                     className="flex flex-col rounded-lg border-2 bg-stone-100 p-5 pr-12 transition hover:border-zinc-400 hover:bg-stone-200/50 dark:bg-[#212529] dark:hover:border-slate-500 dark:hover:bg-slate-800/80"
                     style={{ borderColor: getMinidenticonColor(ws.id, 45, 58) }}
                   >
-                    <Link href={`/workspace/${ws.id}`} className="flex flex-col gap-2">
+                    <Link
+                      href={`/workspace/${ws.id}${e2eHeaders ? `?testUserId=${encodeURIComponent(e2eHeaders.userId)}&testUserName=${encodeURIComponent(e2eHeaders.userName)}` : ""}`}
+                      className="flex flex-col gap-2"
+                    >
                       <div className="flex items-center gap-3">
                         <Identicon value={ws.id} size={36} />
                         <span className="font-semibold dark:text-slate-200">{ws.name}</span>

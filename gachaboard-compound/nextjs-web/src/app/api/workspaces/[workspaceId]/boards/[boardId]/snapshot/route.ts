@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { assertBoardAccess } from "@/lib/authz";
 import { db } from "@/lib/db";
+import { env } from "@/lib/env";
 
 type Params = { params: Promise<{ workspaceId: string; boardId: string }> };
 
 /** GET - Board.snapshotData を取得（sync-server 復旧時の復元用） */
 export async function GET(_req: NextRequest, { params }: Params) {
   const { workspaceId, boardId } = await params;
-  const ctx = await assertBoardAccess(boardId);
-  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (ctx.board.workspaceId !== workspaceId) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // E2E モード時は認証なしで許可（smoke テスト・スクリーンショット用）
+  if (!env.E2E_TEST_MODE) {
+    const ctx = await assertBoardAccess(boardId);
+    if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (ctx.board.workspaceId !== workspaceId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
   }
 
   const board = await db.board.findUnique({
@@ -40,10 +45,20 @@ export async function GET(_req: NextRequest, { params }: Params) {
 /** PUT - Board.snapshotData を保存（定期的・離脱時にクライアントから送信） */
 export async function PUT(req: NextRequest, { params }: Params) {
   const { workspaceId, boardId } = await params;
-  const ctx = await assertBoardAccess(boardId);
-  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (ctx.board.workspaceId !== workspaceId) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!env.E2E_TEST_MODE) {
+    const ctx = await assertBoardAccess(boardId);
+    if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (ctx.board.workspaceId !== workspaceId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+  } else {
+    const boardCheck = await db.board.findUnique({
+      where: { id: boardId },
+      select: { workspaceId: true },
+    });
+    if (boardCheck && boardCheck.workspaceId !== workspaceId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
   }
 
   const body = (await req.json()) as {
@@ -89,10 +104,20 @@ export async function PUT(req: NextRequest, { params }: Params) {
 /** PATCH - reactionEmojiPreset のみ部分更新（reaction-preset ページ用） */
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { workspaceId, boardId } = await params;
-  const ctx = await assertBoardAccess(boardId);
-  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (ctx.board.workspaceId !== workspaceId) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!env.E2E_TEST_MODE) {
+    const ctx = await assertBoardAccess(boardId);
+    if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (ctx.board.workspaceId !== workspaceId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+  } else {
+    const boardCheck = await db.board.findUnique({
+      where: { id: boardId },
+      select: { workspaceId: true },
+    });
+    if (boardCheck && boardCheck.workspaceId !== workspaceId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
   }
 
   const body = (await req.json()) as { reactionEmojiPreset?: string[] | null };

@@ -10,11 +10,13 @@ import { useWorkspaceDetail } from "@/app/hooks/workspace/useWorkspaceDetail";
 import { WorkspaceMembersPopover } from "./components/WorkspaceMembersPopover";
 import { WorkspaceBoardCard } from "./components/WorkspaceBoardCard";
 import { BoardCreateForm } from "./components/BoardCreateForm";
+import type { E2EHeaders } from "@/lib/e2eFetch";
+import { withE2EHeaders } from "@/lib/e2eFetch";
 
-type Props = { workspaceId: string; currentUserId: string };
+type Props = { workspaceId: string; currentUserId: string; e2eHeaders?: E2EHeaders | null };
 
-export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Props) {
-  const { wsInfo, members, canKick, boards, loading, load } = useWorkspaceDetail(workspaceId);
+export default function WorkspaceDetailClient({ workspaceId, currentUserId, e2eHeaders }: Props) {
+  const { wsInfo, members, canKick, boards, loading, load } = useWorkspaceDetail(workspaceId, e2eHeaders);
   const [showForm, setShowForm] = useState(false);
   const [tab, setTab] = useState<"active" | "trash">("active");
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -26,7 +28,7 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
   const create = async (name: string) => {
     const res = await fetch(`/api/workspaces/${workspaceId}/boards`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: withE2EHeaders({ "Content-Type": "application/json" }, e2eHeaders),
       body: JSON.stringify({ name }),
     });
     if (res.ok) {
@@ -38,7 +40,7 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
   const trash = async (boardId: string) => {
     await fetch(`/api/workspaces/${workspaceId}/boards/${boardId}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: withE2EHeaders({ "Content-Type": "application/json" }, e2eHeaders),
       body: JSON.stringify({ action: "trash" }),
     });
     await load();
@@ -47,7 +49,7 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
   const restore = async (boardId: string) => {
     await fetch(`/api/workspaces/${workspaceId}/boards/${boardId}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: withE2EHeaders({ "Content-Type": "application/json" }, e2eHeaders),
       body: JSON.stringify({ action: "restore" }),
     });
     await load();
@@ -55,7 +57,10 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
 
   const deletePermanently = async (boardId: string, name: string) => {
     if (!confirm(`「${name}」を完全に削除しますか？\nこの操作は取り消せません。`)) return;
-    await fetch(`/api/workspaces/${workspaceId}/boards/${boardId}`, { method: "DELETE" });
+    await fetch(`/api/workspaces/${workspaceId}/boards/${boardId}`, {
+      method: "DELETE",
+      headers: withE2EHeaders({}, e2eHeaders),
+    });
     await load();
   };
 
@@ -74,7 +79,7 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
     setRenameSaving(true);
     const res = await fetch(`/api/workspaces/${workspaceId}/boards/${renaming.id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: withE2EHeaders({ "Content-Type": "application/json" }, e2eHeaders),
       body: JSON.stringify({ action: "rename", name: renameName.trim() }),
     });
     setRenameSaving(false);
@@ -103,7 +108,7 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
               </div>
               <div className="mt-1 flex items-center gap-3">
                 <Link
-                  href="/workspaces"
+                  href={e2eHeaders ? `/workspaces?testUserId=${encodeURIComponent(e2eHeaders.userId)}&testUserName=${encodeURIComponent(e2eHeaders.userName)}` : "/workspaces"}
                   className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline dark:text-slate-300 dark:hover:text-white"
                 >
                   ← ワークスペース一覧に戻る

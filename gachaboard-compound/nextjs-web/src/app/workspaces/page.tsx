@@ -4,7 +4,23 @@ import { authOptions } from "@/lib/auth";
 import { env } from "@/lib/env";
 import WorkspacesClient from "./WorkspacesClient";
 
-export default async function WorkspacesPage() {
+type Props = { searchParams: Promise<{ testUserId?: string; testUserName?: string }> };
+
+export default async function WorkspacesPage({ searchParams }: Props) {
+  const params = await searchParams;
+  const isE2eMode = env.E2E_TEST_MODE;
+  const testUserId = params.testUserId?.trim();
+  const testUserName = params.testUserName?.trim();
+
+  if (isE2eMode && testUserId && testUserName) {
+    return (
+      <WorkspacesClient
+        currentUserId={testUserId}
+        e2eHeaders={{ userId: testUserId, userName: testUserName }}
+      />
+    );
+  }
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) redirect("/auth/signin");
 

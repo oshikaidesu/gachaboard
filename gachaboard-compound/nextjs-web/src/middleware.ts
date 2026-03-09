@@ -5,10 +5,18 @@ export default withAuth({
   callbacks: {
     authorized: ({ req, token }) => {
       const isE2eMode = env.E2E_TEST_MODE;
-      if (isE2eMode && req.nextUrl.pathname.startsWith("/board/")) {
+      if (isE2eMode) {
         const testUserId = req.nextUrl.searchParams.get("testUserId");
         const testUserName = req.nextUrl.searchParams.get("testUserName");
-        if (testUserId && testUserName) return true;
+        if (testUserId && testUserName) {
+          const path = req.nextUrl.pathname;
+          if (
+            path.startsWith("/board/") ||
+            path === "/workspaces" ||
+            path.startsWith("/workspace/")
+          )
+            return true;
+        }
       }
       return !!token;
     },

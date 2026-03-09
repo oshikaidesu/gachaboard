@@ -1,117 +1,114 @@
 # Gachaboard
 
-**音楽・映像・デザインファイルを貼り付けて共有できる、リアルタイム共同ホワイトボード**
-
-Discord コミュニティや身内チーム向け。URL を共有すれば、誰でも同じボードで動画・音声・テキスト・画像を並べて共同編集できます。ローカルサーバー 1 台で完結し、クラウド依存を最小限に抑えた設計です。
+音楽・映像・デザインファイルを貼り付けて共有できる、リアルタイム共同ホワイトボードです。
 
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
 
 ---
 
-## ✨ できること
+## このプロジェクトについて
 
-| 機能 | 説明 |
-|------|------|
-| **ファイル共有** | 動画・音声・テキスト・画像をドラッグ＆ドロップでボードに配置 |
-| **リアルタイム共同編集** | 複数人が同時に同じボードを編集。マルチカーソルで誰がどこにいるか表示 |
-| **メディアプレビュー** | 動画は 720p に変換、音声は波形表示。テキストはそのままプレビュー |
-| **コメント・リアクション** | 動画・音声のタイムラインにコメント、シェイプにリアクション |
-| **接続ハンドル** | draw.io 風の接続点でシェイプ同士を矢印でつなげる |
-| **ワークスペース** | プロジェクト単位でボードをグループ管理 |
+Gachaboard は、Discord コミュニティや身内チーム向けの共同編集ボードです。動画・音声・テキスト・画像をドラッグ＆ドロップでボードに並べ、複数人で同時に編集できます。URL を共有すれば、招待されたメンバーが同じボードで作業を進められます。
+
+**想定している使い方**
+
+- クリエイター同士のレビュー（動画・音声を貼ってコメントし合う）
+- プロジェクト共有（デザイン案・コード・素材をボードに集約）
+- ブレスト（画像・リンク・メモを並べて議論）
+
+**設計の特徴**
+
+- **ローカルサーバー 1 台で完結** … クラウド SaaS に依存しない
+- **Discord 認証** … 匿名を排除し、身内だけの閉じた空間を実現
+- **Tailscale 対応** … グローバル IP やポート開放なしで、スマホや他端末からアクセス可能
 
 ---
 
-## 🚀 クイックスタート
+## 使い方の流れ
 
-**初めての方は [docs/user/FIRST-TIME-SETUP.md](docs/user/FIRST-TIME-SETUP.md) を参照**（チェックリスト形式のセットアップガイド）。
+### 基本的な操作
 
-### 必要なもの
+1. **Discord でログイン** … 初回のみ
+2. **ワークスペースを作成** … プロジェクト単位の入れ物。ここにボードを複数作る
+3. **ボードを作成** … 実際に編集するホワイトボード。1 つのワークスペースに複数作れる
+4. **ファイルをドラッグ＆ドロップ** … 動画・音声・テキスト・画像をボードに配置
+5. **URL を共有** … ボードの URL を渡せば、同じワークスペースのメンバーが共同編集できる
 
-- Node.js 18+
-- Docker（PostgreSQL と sync-server を起動する場合）
-- Discord アプリ（認証に使用）
+### ワークスペースとボードの違い
 
-### 1. リポジトリをクローン
+| | ワークスペース | ボード |
+|---|---------------|--------|
+| **役割** | プロジェクトの入れ物。ボードをグループ化する | 実際に編集するホワイトボード |
+| **数** | 1 人あたり複数持てる | 1 ワークスペースあたり複数持てる |
+| **例** | 「〇〇プロジェクト」「チーム A」 | 「第 1 回レビュー用」「デザイン案 v1」 |
+
+### オーナーと権限
+
+| 種類 | 誰か | できること |
+|------|------|------------|
+| **サーバーオーナー** | 環境変数で指定した 1 人（未設定なら全員アクセス可） | ワークスペース一覧の表示・作成・削除 |
+| **ワークスペースオーナー** | ワークスペースを作成した人 | 招待リンクの発行・リセット、メンバーのキック |
+| **招待メンバー** | 招待リンクで参加した人 | ボード・アセットの編集。参加 24 時間後は他メンバーのキックも可能 |
+
+招待リンクはワークスペース一覧の 3 点メニュー → 「招待リンク」から発行。リンクを知っている人が参加できる。詳細は [ownership-design.md](docs/user/ownership-design.md) を参照。
+
+### 画面のイメージ
+
+| トップ（未ログイン） | サインイン | ボード編集 |
+|---------------------|------------|------------|
+| ![トップ](docs/images/01-top.png) | ![サインイン](docs/images/02-signin.png) | ![ボード](docs/images/03-board.png) |
+
+| ワークスペース一覧 | ワークスペース詳細（ボード一覧） |
+|-------------------|--------------------------------|
+| ![ワークスペース一覧](docs/images/04-workspaces.png) | ![ワークスペース詳細](docs/images/05-workspace-detail.png) |
+
+※ スクリーンショットの再生成: `cd nextjs-web && npm run screenshots:all` で一括実行（シード → サーバ起動 → 撮影）。手動で行う場合は `npm run seed:e2e` → 別ターミナルで `npm run e2e:server` → `npm run screenshots`。
+
+---
+
+## できること
+
+- **ファイル共有** … 動画・音声・テキスト・画像をボードに配置。動画は 720p に変換、音声は波形表示
+- **リアルタイム共同編集** … 複数人が同時に編集。マルチカーソルで誰がどこにいるか表示
+- **コメント・リアクション** … 動画・音声のタイムラインにコメント、シェイプに絵文字リアクション
+- **接続ハンドル** … draw.io 風の接続点でシェイプ同士を矢印でつなげる
+- **ワークスペース** … プロジェクト単位でボードをグループ管理。招待リンクでメンバーを追加
+
+---
+
+## はじめ方
+
+Node.js 18+ と Docker、Discord アプリが必要です。
 
 ```bash
 git clone https://github.com/oshikaidesu/gachaboard.git
-cd gachaboard
-```
+cd gachaboard-compound
 
-### 2. 環境変数を設定
-
-```bash
 cp nextjs-web/env.local.template nextjs-web/.env.local
-# .env.local を編集して Discord OAuth や DB 接続を設定
-```
+# .env.local を編集（Discord OAuth の Client ID / Secret、DATABASE_URL 等）
 
-**最低限必要な設定：**
-
-- `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET`（[Discord Developer Portal](https://discord.com/developers/applications) で作成）
-- `NEXTAUTH_SECRET`（任意の長いランダム文字列）
-- `NEXTAUTH_URL`（ローカルなら `http://localhost:3000`）
-- `DATABASE_URL`（PostgreSQL 接続文字列）
-- `SERVER_OWNER_DISCORD_ID`（任意）サーバーオーナーの Discord ID。未設定なら全ログインユーザーが WS にアクセス可。設定時はオーナーのみ WS 一覧・作成が可能。詳しくは [ownership-design.md](docs/user/ownership-design.md)
-
-### 3. インフラを起動（Docker）
-
-```bash
 docker compose up -d
+cd nextjs-web && npm install --legacy-peer-deps && npx prisma generate && npx prisma db push && npm run dev
 ```
 
-postgres、sync-server、MinIO が起動します。ファイルアップロードには MinIO が必須です。
+ブラウザで http://localhost:3000 を開き、Discord でログインしてください。
 
-### 4. アプリを起動
-
-```bash
-cd nextjs-web
-npm install --legacy-peer-deps
-npx prisma generate
-npx prisma db push
-npm run dev
-```
-
-ブラウザで [http://localhost:3000](http://localhost:3000) を開き、Discord でログイン → ワークスペース作成 → ボード作成 → 編集開始。
+**詳細なセットアップ手順**は [docs/user/SETUP.md](docs/user/SETUP.md) を参照。
 
 ---
 
-## 📁 プロジェクト構成
+## 技術スタック
 
-```
-gachaboard-compound/
-├── nextjs-web/          # メインアプリ（Next.js + compound + API）
-├── sync-server/         # リアルタイム同期用 WebSocket サーバ
-├── docs/                # ドキュメント
-└── docker-compose.yml   # PostgreSQL / sync-server / MinIO
-```
+Next.js 16 + React 18、compound（tldraw 系ホワイトボード）、Yjs によるリアルタイム同期、NextAuth + Discord OAuth、PostgreSQL、S3/MinIO。
 
 ---
 
-## 📚 ドキュメント
+## ドキュメント
 
-| ドキュメント | 内容 |
-|-------------|------|
-| [docs/README.md](docs/README.md) | ドキュメント索引 |
-| [user/](docs/user/README.md) | ユーザー向け（セットアップ・運用） |
-| [dev/](docs/dev/README.md) | 開発者向け（設計・技術） |
-
-### 技術仕様
-
-- [yjs-system-specification.md](docs/dev/yjs-system-specification.md) - Yjs 同期の詳細仕様
-- [discord-auth-troubleshooting.md](docs/user/discord-auth-troubleshooting.md) - Discord 認証のトラブルシューティング
+セットアップ・運用は [docs/user/](docs/user/README.md)、設計・技術仕様は [docs/dev/](docs/dev/README.md) を参照。
 
 ---
 
-## 🛠 技術スタック
-
-- **フロント**: Next.js 16, React 18, compound（tldraw 系ホワイトボード）
-- **認証**: NextAuth + Discord OAuth
-- **DB**: PostgreSQL + Prisma
-- **リアルタイム同期**: Yjs + y-websocket
-- **ストレージ**: S3 / MinIO（Presigned URL で直接アップロード）
-
----
-
-## 📄 ライセンス
+## ライセンス
 
 Apache 2.0（compound / tldraw ベース）

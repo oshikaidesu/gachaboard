@@ -18,11 +18,11 @@ export async function GET(req: NextRequest) {
 
   const includeDeleted = req.nextUrl.searchParams.get("includeDeleted") === "1";
 
+  const filterByOwner =
+    env.E2E_TEST_MODE || env.SERVER_OWNER_DISCORD_ID.trim();
   const workspaces = await db.workspace.findMany({
     where: {
-      ...(env.SERVER_OWNER_DISCORD_ID.trim() && !env.E2E_TEST_MODE
-        ? { ownerUserId: session.user.id }
-        : {}),
+      ...(filterByOwner ? { ownerUserId: session.user.id } : {}),
       ...(includeDeleted ? {} : { deletedAt: null }),
     },
     include: {
