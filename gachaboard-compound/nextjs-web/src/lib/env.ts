@@ -1,5 +1,6 @@
 /**
  * 環境変数の集約・バリデーション。
+ * @t3-oss/env-nextjs を使用。
  *
  * アプリ内で process.env.XXX を直接参照する代わりに、このモジュールから
  * 型安全な値をインポートする。
@@ -12,80 +13,62 @@
  *   const url = env.SYNC_SERVER_URL;
  */
 
-function required(key: string): string {
-  const value = process.env[key];
-  if (!value) throw new Error(`[env] 必須の環境変数 "${key}" が設定されていません。`);
-  return value;
-}
+import { createEnv } from "@t3-oss/env-nextjs";
+import { z } from "zod";
 
-function optional(key: string, fallback: string): string {
-  return process.env[key] ?? fallback;
-}
+const boolSchema = z
+  .string()
+  .optional()
+  .transform((v) => v === "1" || v?.toLowerCase() === "true");
 
-function bool(key: string, fallback = false): boolean {
-  const value = process.env[key];
-  if (value === undefined) return fallback;
-  return value === "1" || value.toLowerCase() === "true";
-}
-
-export const env = {
-  // ---- 認証 ----------------------------------------------------------------
-  /** NextAuth シークレット（必須） */
-  NEXTAUTH_SECRET: required("NEXTAUTH_SECRET"),
-  /** NextAuth ベース URL（必須） */
-  NEXTAUTH_URL: required("NEXTAUTH_URL"),
-  /** Discord OAuth クライアント ID（必須） */
-  DISCORD_CLIENT_ID: required("DISCORD_CLIENT_ID"),
-  /** Discord OAuth クライアントシークレット（必須） */
-  DISCORD_CLIENT_SECRET: required("DISCORD_CLIENT_SECRET"),
-
-  // ---- データベース ---------------------------------------------------------
-  /** PostgreSQL 接続文字列（必須） */
-  DATABASE_URL: required("DATABASE_URL"),
-
-  // ---- ストレージ -----------------------------------------------------------
-  /** アップロードファイルの保存ディレクトリ */
-  UPLOAD_DIR: optional("UPLOAD_DIR", ""),
-  /** 変換済みファイルの保存ディレクトリ */
-  CONVERTED_DIR: optional("CONVERTED_DIR", ""),
-  /** 波形データの保存ディレクトリ */
-  WAVEFORM_DIR: optional("WAVEFORM_DIR", ""),
-  /** チャンクアップロード一時ディレクトリ */
-  CHUNKS_DIR: optional("CHUNKS_DIR", ""),
-  /** 動画サムネイルの保存ディレクトリ */
-  THUMBNAIL_DIR: optional("THUMBNAIL_DIR", ""),
-  /** アップロードファイルの最大サイズ（バイト）。デフォルト 100GB（stem 等の大容量ファイル用） */
-  MAX_UPLOAD_SIZE: parseInt(optional("MAX_UPLOAD_SIZE", "107374182400"), 10),
-
-  // ---- S3（オプション。未設定時はローカルアップロードのみ）-------------------------
-  /** S3 バケット名 */
-  S3_BUCKET: optional("S3_BUCKET", ""),
-  /** AWS アクセスキー（MinIO でも使用） */
-  AWS_ACCESS_KEY_ID: optional("AWS_ACCESS_KEY_ID", ""),
-  /** AWS シークレットキー */
-  AWS_SECRET_ACCESS_KEY: optional("AWS_SECRET_ACCESS_KEY", ""),
-  /** S3 エンドポイント（MinIO 用。例: http://minio:9000） */
-  S3_ENDPOINT: optional("S3_ENDPOINT", ""),
-  /** S3 リージョン（AWS 用。MinIO は us-east-1 等） */
-  S3_REGION: optional("S3_REGION", "us-east-1"),
-  /** クライアントが Presigned URL でアクセスするベース URL（MinIO が別ホスト/ポートのとき必須） */
-  S3_PUBLIC_URL: optional("S3_PUBLIC_URL", ""),
-
-  // ---- 内部サービス --------------------------------------------------------
-  /** sync-server の内部 URL */
-  SYNC_SERVER_URL: optional("SYNC_SERVER_URL", "http://sync-server:5858"),
-  /** クライアント用 WebSocket URL（NEXT_PUBLIC 必須）。例: ws://localhost:5858 または wss://host/ws */
-  NEXT_PUBLIC_SYNC_WS_URL: optional("NEXT_PUBLIC_SYNC_WS_URL", "ws://localhost:5858"),
-
-  /** サーバーオーナーの Discord ID（設定時はこのユーザーのみワークスペースへアクセス可） */
-  SERVER_OWNER_DISCORD_ID: optional("SERVER_OWNER_DISCORD_ID", ""),
-
-  // ---- テスト・開発 --------------------------------------------------------
-  /** E2E テストモード（認証バイパス等） */
-  E2E_TEST_MODE: bool("E2E_TEST_MODE"),
-  /** Node.js 環境 */
-  NODE_ENV: optional("NODE_ENV", "development") as "development" | "production" | "test",
-} as const;
+export const env = createEnv({
+  server: {
+    NEXTAUTH_SECRET: z.string().min(1),
+    NEXTAUTH_URL: z.string().url(),
+    DISCORD_CLIENT_ID: z.string().min(1),
+    DISCORD_CLIENT_SECRET: z.string().min(1),
+    DATABASE_URL: z.string().url(),
+    MAX_UPLOAD_SIZE: z
+      .string()
+      .optional()
+      .default("107374182400")
+      .transform((v) => parseInt(v, 10)),
+    S3_BUCKET: z.string().default(""),
+    AWS_ACCESS_KEY_ID: z.string().default(""),
+    AWS_SECRET_ACCESS_KEY: z.string().default(""),
+    S3_ENDPOINT: z.string().default(""),
+    S3_REGION: z.string().default("us-east-1"),
+    S3_PUBLIC_URL: z.string().default(""),
+    SYNC_SERVER_URL: z.string().default("http://sync-server:5858"),
+    SERVER_OWNER_DISCORD_ID: z.string().default(""),
+    E2E_TEST_MODE: boolSchema.default(false),
+    NODE_ENV: z
+      .enum(["development", "production", "test"])
+      .default("development"),
+  },
+  client: {
+    NEXT_PUBLIC_SYNC_WS_URL: z.string().default("ws://localhost:5858"),
+  },
+  runtimeEnv: {
+    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+    NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+    DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID,
+    DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
+    DATABASE_URL: process.env.DATABASE_URL,
+    MAX_UPLOAD_SIZE: process.env.MAX_UPLOAD_SIZE,
+    S3_BUCKET: process.env.S3_BUCKET,
+    AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
+    AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
+    S3_ENDPOINT: process.env.S3_ENDPOINT,
+    S3_REGION: process.env.S3_REGION,
+    S3_PUBLIC_URL: process.env.S3_PUBLIC_URL,
+    SYNC_SERVER_URL: process.env.SYNC_SERVER_URL,
+    SERVER_OWNER_DISCORD_ID: process.env.SERVER_OWNER_DISCORD_ID,
+    E2E_TEST_MODE: process.env.E2E_TEST_MODE,
+    NODE_ENV: process.env.NODE_ENV,
+    NEXT_PUBLIC_SYNC_WS_URL: process.env.NEXT_PUBLIC_SYNC_WS_URL,
+  },
+});
 
 // E2E テストモードは本番環境で使用禁止（認証バイパス等の重大な脆弱性）
 if (env.E2E_TEST_MODE && env.NODE_ENV === "production") {

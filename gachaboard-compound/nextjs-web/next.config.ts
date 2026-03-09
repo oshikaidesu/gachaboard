@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 import path from "path";
 
+import "./src/lib/env";
+
 const nextConfig: NextConfig = {
   // マルチ lockfile 環境でのパス解決を安定させる
   outputFileTracingRoot: path.resolve(process.cwd()),
@@ -27,12 +29,11 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
+    // npm run dev 時は Next.js がホストで動くため localhost を使用。
+    // Next.js を Docker 内で動かす場合は SYNC_SERVER_INTERNAL_URL=http://sync-server:5858 を設定
+    const syncDest = process.env.SYNC_SERVER_INTERNAL_URL ?? "http://127.0.0.1:5858";
     return [
-      // y-websocket: /ws/roomId → sync-server:5858/roomId
-      {
-        source: "/ws/:path*",
-        destination: "http://sync-server:5858/:path*",
-      },
+      { source: "/ws/:path*", destination: `${syncDest}/:path*` },
     ];
   },
 };

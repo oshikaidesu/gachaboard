@@ -10,6 +10,7 @@ import {
   DEFAULT_REACTION_EMOJI_LIST,
   FIXED_EMOJI_LIST,
 } from "@shared/constants";
+import { env } from "@/lib/env";
 
 const REACTION_EMOJI_PRESET_MAP_KEY = "reactionEmojiPreset";
 const REACTION_EMOJI_PRESET_EMOJIS_KEY = "emojis";
@@ -33,7 +34,7 @@ function getSyncWsUrl(): string {
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
     return `${protocol}://${window.location.host}/ws`;
   }
-  const url = process.env.NEXT_PUBLIC_SYNC_WS_URL ?? "ws://localhost:5858";
+  const url = env.NEXT_PUBLIC_SYNC_WS_URL;
   return url.startsWith("__placeholder") ? "" : url;
 }
 

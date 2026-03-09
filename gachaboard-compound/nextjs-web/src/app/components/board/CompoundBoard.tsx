@@ -27,6 +27,7 @@ import { useShapeDeletePositionCapture } from "@/app/hooks/useShapeDeletePositio
 import { useSnapshotSave } from "@/app/hooks/useSnapshotPersistence";
 import { DarkModeButton } from "./DarkModeButton";
 import { BoardHeader } from "./BoardHeader";
+import { env } from "@/lib/env";
 
 type Props = {
   boardId: string;
@@ -65,7 +66,7 @@ export default function CompoundBoard({
     typeof window !== "undefined" &&
     !["localhost", "127.0.0.1"].includes(window.location.hostname)
       ? `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/ws`
-      : process.env.NEXT_PUBLIC_SYNC_WS_URL ?? "ws://localhost:5858";
+      : env.NEXT_PUBLIC_SYNC_WS_URL;
   const useSync =
     typeof syncWsUrl === "string" &&
     syncWsUrl.length > 0 &&
