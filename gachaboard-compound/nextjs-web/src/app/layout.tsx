@@ -16,9 +16,22 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXTAUTH_URL ?? "https://gachaboard.example.com";
+
 export const metadata: Metadata = {
   title: "Gachaboard",
   description: "音楽・映像・デザインファイルを貼り付けて、みんなで一緒に使えるホワイトボード",
+  metadataBase: new URL(siteUrl),
+  openGraph: {
+    title: "Gachaboard",
+    description: "音楽・映像・デザインファイルを貼り付けて、みんなで一緒に使えるホワイトボード",
+    images: ["/ogp.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Gachaboard",
+    description: "音楽・映像・デザインファイルを貼り付けて、みんなで一緒に使えるホワイトボード",
+  },
 };
 
 export const viewport: Viewport = {

@@ -160,10 +160,37 @@ export async function seedE2EAssets(db: {
   x += 340;
   y = 80;
 
-  // 4. ファイルアイコン（PDF, TXT, DOC, XLS など）
+  // 4. テキストファイル（text-file シェイプ）
+  const txtContent = "# サンプルテキスト\n\nこれはスクリーンショット用の\nテキストファイルです。\n\n- リスト1\n- リスト2";
+  const txtStorageKey = `${randomUUID()}.txt`;
+  await putObject(s3KeyAssets(txtStorageKey), Buffer.from(txtContent, "utf8"), "text/plain");
+  const txtAsset = await db.asset.create({
+    data: {
+      workspaceId: E2E_WORKSPACE_ID,
+      boardId: E2E_BOARD_ID,
+      uploaderId: E2E_USER_ID,
+      kind: "file",
+      mimeType: "text/plain",
+      fileName: "readme.txt",
+      sizeBytes: BigInt(Buffer.byteLength(txtContent, "utf8")),
+      storageKey: txtStorageKey,
+    },
+  });
+  records.push(
+    shapeRecord("shape", `shape:${randomUUID()}`, "text-file", x, y, {
+      assetId: txtAsset.id,
+      fileName: "readme.txt",
+      mimeType: "text/plain",
+      content: txtContent,
+      w: 320,
+      h: 200,
+    })
+  );
+  x += 340;
+
+  // 5. ファイルアイコン（PDF, XLS, JS など）
   const fileIcons: { fileName: string; mimeType: string; kind: string; content: Buffer }[] = [
     { fileName: "document.pdf", mimeType: "application/pdf", kind: "file", content: MINIMAL_PDF },
-    { fileName: "readme.txt", mimeType: "text/plain", kind: "file", content: Buffer.from("Sample text file", "utf8") },
     { fileName: "data.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", kind: "file", content: Buffer.from("PK", "utf8") },
     { fileName: "script.js", mimeType: "application/javascript", kind: "file", content: Buffer.from("// sample", "utf8") },
   ];
