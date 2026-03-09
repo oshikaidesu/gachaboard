@@ -2,17 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
-
-type OgpData = {
-  url: string;
-  title?: string;
-  description?: string;
-  image?: string;
-  isYoutube?: boolean;
-  youtubeId?: string;
-};
-
-const OGP_CACHE_LIMIT = 200;
+import type { OgpData } from "@shared/apiTypes";
+import { OGP_CACHE_LIMIT } from "@shared/constants";
 const ogpCache = new Map<string, OgpData>();
 
 function ogpCacheSet(key: string, value: OgpData) {

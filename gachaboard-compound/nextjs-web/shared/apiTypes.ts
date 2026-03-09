@@ -88,6 +88,16 @@ export type ApiWorkspaceInfo = Pick<ApiWorkspace, "name" | "ownerUserId"> & {
   ownerName: string;
 };
 
+/** OGP メタデータ（ogp API レスポンス・OgpPreview 用） */
+export type OgpData = {
+  url: string;
+  title?: string;
+  description?: string;
+  image?: string;
+  isYoutube?: boolean;
+  youtubeId?: string;
+};
+
 /** ワークスペースメンバー（オーナー＋招待メンバー一覧） */
 export type ApiWorkspaceMember = {
   userId: string;

@@ -19,6 +19,15 @@ export const CUSTOM_EMOJI_CANDIDATES = [
 /** デフォルト表示用（固定5つのみ。カスタムは空） */
 export const DEFAULT_REACTION_EMOJI_LIST = [...FIXED_EMOJI_LIST];
 
+/** OGP キャッシュ TTL（ミリ秒） */
+export const OGP_CACHE_TTL_MS = 60 * 60 * 1000;
+/** OGP キャッシュ上限件数 */
+export const OGP_CACHE_LIMIT = 200;
+/** OGP fetch タイムアウト（ミリ秒） */
+export const OGP_FETCH_TIMEOUT_MS = 5000;
+/** エラー表示の消去時間（ミリ秒） */
+export const ERROR_TOAST_DURATION_MS = 5000;
+
 /** アセット種別（Asset.kind 用） */
 export const ASSET_KIND = {
   GIF: "gif",

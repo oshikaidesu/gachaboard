@@ -2,18 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import getYouTubeID from "get-youtube-id";
 import { requireLogin } from "@/lib/authz";
 import { env } from "@/lib/env";
+import type { OgpData } from "@shared/apiTypes";
+import { OGP_CACHE_TTL_MS, OGP_FETCH_TIMEOUT_MS } from "@shared/constants";
 
 const cache = new Map<string, { data: OgpData; ts: number }>();
-const CACHE_TTL = 1000 * 60 * 60; // 1時間
-
-type OgpData = {
-  title?: string;
-  description?: string;
-  image?: string;
-  url: string;
-  isYoutube?: boolean;
-  youtubeId?: string;
-};
 
 /** x.com / twitter.com を fxtwitter.com に変換して OGP を正しく取得できるようにする */
 function toFxTwitterUrl(url: string): string {
@@ -59,7 +51,7 @@ export async function GET(req: NextRequest) {
   const url = isTwitterUrl(rawUrl) ? toFxTwitterUrl(rawUrl) : rawUrl;
 
   const cached = cache.get(rawUrl);
-  if (cached && Date.now() - cached.ts < CACHE_TTL) {
+  if (cached && Date.now() - cached.ts < OGP_CACHE_TTL_MS) {
     return NextResponse.json(cached.data);
   }
 
@@ -78,7 +70,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), OGP_FETCH_TIMEOUT_MS);
 
     const res = await fetch(url, {
       signal: controller.signal,
