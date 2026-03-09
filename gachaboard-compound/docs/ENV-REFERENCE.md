@@ -1,0 +1,105 @@
+# 環境変数リファレンス
+
+> Gachaboard で使用する環境変数の一覧。`nextjs-web/.env.local` に設定します。
+
+---
+
+## 必須変数
+
+| 変数名 | 説明 | 例 |
+|--------|------|-----|
+| `DISCORD_CLIENT_ID` | Discord OAuth の Client ID。[Discord Developer Portal](https://discord.com/developers/applications) でアプリ作成後、OAuth2 から取得 | `1234567890123456789` |
+| `DISCORD_CLIENT_SECRET` | Discord OAuth の Client Secret。同上 | `abcdef123456...` |
+| `NEXTAUTH_SECRET` | セッション暗号化用。任意の長いランダム文字列。`openssl rand -base64 32` で生成可 | `xYz123...` |
+| `NEXTAUTH_URL` | アプリのベース URL。ブラウザでアクセスする URL と一致させる | モード別は下表参照 |
+| `DATABASE_URL` | PostgreSQL 接続文字列 | `postgresql://gachaboard:gachaboard@localhost:5433/gachaboard` |
+
+---
+
+## オプション変数
+
+### 認証・権限
+
+| 変数名 | デフォルト | 説明 |
+|--------|------------|------|
+| `SERVER_OWNER_DISCORD_ID` | （未設定） | サーバーオーナーの Discord ID。設定時はこのユーザーのみワークスペース一覧・作成が可能。未設定なら全ログインユーザーがアクセス可。詳細は [ownership-design.md](ownership-design.md) |
+
+### データベース・ストレージ
+
+| 変数名 | デフォルト | 説明 |
+|--------|------------|------|
+| `UPLOAD_DIR` | （空） | アップロードファイルの保存ディレクトリ。未設定時は `uploads/` |
+| `CONVERTED_DIR` | （空） | 変換済みファイル（mp3, 720p mp4）の保存ディレクトリ |
+| `WAVEFORM_DIR` | （空） | 音声波形 JSON の保存ディレクトリ |
+| `CHUNKS_DIR` | （空） | チャンクアップロードの一時ディレクトリ |
+| `THUMBNAIL_DIR` | （空） | 動画サムネイルの保存ディレクトリ |
+| `MAX_UPLOAD_SIZE` | `107374182400` (100GB) | アップロード上限（バイト）。stem 等の大容量ファイル用 |
+
+### S3 / MinIO
+
+**重要:** ストレージは「ローカル」か「S3/MinIO」のどちらかです。混在はできません。
+
+| モード | 条件 | 保存先 |
+|--------|------|--------|
+| **ローカル** | `S3_BUCKET` を設定しない（または空） | `nextjs-web/uploads/` |
+| **S3/MinIO** | `S3_BUCKET` + `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` をすべて設定 | オブジェクトストレージ |
+
+**初回・開発時はローカル推奨** — S3 系を一切設定しなければ `uploads/` に保存されます。MinIO を使う場合のみ以下を設定してください。
+
+| 変数名 | デフォルト | 説明 |
+|--------|------------|------|
+| `S3_BUCKET` | （空） | バケット名。Docker MinIO のデフォルトは `my-bucket` |
+| `AWS_ACCESS_KEY_ID` | （空） | MinIO の場合は `minioadmin` |
+| `AWS_SECRET_ACCESS_KEY` | （空） | MinIO の場合は `minioadmin` |
+| `S3_ENDPOINT` | （空） | Next.js が MinIO に接続する URL。`npm run dev` 時は `http://localhost:9000`、Next.js を Docker 内で動かすときは `http://minio:9000` |
+| `S3_REGION` | `us-east-1` | リージョン。MinIO は `us-east-1` 等でよい |
+| `S3_PUBLIC_URL` | （空） | ブラウザが Presigned URL でアクセスするベース URL。MinIO が別ホストのとき必須（例: `http://localhost:9000`） |
+
+### 同期（sync-server）
+
+| 変数名 | デフォルト | 説明 |
+|--------|------------|------|
+| `SYNC_SERVER_URL` | `http://sync-server:5858` | サーバー内部から sync-server への URL。Docker 内では `sync-server`、ローカル単体では `http://localhost:5858` |
+| `NEXT_PUBLIC_SYNC_WS_URL` | `ws://localhost:5858` | クライアント用 WebSocket URL。同一オリジンなら `/ws` 経由で Next.js が転送するため未設定でよい場合が多い |
+
+---
+
+## モード別推奨値
+
+運用モードの詳細は [ENV-AND-DEPLOYMENT-MODES.md](ENV-AND-DEPLOYMENT-MODES.md) を参照。
+
+| 変数 | local | tailscale | production |
+|------|-------|-----------|------------|
+| `NEXTAUTH_URL` | `http://localhost:3000` | `http://<自分のTailscaleホスト>:3000` | `https://...` または `http://<IP or ドメイン>:3000` |
+| `DATABASE_URL` | `postgresql://gachaboard:gachaboard@localhost:5433/gachaboard` | 同上 | 本番 DB の接続文字列 |
+| `NEXT_PUBLIC_SYNC_WS_URL` | 未設定（同一オリジン `/ws` 使用） | 同上 | 同上 |
+
+---
+
+## 取得手順の例
+
+### NEXTAUTH_SECRET の生成
+
+```bash
+openssl rand -base64 32
+```
+
+### Discord Client ID / Secret
+
+1. [Discord Developer Portal](https://discord.com/developers/applications) にログイン
+2. 「New Application」でアプリを作成
+3. OAuth2 → Redirects に `http://localhost:3000/api/auth/callback/discord` を追加（Tailscale 使用時は別途追加）
+4. OAuth2 → General で Client ID と Client Secret をコピー
+
+### サーバーオーナーの Discord ID
+
+1. Discord で「開発者モード」を有効化（設定 → アプリの設定 → 詳細）
+2. 自分のプロフィールを右クリック → 「ID をコピー」
+
+---
+
+## 関連ドキュメント
+
+- [ENV-AND-DEPLOYMENT-MODES.md](ENV-AND-DEPLOYMENT-MODES.md) - 運用モード（local / tailscale / production）の説明
+- [FIRST-TIME-SETUP.md](FIRST-TIME-SETUP.md) - 初回セットアップの手順
+- [discord-auth-troubleshooting.md](discord-auth-troubleshooting.md) - 認証エラーのトラブルシューティング

@@ -14,6 +14,8 @@ type BoardContextValue = {
   avatarUrl: string | null;
   userInfoAtom: Atom<UserInfo> | null;
   provider?: WebsocketProvider | null;
+  /** リアクション・コメントが同期可能なとき true（オフライン/エラー時は false） */
+  syncAvailable: boolean;
 };
 
 export const BoardContext = createContext<BoardContextValue>({
@@ -24,6 +26,7 @@ export const BoardContext = createContext<BoardContextValue>({
   avatarUrl: null,
   userInfoAtom: null,
   provider: null,
+  syncAvailable: false,
 });
 
 export function useBoardContext() {

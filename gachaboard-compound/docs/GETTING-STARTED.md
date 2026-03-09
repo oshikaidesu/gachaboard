@@ -2,6 +2,8 @@
 
 > 開発者が Gachaboard をローカルで動かすための詳細手順。
 
+**初回セットアップ**は [FIRST-TIME-SETUP.md](FIRST-TIME-SETUP.md) を参照。**環境変数の詳細**は [ENV-REFERENCE.md](ENV-REFERENCE.md) を参照。
+
 ---
 
 ## 1. 前提条件
@@ -27,16 +29,9 @@
 cp nextjs-web/env.local.template nextjs-web/.env.local
 ```
 
-| 変数名 | 必須 | 説明 |
-|--------|------|------|
-| `DISCORD_CLIENT_ID` | ○ | Discord OAuth Client ID |
-| `DISCORD_CLIENT_SECRET` | ○ | Discord OAuth Client Secret |
-| `NEXTAUTH_SECRET` | ○ | セッション暗号化用（任意の長いランダム文字列） |
-| `NEXTAUTH_URL` | ○ | アプリ URL（ローカル: `http://localhost:3000`） |
-| `DATABASE_URL` | ○ | PostgreSQL 接続文字列 |
-| `NEXT_PUBLIC_SYNC_WS_URL` | - | sync-server の WebSocket URL（例: `ws://localhost:5858`） |
-| `SERVER_OWNER_DISCORD_ID` | - | サーバーオーナーの Discord ID。未設定なら全員アクセス可。設定時はオーナーのみ WS にアクセス。運用詳細は [ownership-design.md](ownership-design.md) |
-| `S3_BUCKET` 等 | - | 未設定ならローカル `uploads/` に保存 |
+必須変数: `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `DATABASE_URL`
+
+全変数の一覧・モード別推奨値は [ENV-REFERENCE.md](ENV-REFERENCE.md) を参照。
 
 **Docker Compose 利用時の DATABASE_URL 例:**
 
@@ -95,11 +90,13 @@ ffmpeg が入っていないと動画・音声の変換は失敗します。
 
 ## 6. Tailscale 経由でアクセス（スマホ等）
 
-1. `NEXTAUTH_URL` を Tailscale の URL に変更（例: `http://xxx.tail16829c.ts.net:3000`）
-2. Discord OAuth の Redirect に同じ URL を追加
-3. `nextjs-web` で `npm run env:tailscale` で切り替え可能（`scripts/switch-env.sh`）
+運用モード・Tailscale ホスト名の調べ方・切り替え手順は [ENV-AND-DEPLOYMENT-MODES.md](ENV-AND-DEPLOYMENT-MODES.md) を参照。
 
-詳細は [discord-auth-troubleshooting.md](discord-auth-troubleshooting.md)。
+```bash
+cd nextjs-web
+npm run env:tailscale   # Tailscale ホストに切り替え（未指定時は自動検出を試みる）
+# 切り替えたら Next.js を再起動
+```
 
 ---
 

@@ -314,7 +314,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
   }
   const stableSrc = srcRef.current.src;
 
-  const { boardId, workspaceId } = useBoardContext();
+  const { boardId, workspaceId, syncAvailable } = useBoardContext();
   const editor = useEditor();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -395,7 +395,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
   }, [comments.length, isCompact]);
 
   const postComment = () => {
-    if (!newComment.trim()) return;
+    if (!newComment.trim() || !syncAvailable) return;
     setPosting(true);
     addComment(currentTime, newComment.trim());
     setNewComment("");
@@ -771,7 +771,16 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
 
         {/* コメント入力（入力欄/ボタン以外は選択に） */}
         <div
-        style={{ display: "flex", gap: 4, alignItems: "center", padding: "0 10px 6px", flexShrink: 0 }}
+        style={{
+          display: "flex",
+          gap: 4,
+          alignItems: "center",
+          padding: "0 10px 6px",
+          flexShrink: 0,
+          opacity: syncAvailable ? 1 : 0.6,
+          pointerEvents: syncAvailable ? undefined : "none",
+        }}
+        title={!syncAvailable ? "同期エラーにより利用できません" : undefined}
         onMouseDown={(e) => {
           const t = e.target as HTMLElement;
           if (t.tagName === "INPUT" || t.tagName === "BUTTON" || t.tagName === "SPAN") e.stopPropagation();
@@ -781,6 +790,22 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
           if (t.tagName === "INPUT" || t.tagName === "BUTTON" || t.tagName === "SPAN") e.stopPropagation();
         }}
       >
+        {!syncAvailable && (
+          <span
+            title="同期エラーにより利用できません"
+            style={{
+              fontSize: 10,
+              color: "#b91c1c",
+              background: "rgba(254,226,226,0.9)",
+              padding: "1px 5px",
+              borderRadius: 4,
+              fontWeight: 500,
+              pointerEvents: "auto",
+            }}
+          >
+            同期エラー
+          </span>
+        )}
         {commentFocused && (
           <span style={{ fontSize: 13, color: TEXT_MUTED, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
             {formatTime(currentTime)}
@@ -853,6 +878,8 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
             minHeight: 0,
             overflowY: "auto" as const,
             touchAction: "pan-y",
+            opacity: syncAvailable ? 1 : 0.6,
+            pointerEvents: syncAvailable ? undefined : "none",
           }}
           onMouseDown={(e) => {
             const t = e.target as HTMLElement;

@@ -14,7 +14,7 @@ type Props = {
 };
 
 export function ShapeReactionPanel({ shapeId, containerStyle }: Props) {
-  const { boardId, workspaceId, currentUserId, provider } = useBoardContext();
+  const { boardId, workspaceId, currentUserId, provider, syncAvailable } = useBoardContext();
   const emojiList = useReactionPreset({ boardId, workspaceId, provider });
   const { reactions, addReaction, removeReaction } = useBoardReactions(shapeId);
   const editor = useEditor();
@@ -150,13 +150,15 @@ export function ShapeReactionPanel({ shapeId, containerStyle }: Props) {
           left: 0,
           display: "flex",
           flexWrap: "wrap",
-          alignItems: "flex-start",
+          alignItems: "center",
           gap: 3,
-          pointerEvents: "all",
+          pointerEvents: syncAvailable ? "all" : "none",
           userSelect: "none",
           zIndex: 10,
+          opacity: syncAvailable ? 1 : 0.6,
           ...containerStyle,
         }}
+        title={!syncAvailable ? "同期エラーにより利用できません" : undefined}
         onPointerDown={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
@@ -212,6 +214,20 @@ export function ShapeReactionPanel({ shapeId, containerStyle }: Props) {
         >
           +
         </button>
+        {!syncAvailable && (
+          <span
+            style={{
+              fontSize: 10,
+              color: "#b91c1c",
+              background: "rgba(254,226,226,0.9)",
+              padding: "1px 5px",
+              borderRadius: 4,
+              fontWeight: 500,
+            }}
+          >
+            同期エラー
+          </span>
+        )}
       </div>
       {pickerEl}
     </>

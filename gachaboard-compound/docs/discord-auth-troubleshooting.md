@@ -98,65 +98,11 @@ http://localhost:3000 を開き、Discord ログインを試す。
 
 ## Tailscale 経由でスマホからアクセスする場合
 
-Tailscale で `http://uooooooooooo.tail16829c.ts.net:3000` などにアクセスしているとき、Discord ログイン後に「無」に飛ばされる（リダイレクト先が効かない）ことがある。
+Tailscale URL 経由でアクセスしているとき、Discord ログイン後にリダイレクト先が効かないことがある。
 
-### ワンクリックで NEXTAUTH_URL を切り替える
+**原因:** `NEXTAUTH_URL` が `localhost` のままだと、Discord のコールバック先も localhost になり、スマホ側の localhost（=スマホ自身）に飛んでしまうため。
 
-`.env.local` の `NEXTAUTH_URL` を **ローカル用** と **Tailscale 用** で切り替えるスクリプトがある。`nextjs-web` で以下を実行する。
-
-| 用途 | コマンド |
-|------|----------|
-| ローカル開発（通常・WebSocket も動作） | `npm run env:local` |
-| Tailscale（スマホからログインするとき） | `npm run env:tailscale` |
-
-```bash
-cd gachaboard-compound/nextjs-web
-npm run env:local      # → NEXTAUTH_URL=http://localhost:3000
-npm run env:tailscale  # → NEXTAUTH_URL=http://uooooooooooo.tail16829c.ts.net:3000
-```
-
-切り替えたら **Next.js を再起動**（`Ctrl+C` で止めてから `npm run dev`）。別の Tailscale ホストを使う場合は `TAILSCALE_HOST=desktop-hn7hdbv-1.tail16829c.ts.net npm run env:tailscale` のように環境変数で指定する。
-
-### 原因
-
-`NEXTAUTH_URL` が `localhost` のままだと、Discord のコールバック先も localhost になり、スマホ側の localhost（=スマホ自身）に飛んでしまうため。
-
-### 解決手順
-
-1. **`.env.local` の `NEXTAUTH_URL` を Tailscale URL に変更**
-
-   ```bash
-   NEXTAUTH_URL=http://uooooooooooo.tail16829c.ts.net:3000
-   # または
-   NEXTAUTH_URL=http://desktop-hn7hdbv-1.tail16829c.ts.net:3000
-   ```
-
-2. **Discord Developer Portal で Redirect URL を追加**
-
-   - [Discord Developer Portal](https://discord.com/developers/applications) を開く
-   - アプリを選択 → OAuth2 → Redirects
-   - 「Add Redirect」で以下を追加（localhost は残しておいてよい）:
-     ```
-     http://uooooooooooo.tail16829c.ts.net:3000/api/auth/callback/discord
-     ```
-     または `desktop-hn7hdbv-1` を使う場合は:
-     ```
-     http://desktop-hn7hdbv-1.tail16829c.ts.net:3000/api/auth/callback/discord
-     ```
-
-3. **Next.js を再起動**
-
-   ```bash
-   npm run dev
-   ```
-
-これで Tailscale URL 経由のログイン後、正しくアプリに戻れる。
-
-### NEXTAUTH_URL を Tailscale にしたときの WebSocket 失敗
-
-`NEXTAUTH_URL` を Tailscale URL にすると、ブラウザは `ws://uooooooooooo.tail16829c.ts.net:3000/ws/...` に WebSocket 接続する。Next.js の rewrite は `/ws/*` を `http://sync-server:5858` に転送するが、**Docker なしで `npm run dev` している環境では** `sync-server` は名前解決できず、WebSocket がつながらない。
-
-**対処:** いったん **`NEXTAUTH_URL=http://localhost:3000` に戻す**と、localhost 経由では WebSocket も含めて動作する。Tailscale からスマホでログインしたいときだけ Tailscale URL に切り替え、使ったら localhost に戻す運用でもよい。
+**対処:** [ENV-AND-DEPLOYMENT-MODES.md](ENV-AND-DEPLOYMENT-MODES.md) の「tailscale モード」を参照。`npm run env:tailscale` で NEXTAUTH_URL を切り替え、Discord Redirect に Tailscale の callback URL を追加する。
 
 ### コンソールの Hydration 警告（data-kantu）
 

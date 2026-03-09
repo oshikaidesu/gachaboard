@@ -9,7 +9,10 @@ Gachaboard のドキュメントを体系的にまとめた索引です。
 | ドキュメント | 内容 |
 |-------------|------|
 | [../README.md](../README.md) | メイン README（ユーザー向け・クイックスタート） |
+| [FIRST-TIME-SETUP.md](FIRST-TIME-SETUP.md) | 初回セットアップ（未経験者向けチェックリスト） |
 | [GETTING-STARTED.md](GETTING-STARTED.md) | 開発環境の詳細セットアップ |
+| [ENV-REFERENCE.md](ENV-REFERENCE.md) | 環境変数リファレンス |
+| [ENV-AND-DEPLOYMENT-MODES.md](ENV-AND-DEPLOYMENT-MODES.md) | 運用モード（local / tailscale / production） |
 
 ---
 

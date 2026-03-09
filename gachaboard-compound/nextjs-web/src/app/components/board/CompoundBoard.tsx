@@ -238,7 +238,16 @@ export default function CompoundBoard({
       ? yjsStore.connectionStatus === "online"
         ? "同期中"
         : "オフライン"
-      : null;
+      : useSync && yjsStore.status === "error"
+        ? `同期エラー: ${yjsStore.error?.message ?? "不明"}`
+        : useSync && yjsStore.status === "loading"
+          ? "接続中..."
+          : null;
+
+  const syncAvailable =
+    useSync &&
+    yjsStore.status === "synced-remote" &&
+    (yjsStore as { connectionStatus?: string }).connectionStatus === "online";
 
   const boardContextValue = useMemo(
     () => ({
@@ -249,8 +258,9 @@ export default function CompoundBoard({
       avatarUrl: avatarUrl ?? null,
       userInfoAtom: null,
       provider: useSync ? yjsStore.provider : undefined,
+      syncAvailable,
     }),
-    [boardId, workspaceId, currentUserId, userName, avatarUrl, useSync, yjsStore.provider]
+    [boardId, workspaceId, currentUserId, userName, avatarUrl, useSync, yjsStore.provider, syncAvailable]
   );
 
   const headerRef = useRef<HTMLDivElement>(null);
@@ -319,8 +329,18 @@ export default function CompoundBoard({
               <span className="text-xs font-medium text-zinc-900 dark:text-white">{boardName || "無題のボード"}</span>
               <span className="text-xs text-zinc-400 dark:text-slate-400">({boardId.slice(0, 8)})</span>
             </div>
-            <span className="ml-auto flex items-center gap-3 text-xs text-zinc-500 dark:text-slate-400">
-              {syncStatus ?? "ローカル保存"}
+            <span className="ml-auto flex items-center gap-3 text-xs dark:text-slate-400">
+              {useSync && yjsStore.status === "error" ? (
+                <button
+                  onClick={() => router.refresh()}
+                  title="クリックで再読み込み"
+                  className="font-medium text-red-600 hover:underline dark:text-red-400"
+                >
+                  {syncStatus}
+                </button>
+              ) : (
+                <span className="text-zinc-500">{syncStatus ?? "ローカル保存"}</span>
+              )}
             </span>
             <div ref={setHeaderActionsEl} className="contents" />
             {yjsStore.provider && (
@@ -361,8 +381,22 @@ export default function CompoundBoard({
               yjsStore.status === "loading" ? (
                 <div className="flex h-full items-center justify-center text-zinc-500">接続中...</div>
               ) : yjsStore.status === "error" ? (
-                <div className="flex h-full items-center justify-center text-red-500">
-                  同期エラー: {yjsStore.error?.message}
+                <div className="flex h-full flex-col items-center justify-center gap-4 px-4">
+                  <p className="text-red-500">同期エラー: {yjsStore.error?.message}</p>
+                  <button
+                    onClick={() => router.refresh()}
+                    className="rounded-md bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600"
+                  >
+                    再読み込み
+                  </button>
+                  <details className="max-w-md rounded border border-zinc-200 bg-zinc-50 px-4 py-3 text-left text-xs text-zinc-600 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-300">
+                    <summary className="cursor-pointer font-medium">対処法</summary>
+                    <ul className="mt-2 list-inside list-disc space-y-1">
+                      <li>同期サーバー（sync-server）が起動しているか確認してください</li>
+                      <li>開発環境: <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-700">docker compose up -d sync-server</code></li>
+                      <li>環境変数 <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-700">NEXT_PUBLIC_SYNC_WS_URL</code> が正しいか確認してください</li>
+                    </ul>
+                  </details>
                 </div>
               ) : (
                 <Compound
