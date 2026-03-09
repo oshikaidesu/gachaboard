@@ -124,10 +124,10 @@ PORT=5858 HOST=0.0.0.0 npm start
 | `SERVER_OWNER_DISCORD_ID` | サーバーオーナーの Discord ID。未設定なら全員アクセス可。設定時はオーナーのみ WS にアクセス可。取得: 開発者モード ON → アイコン右クリック → ID をコピー |
 | `UPLOAD_DIR` | （ffmpeg 変換用 tmp 等。アップロードは S3 経由） |
 
-**環境変数の詳細**: [../docs/ENV-REFERENCE.md](../docs/ENV-REFERENCE.md) を参照。
+**環境変数の詳細**: [../docs/user/ENV-REFERENCE.md](../docs/user/ENV-REFERENCE.md) を参照。
 
-**NEXTAUTH_URL の切り替え**: `npm run env:local` / `npm run env:tailscale`。Tailscale ホスト未指定時は自動検出を試みる。詳細は [../docs/ENV-AND-DEPLOYMENT-MODES.md](../docs/ENV-AND-DEPLOYMENT-MODES.md) を参照。
+**NEXTAUTH_URL の切り替え**: `npm run env:local` / `npm run env:tailscale`。Tailscale ホスト未指定時は自動検出を試みる。詳細は [../docs/user/ENV-AND-DEPLOYMENT-MODES.md](../docs/user/ENV-AND-DEPLOYMENT-MODES.md) を参照。
 
 **ストレージ**: S3/MinIO が必須。`env.local.template` にデフォルト値あり。`docker compose up -d` で MinIO を起動すること。
 
-**サーバーオーナー（運用）**: `SERVER_OWNER_DISCORD_ID` を設定すると、オーナー以外はワークスペースにアクセスできずトップへリダイレクト。Tailscale 運用でサーバー管理者 1 人をオーナーにする想定。詳細は [ownership-design.md](../docs/ownership-design.md)。
+**サーバーオーナー（運用）**: `SERVER_OWNER_DISCORD_ID` を設定すると、オーナー以外はワークスペースにアクセスできずトップへリダイレクト。Tailscale 運用でサーバー管理者 1 人をオーナーにする想定。詳細は [ownership-design.md](../docs/user/ownership-design.md)。

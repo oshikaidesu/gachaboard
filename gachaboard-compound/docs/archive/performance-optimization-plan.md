@@ -364,4 +364,4 @@ const applyYUpdate = (event: Y.YMapEvent<string>) => {
 - [lightweighting-phase-plan.md](./lightweighting-phase-plan.md) - 軽量化フェーズ計画
 - [sync-improvement-implementation-guide.md](./sync-improvement-implementation-guide.md)
 - [multi-cursor-implementation-guide.md](./multi-cursor-implementation-guide.md)
-- [discord-auth-troubleshooting.md](./discord-auth-troubleshooting.md)
+- [discord-auth-troubleshooting.md](../user/discord-auth-troubleshooting.md)

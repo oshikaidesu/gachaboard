@@ -67,6 +67,7 @@ flowchart TB
 - **理由**: Undo（元に戻す）時に DB がすでに trash 済みだと、ファイル API が 404 を返し「ファイルが削除されました」となる問題を避けるため
 - **実装**: `useShapeDeletePositionCapture`
 - **補足**: 削除してからゴミ箱に反映されるまで最大 10 分かかる場合がある。同期エラーではない
+
 | **AuditLog** | 監査ログ | `action`, `target`, `metadata` |
 
 **注**: リアクション・コメントは Y.Doc に統合済み（ObjectReaction, MediaComment テーブルは削除）。Connector も削除（アローは tldraw shape で Y.Doc 内）。

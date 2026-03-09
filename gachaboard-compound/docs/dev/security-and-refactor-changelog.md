@@ -12,12 +12,11 @@
 - **目的**: 本番での認証バイパス（X-E2E-User-Id ヘッダー等）を防止
 
 ### 1-2. パストラバーサル修正
-- **新規**: `src/lib/validators.ts`（`isValidUploadId`, `isValidChunkIndex`）
+- **新規**: `src/lib/validators.ts`（`uploadIdSchema`, `chunkIndexSchema`, `s3UploadIdSchema`）
 - **対象**:
-  - `api/assets/upload/[uploadId]/[chunkIndex]`: chunkIndex を非負整数のみ許可、uploadId を UUID 形式で検証
-  - `api/assets/upload/[uploadId]/complete`: uploadId 検証
-  - `api/assets/upload/[uploadId]/status`: uploadId 検証
+  - `api/assets/upload/s3/init`, `s3/presign`, `s3/status`, `s3/complete`: S3 マルチパート用。`s3UploadIdSchema` で uploadId 検証
   - `api/assets/upload/s3/complete`: storageKey・fileName 等をクライアントから受け取らず、`S3UploadSession` から取得。uploaderId の照合を追加
+  - 注: 旧チャンクアップロード（`[uploadId]/[chunkIndex]`）は S3 マルチパート移行により削除済み
 
 ### 1-3. OGP SSRF 対策
 - **ファイル**: `src/app/api/ogp/route.ts`
@@ -58,7 +57,6 @@
 ### 3-2. スキーマ適用済みルート
 | ルート | スキーマ |
 |--------|----------|
-| `comments` POST | `createCommentSchema` |
 | `workspaces` POST | `createWorkspaceSchema` |
 | `assets/upload/s3/complete` POST | `s3CompleteSchema` |
 
@@ -78,7 +76,7 @@
   - `Permissions-Policy: camera=(), microphone=(), geolocation=()`
 
 ### 4-2. アップロードサイズ制限
-- **ファイル**: `src/lib/env.ts`, `api/assets/route.ts`, `api/assets/upload/init/route.ts`, `api/assets/upload/s3/init/route.ts`
+- **ファイル**: `src/lib/env.ts`, `api/assets/route.ts`, `api/assets/upload/s3/init/route.ts`
 - **内容**: `MAX_UPLOAD_SIZE`（デフォルト 100GB）でファイルサイズをチェック
 - **補足**: 実際の転送はチャンク（S3: 100MB/part）で行うため、メモリ負荷は小さい
 
@@ -102,15 +100,12 @@
 | `src/app/api/assets/[assetId]/file/route.ts` | 変更（認可） |
 | `src/app/api/assets/[assetId]/thumbnail/route.ts` | 変更（認可） |
 | `src/app/api/assets/[assetId]/waveform/route.ts` | 変更（認可） |
-| `src/app/api/assets/upload/[uploadId]/[chunkIndex]/route.ts` | 変更（パストラバーサル対策） |
-| `src/app/api/assets/upload/[uploadId]/complete/route.ts` | 変更（uploadId 検証） |
-| `src/app/api/assets/upload/[uploadId]/status/route.ts` | 変更（uploadId 検証） |
-| `src/app/api/assets/upload/init/route.ts` | 変更（サイズ制限） |
 | `src/app/api/assets/upload/s3/init/route.ts` | 変更（サイズ制限） |
+| `src/app/api/assets/upload/s3/presign/route.ts` | 変更（認可・uploadId 検証） |
+| `src/app/api/assets/upload/s3/status/route.ts` | 変更（uploadId 検証） |
 | `src/app/api/assets/upload/s3/complete/route.ts` | 変更（セッションから取得、認可、Zod） |
 | `src/app/api/workspaces/route.ts` | 変更（Zod） |
 | `src/app/api/workspaces/[workspaceId]/route.ts` | 変更（PATCH 認可） |
-| `src/app/api/comments/route.ts` | 変更（Zod） |
 | `next.config.ts` | 変更（ヘッダー、bodySizeLimit 100gb） |
 | `package.json` | 変更（zod 追加、puppeteer → devDeps） |
 | `env.local.template` | 変更（MAX_UPLOAD_SIZE コメント、SERVER_OWNER_DISCORD_ID） |

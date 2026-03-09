@@ -20,10 +20,10 @@ gachaboard-compound/
 
 ### 1.2 必読ドキュメント（優先順）
 
-1. [README.md](../README.md) - クイックスタート
+1. [README.md](../../README.md) - クイックスタート
 2. [CONCEPT.md](CONCEPT.md) - コンセプト・設計思想
 3. [ARCHITECTURE.md](ARCHITECTURE.md) - アーキテクチャ
-4. [GETTING-STARTED.md](GETTING-STARTED.md) - 開発環境セットアップ
+4. [GETTING-STARTED.md](../user/GETTING-STARTED.md) - 開発環境セットアップ
 5. [yjs-system-specification.md](yjs-system-specification.md) - 同期の詳細仕様
 
 ---
@@ -54,7 +54,7 @@ npm run dev
 
 - `env.local.template` を `.env.local` にコピーして編集
 - Discord OAuth、NextAuth、DATABASE_URL が必須
-- `SERVER_OWNER_DISCORD_ID`: サーバーオーナーの Discord ID。未設定なら全員アクセス可。設定時はオーナーのみ WS にアクセス。運用詳細は [ownership-design.md](ownership-design.md)
+- `SERVER_OWNER_DISCORD_ID`: サーバーオーナーの Discord ID。未設定なら全員アクセス可。設定時はオーナーのみ WS にアクセス。運用詳細は [ownership-design.md](../user/ownership-design.md)
 - S3/MinIO が必須。`env.local.template` にデフォルト値あり
 
 ### 2.3 マイグレーション
@@ -98,7 +98,8 @@ npx prisma migrate dev
 
 - `y-websocket` 同梱の WebSocket サーバ
 - ルーム単位で Y.Doc をメモリ保持（永続化なし）
-- 起動: `cd sync-server && PORT=5858 npm start`
+- 場所: `nextjs-web/sync-server`（Docker はこちらを使用。ルート直下にも同名フォルダあり）
+- 起動: `cd nextjs-web/sync-server && PORT=5858 npm start`
 
 ---
 
@@ -117,7 +118,7 @@ npx prisma migrate dev
 
 - Phase 7: コネクタ体験（アンカー, ルーティング, 障害物回避）
 - GIF 対応
-- 詳細は [planning/fresh-to-compound-migration.md](planning/fresh-to-compound-migration.md)
+- 詳細は [archive/fresh-to-compound-migration.md](../archive/fresh-to-compound-migration.md)（移行完了済み）
 
 ---
 
@@ -125,7 +126,7 @@ npx prisma migrate dev
 
 | 事象 | 参照 |
 |------|------|
-| Discord 認証エラー | [discord-auth-troubleshooting.md](discord-auth-troubleshooting.md) |
+| Discord 認証エラー | [discord-auth-troubleshooting.md](../user/discord-auth-troubleshooting.md) |
 | Tailscale 経由アクセス | 同上、「Tailscale 経由でスマホからアクセスする場合」 |
 | 動画・音声の変換失敗 | README「軽量化の確認」、ffmpeg が入っているか確認 |
 | 同期が動かない | `NEXT_PUBLIC_SYNC_WS_URL` が正しいか、sync-server が起動しているか |

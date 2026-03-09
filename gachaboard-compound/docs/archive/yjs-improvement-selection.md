@@ -1,7 +1,7 @@
 # Yjs 改善ライブラリ・選定（外部レビュー反映）
 
 > **作成日**: 2026-03-07  
-> **元資料**: [yjs-system-specification.md](./yjs-system-specification.md)  
+> **元資料**: [yjs-system-specification.md](../dev/yjs-system-specification.md)  
 > **概要**: 設計はしっかりしているが、GitHub に「そのまま効く改善ライブラリ」がいくつかある。Yjs 周辺ツールはここ 1〜2 年でかなり増えている。
 
 ---
@@ -202,6 +202,6 @@ drop    → Y.Update
 ## 9. 関連ドキュメント
 
 - [lightweighting-phase-plan.md](./lightweighting-phase-plan.md) - 軽量化フェーズ計画（実装順序）
-- [yjs-system-specification.md](./yjs-system-specification.md) - 元仕様
+- [yjs-system-specification.md](../dev/yjs-system-specification.md) - 元仕様
 - [performance-optimization-plan.md](./performance-optimization-plan.md) - 負荷対策
 - [sync-improvement-implementation-guide.md](./sync-improvement-implementation-guide.md) - 同期アーキテクチャ

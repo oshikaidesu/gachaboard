@@ -472,8 +472,8 @@ nextjs-web は compose に含まず、`npm run dev` で別途起動（ポート 
 
 ## 19. 関連ドキュメント
 
-- [lightweighting-phase-plan.md](./lightweighting-phase-plan.md) - 軽量化フェーズ計画（実装順序・依存関係）
-- [yjs-improvement-selection.md](./yjs-improvement-selection.md) - 改善ライブラリ・選定（Hocuspocus, Y-Sweet, y-indexeddb 等）
-- [performance-optimization-plan.md](./performance-optimization-plan.md) - 負荷対策の詳細
-- [multi-cursor-implementation-guide.md](./multi-cursor-implementation-guide.md) - Awareness 実装
-- [sync-improvement-implementation-guide.md](./sync-improvement-implementation-guide.md) - 同期アーキテクチャ
+- [archive/lightweighting-phase-plan.md](../archive/lightweighting-phase-plan.md) - 軽量化フェーズ計画（実装順序・依存関係）
+- [archive/yjs-improvement-selection.md](../archive/yjs-improvement-selection.md) - 改善ライブラリ・選定（Hocuspocus, Y-Sweet, y-indexeddb 等）
+- [archive/performance-optimization-plan.md](../archive/performance-optimization-plan.md) - 負荷対策の詳細
+- [archive/multi-cursor-implementation-guide.md](../archive/multi-cursor-implementation-guide.md) - Awareness 実装
+- [archive/sync-improvement-implementation-guide.md](../archive/sync-improvement-implementation-guide.md) - 同期アーキテクチャ

@@ -8,8 +8,8 @@
 
 | ファイル | 行数 | 問題 |
 |----------|------|------|
-| `VideoShape.tsx` | 1034 | 巨大。AudioShape と構造が酷似 |
-| `AudioShape.tsx` | 883 | 同上 |
+| `VideoShape.tsx` | ~730 | 巨大。AudioShape と構造が酷似（リファクタ後も残存） |
+| `AudioShape.tsx` | ~520 | 同上 |
 
 **重複していたロジック**（共通化済み）:
 - コメント入力・投稿・削除 → `useMediaPlayerComments` フック、`MediaCommentInput` / `MediaCommentList` コンポーネント

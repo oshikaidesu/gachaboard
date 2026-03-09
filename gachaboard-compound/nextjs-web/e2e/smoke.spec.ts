@@ -12,6 +12,6 @@ test("ボードページが表示される", async ({ page, baseURL }) => {
 
   await page.goto(url, { waitUntil: "domcontentloaded" });
 
-  await expect(page.getByText("Board:")).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText("← 戻る")).toBeVisible();
+  await expect(page.getByText("← 戻る")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/無題のボード|Board:/)).toBeVisible();
 });

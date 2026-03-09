@@ -62,7 +62,7 @@
 
 - **compound が本番候補**: fresh（tldraw）から機能を移植し、compound 上で本番運用
 - **認証・ワークスペース・API 等**: 共通設計で fresh と互換
-- 詳細は [planning/fresh-to-compound-migration.md](planning/fresh-to-compound-migration.md)
+- 詳細は [archive/fresh-to-compound-migration.md](../archive/fresh-to-compound-migration.md)
 
 ---
 

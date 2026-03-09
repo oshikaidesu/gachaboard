@@ -343,6 +343,6 @@ yMap.observe((event) => {
 ### gachaboard-compound
 
 - [multi-cursor-implementation-guide.md](./multi-cursor-implementation-guide.md): マルチカーソル（Awareness）に特化
-- [discord-auth-troubleshooting.md](./discord-auth-troubleshooting.md): 認証トラブルシューティング
+- [discord-auth-troubleshooting.md](../user/discord-auth-troubleshooting.md): 認証トラブルシューティング
 - `nextjs-web/src/app/hooks/useYjsStore.ts`: 現状の同期ロジック
 - `nextjs-web/src/app/components/collaboration/AwarenessSync.tsx`: Awareness ↔ instance_presence ブリッジ
