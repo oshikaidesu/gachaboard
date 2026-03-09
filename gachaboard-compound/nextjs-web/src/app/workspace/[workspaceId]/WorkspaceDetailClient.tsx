@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useLayoutEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useLayoutEffect } from "react";
 import Link from "next/link";
 import type { ApiBoard, ApiWorkspaceInfo, ApiWorkspaceMember } from "@shared/apiTypes";
 import { Identicon, getMinidenticonColor } from "@/app/components/ui/Identicon";
 import { MoreVerticalIcon } from "@/app/components/ui/MoreVerticalIcon";
 import { RenameModal } from "@/app/components/ui/RenameModal";
 import { useCopyToClipboard, useOnClickOutside } from "usehooks-ts";
+import { useWorkspaceDetail } from "@/app/hooks/useWorkspaceDetail";
 
 type Board = ApiBoard;
 type WorkspaceInfo = ApiWorkspaceInfo;
@@ -15,13 +15,7 @@ type WorkspaceInfo = ApiWorkspaceInfo;
 type Props = { workspaceId: string; currentUserId: string };
 
 export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Props) {
-  const router = useRouter();
-
-  const [wsInfo, setWsInfo] = useState<WorkspaceInfo | null>(null);
-  const [members, setMembers] = useState<ApiWorkspaceMember[]>([]);
-  const [canKick, setCanKick] = useState(false);
-  const [boards, setBoards] = useState<Board[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { wsInfo, members, canKick, boards, loading, load } = useWorkspaceDetail(workspaceId);
   const [showForm, setShowForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -46,28 +40,6 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
   useOnClickOutside(openMenuContainerRef, () => {
     if (openMenu) setOpenMenu(null);
   });
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const [wsRes, boardsRes, membersRes] = await Promise.all([
-      fetch(`/api/workspaces/${workspaceId}`),
-      fetch(`/api/workspaces/${workspaceId}/boards?includeDeleted=1`),
-      fetch(`/api/workspaces/${workspaceId}/members`),
-    ]);
-    if (wsRes.status === 401 || boardsRes.status === 401) { router.replace("/"); return; }
-    if (wsRes.status === 403 || boardsRes.status === 403) { router.replace("/access-denied"); return; }
-    if (wsRes.status === 404 || boardsRes.status === 404) { router.replace("/workspaces"); return; }
-    if (wsRes.ok) setWsInfo(await wsRes.json());
-    if (boardsRes.ok) setBoards(await boardsRes.json());
-    if (membersRes.ok) {
-      const data = await membersRes.json();
-      setMembers(data.members ?? []);
-      setCanKick(data.canKick ?? false);
-    }
-    setLoading(false);
-  }, [workspaceId, router]);
-
-  useEffect(() => { load(); }, [load]);
 
   const create = async () => {
     if (!newName.trim()) return;

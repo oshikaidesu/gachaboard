@@ -1,39 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useInviteInfo } from "@/app/hooks/useInviteInfo";
+import { useInviteJoin } from "@/app/hooks/useInviteJoin";
 
 type Props = { token: string };
 
 export default function InviteClient({ token }: Props) {
-  const router = useRouter();
-  const [info, setInfo] = useState<{ workspaceId: string; workspaceName: string } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [joining, setJoining] = useState(false);
+  const { info, error: infoError, loading } = useInviteInfo(token);
+  const { join, joining, error: joinError } = useInviteJoin(token);
+  const error = infoError ?? joinError;
 
-  useEffect(() => {
-    fetch(`/api/invite/${token}`)
-      .then((res) => {
-        if (!res.ok) throw new Error(res.status === 404 ? "招待リンクが無効です" : "エラーが発生しました");
-        return res.json();
-      })
-      .then((data) => setInfo(data))
-      .catch((e) => setError(e.message));
-  }, [token]);
-
-  const handleJoin = async () => {
+  const handleJoin = () => {
     if (!info) return;
-    setJoining(true);
-    try {
-      const res = await fetch(`/api/invite/${token}/join`, { method: "POST" });
-      if (!res.ok) throw new Error("参加に失敗しました");
-      const { workspaceId } = await res.json();
-      router.replace(`/workspace/${workspaceId}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "エラーが発生しました");
-      setJoining(false);
-    }
+    join();
   };
 
   const baseMain = "flex min-h-screen w-full flex-col items-center justify-center bg-background px-4 py-8 sm:px-6";
@@ -52,7 +32,7 @@ export default function InviteClient({ token }: Props) {
     );
   }
 
-  if (!info) {
+  if (loading || !info) {
     return (
       <main className={baseMain}>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">読み込み中...</p>

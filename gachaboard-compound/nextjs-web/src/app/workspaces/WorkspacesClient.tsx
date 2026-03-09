@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useLayoutEffect } from "react";
+import { useState, useCallback, useRef, useLayoutEffect } from "react";
 import { useOnClickOutside } from "usehooks-ts";
 import Link from "next/link";
 import type { ApiWorkspace } from "@shared/apiTypes";
@@ -8,12 +8,12 @@ import { Identicon, getMinidenticonColor } from "../components/ui/Identicon";
 import { InviteLinkInline } from "../components/ui/InviteLinkInline";
 import { MoreVerticalIcon } from "../components/ui/MoreVerticalIcon";
 import { RenameModal } from "../components/ui/RenameModal";
+import { useWorkspaces } from "@/app/hooks/useWorkspaces";
 
 type Workspace = ApiWorkspace;
 
 export default function WorkspacesClient({ currentUserId }: { currentUserId: string }) {
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { workspaces, loading, load } = useWorkspaces();
   const [showForm, setShowForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
@@ -26,15 +26,6 @@ export default function WorkspacesClient({ currentUserId }: { currentUserId: str
   const [renameSaving, setRenameSaving] = useState(false);
   const menuRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const openMenuContainerRef = useRef<HTMLDivElement | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const res = await fetch("/api/workspaces?includeDeleted=1");
-    if (res.ok) setWorkspaces(await res.json());
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
 
   useLayoutEffect(() => {
     openMenuContainerRef.current = openMenu ? (menuRefs.current.get(openMenu) ?? null) : null;
