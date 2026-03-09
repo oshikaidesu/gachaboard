@@ -1,28 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useInView } from "react-intersection-observer";
 
 /**
  * IntersectionObserver でコンポーネントの可視状態を返すフック。
+ * react-intersection-observer を使用。
  * ビューポート外のシェイプでポーリングを停止するために使う。
  */
 export function useVisibility<T extends HTMLElement = HTMLElement>(): {
-  ref: React.RefObject<T | null>;
+  ref: (node?: T | null) => void;
   visible: boolean;
 } {
-  const ref = useRef<T | null>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setVisible(entry.isIntersecting),
-      { threshold: 0 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  return { ref, visible };
+  const { ref, inView } = useInView({ threshold: 0 });
+  return { ref: ref as (node?: T | null) => void, visible: inView };
 }

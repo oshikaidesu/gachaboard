@@ -465,7 +465,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
   return (
     <WheelGuard
       ref={(node) => {
-        (visRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        visRef(node);
         setContainerRef(node);
       }}
       onPointerEnter={() => setIsPointerOver(true)}

@@ -47,6 +47,7 @@
     "prisma": "7.4.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-intersection-observer": "^10.0.3",
     "sonner": "^2.0.7",
     "y-indexeddb": "^9.0.12",
     "y-websocket": "^2.1.0",
