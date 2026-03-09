@@ -30,22 +30,27 @@ interface S3UploadDB {
   };
 }
 
-async function getDb() {
+function getDb() {
+  if (typeof window === "undefined" || !window.indexedDB) return Promise.resolve(null);
   return openDB<S3UploadDB>(DB_NAME, VERSION, {
     upgrade(db) {
-      db.createObjectStore(STORE, { keyPath: "uploadId" });
+      if (!db.objectStoreNames.contains(STORE)) {
+        db.createObjectStore(STORE, { keyPath: "uploadId" });
+      }
     },
   });
 }
 
 export async function saveS3UploadSession(session: StoredSession): Promise<void> {
   const db = await getDb();
+  if (!db) return;
   await db.put(STORE, session);
   db.close();
 }
 
 export async function getS3UploadSession(uploadId: string): Promise<StoredSession | null> {
   const db = await getDb();
+  if (!db) return null;
   const result = await db.get(STORE, uploadId);
   db.close();
   return result ?? null;
@@ -53,6 +58,7 @@ export async function getS3UploadSession(uploadId: string): Promise<StoredSessio
 
 export async function listResumableS3Uploads(): Promise<StoredSession[]> {
   const db = await getDb();
+  if (!db) return [];
   const list = (await db.getAll(STORE)) ?? [];
   db.close();
   return list.sort((a, b) => a.createdAt - b.createdAt);
@@ -60,6 +66,7 @@ export async function listResumableS3Uploads(): Promise<StoredSession[]> {
 
 export async function removeS3UploadSession(uploadId: string): Promise<void> {
   const db = await getDb();
+  if (!db) return;
   await db.delete(STORE, uploadId);
   db.close();
 }

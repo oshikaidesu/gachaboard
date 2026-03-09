@@ -69,38 +69,37 @@ function getReactionEmojiPreset(provider: WebsocketProvider | null | undefined):
 export function useSnapshotSave({ store, provider, boardId, workspaceId, enabled }: UseSnapshotSaveOptions) {
   const lastSaveRef = useRef<string>("");
 
-  const save = (source: string) => {
+  useEffect(() => {
     if (!store || !enabled) return;
-    const records = getDocumentRecords(store);
-    const reactions = provider ? getYMapEntries(provider, REACTIONS_MAP_KEY) : {};
-    const comments = provider ? getYMapEntries(provider, COMMENTS_MAP_KEY) : {};
-    const reactionEmojiPreset = getReactionEmojiPreset(provider);
-    const payload = JSON.stringify({ records, reactions, comments, reactionEmojiPreset });
-    if (payload === lastSaveRef.current) return;
-    lastSaveRef.current = payload;
 
-    const url = `/api/workspaces/${workspaceId}/boards/${boardId}/snapshot`;
-    const body = JSON.stringify({ records, reactions, comments, reactionEmojiPreset });
+    const save = (source: string) => {
+      const records = getDocumentRecords(store);
+      const reactions = provider ? getYMapEntries(provider, REACTIONS_MAP_KEY) : {};
+      const comments = provider ? getYMapEntries(provider, COMMENTS_MAP_KEY) : {};
+      const reactionEmojiPreset = getReactionEmojiPreset(provider);
+      const payload = JSON.stringify({ records, reactions, comments, reactionEmojiPreset });
+      if (payload === lastSaveRef.current) return;
+      lastSaveRef.current = payload;
 
-    if (source === "beforeunload") {
+      const url = `/api/workspaces/${workspaceId}/boards/${boardId}/snapshot`;
+      const body = JSON.stringify({ records, reactions, comments, reactionEmojiPreset });
+
+      if (source === "beforeunload") {
+        fetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body,
+          keepalive: true,
+        }).catch(() => {});
+        return;
+      }
+
       fetch(url, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body,
-        keepalive: true,
       }).catch(() => {});
-      return;
-    }
-
-    fetch(url, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body,
-    }).catch(() => {});
-  };
-
-  useEffect(() => {
-    if (!store || !enabled) return;
+    };
 
     const debouncedSave = debounce(() => save("debounce"), SAVE_DEBOUNCE_MS);
 

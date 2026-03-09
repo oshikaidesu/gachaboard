@@ -18,6 +18,9 @@ export type OpenFileResult =
  * サポート外の場合は file 入力フォールバックを推奨。
  */
 export async function openFileWithHandle(): Promise<OpenFileResult> {
+  if (typeof window === "undefined") {
+    return { ok: false, error: "ブラウザ環境でのみ利用可能です" };
+  }
   if (!isFileSystemAccessSupported()) {
     return { ok: false, error: "File System Access API に対応していません" };
   }
@@ -49,6 +52,9 @@ export type OpenAllFilesResult =
  * File System Access API 対応時は複数選択可。未対応時は input フォールバック。
  */
 export async function openAllFilesPicker(): Promise<OpenAllFilesResult> {
+  if (typeof window === "undefined") {
+    return { ok: false, error: "ブラウザ環境でのみ利用可能です" };
+  }
   try {
     const results = await fileOpen({
       description: "すべてのファイル",
