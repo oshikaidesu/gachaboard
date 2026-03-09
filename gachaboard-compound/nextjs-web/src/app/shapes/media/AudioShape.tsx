@@ -23,9 +23,12 @@ import {
 } from "../common";
 import { SHAPE_TYPE, type AudioShape } from "@shared/shapeDefs";
 import { useWaveform } from "@/app/hooks/useWaveform";
-import { useBoardContext } from "@/app/components/board/BoardContext";
-import { useBoardComments } from "@/app/components/board/BoardCommentProvider";
 import { useVisibility } from "@/app/hooks/useVisibility";
+import { useMediaPlayerComments, MIN_COMMENT_LIST_H } from "@/app/hooks/useMediaPlayerComments";
+import { formatTime } from "@/lib/formatTime";
+import { useTheme } from "@/app/components/theme/ThemeProvider";
+import { MediaCommentInput } from "./MediaCommentInput";
+import { MediaCommentList } from "./MediaCommentList";
 import type { ApiComment } from "@shared/apiTypes";
 
 export type { AudioShape } from "@shared/shapeDefs";
@@ -33,18 +36,22 @@ export type { AudioShape } from "@shared/shapeDefs";
 // ---------- 定数 ----------
 
 const ORANGE = "#ff5500";
-const GRAY = "#d1d5db";
+const GRAY_LIGHT = "#d1d5db";
+const GRAY_DARK = "#475569";
+const BG_LIGHT = "#ffffff";
+const BG_DARK = "#1e293b";
+const TEXT_LIGHT = "#111827";
+const TEXT_DARK = "#f1f5f9";
+const MUTED_LIGHT = "#6b7280";
+const MUTED_DARK = "#94a3b8";
+const BORDER_LIGHT = "#e2e8f0";
+const BORDER_DARK = "#334155";
+const SKELETON_LIGHT = "linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)";
+const SKELETON_DARK = "linear-gradient(90deg, #334155 25%, #475569 50%, #334155 75%)";
 const WAVEFORM_HEIGHT = 48;
 const WAVEFORM_HIT_HEIGHT = 56; // タップ・クリックの当たり判定をゆるくする
 const BAR_GAP = 1;
 const BASE_HEIGHT = 190;
-const COMMENT_ROW_HEIGHT = 32;
-const COMMENT_GAP = 4;
-const COMMENT_LIST_OVERHEAD = 24;
-const MIN_COMMENT_LIST_H = COMMENT_LIST_OVERHEAD + COMMENT_ROW_HEIGHT + COMMENT_GAP;
-
-/** コメントリストの最大表示高さ（超えた分はスクロール） */
-const MAX_COMMENT_LIST_HEIGHT = COMMENT_LIST_OVERHEAD + 6 * (COMMENT_ROW_HEIGHT + COMMENT_GAP);
 
 // ---------- 波形 SVG ----------
 
@@ -56,12 +63,20 @@ function WaveformCanvas({
   duration,
   comments,
   onSeek,
+  unplayedBarColor,
+  tooltipBg,
+  tooltipColor,
+  tooltipBorder,
 }: {
   peaks: number[];
   currentTime: number;
   duration: number;
   comments: ApiComment[];
   onSeek: (sec: number) => void;
+  unplayedBarColor: string;
+  tooltipBg: string;
+  tooltipColor: string;
+  tooltipBorder: string;
 }) {
   const [tooltip, setTooltip] = useState<{ x: number; text: string } | null>(null);
 
@@ -151,7 +166,7 @@ function WaveformCanvas({
               width={barWidth}
               height={barH}
               rx={1}
-              fill={i < boundary ? ORANGE : GRAY}
+              fill={i < boundary ? ORANGE : unplayedBarColor}
             />
           );
         })}
@@ -197,8 +212,8 @@ function WaveformCanvas({
             bottom: "100%",
             left: tooltip.x,
             transform: "translateX(-50%)",
-            background: "#fff",
-            color: "#111827",
+            background: tooltipBg,
+            color: tooltipColor,
             fontSize: 10,
             padding: "3px 8px",
             borderRadius: 4,
@@ -208,7 +223,7 @@ function WaveformCanvas({
             maxWidth: 200,
             overflow: "hidden",
             textOverflow: "ellipsis",
-            border: "1px solid #e5e7eb",
+            border: `1px solid ${tooltipBorder}`,
             boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
           }}
         >
@@ -225,11 +240,13 @@ function VolumeSlider({
   value,
   onChange,
   accentColor = ORANGE,
+  trackBg,
   width = 196,
 }: {
   value: number;
   onChange: (v: number) => void;
   accentColor?: string;
+  trackBg: string;
   width?: number;
 }) {
   const barRef = useRef<HTMLDivElement>(null);
@@ -293,7 +310,7 @@ function VolumeSlider({
           right: 0,
           height: 4,
           borderRadius: 2,
-          background: GRAY,
+          background: trackBg,
           overflow: "hidden",
         }}
       >
@@ -327,6 +344,21 @@ function VolumeSlider({
 // ---------- メインプレイヤー ----------
 
 function AudioPlayer({ shape }: { shape: AudioShape }) {
+  const { isDarkMode } = useTheme();
+
+  const bg = isDarkMode ? BG_DARK : BG_LIGHT;
+  const text = isDarkMode ? TEXT_DARK : TEXT_LIGHT;
+  const muted = isDarkMode ? MUTED_DARK : MUTED_LIGHT;
+  const border = isDarkMode ? BORDER_DARK : BORDER_LIGHT;
+  const trackBg = isDarkMode ? GRAY_DARK : GRAY_LIGHT;
+  const skeletonBg = isDarkMode ? SKELETON_DARK : SKELETON_LIGHT;
+  const tooltipBg = isDarkMode ? "#1e293b" : "#fff";
+  const tooltipColor = isDarkMode ? "#f1f5f9" : "#111827";
+  const tooltipBorder = isDarkMode ? "#334155" : "#e5e7eb";
+  const errorColor = isDarkMode ? "#94a3b8" : "#9ca3af";
+  const btnBg = isDarkMode ? "#334155" : "#f3f4f6";
+  const btnBorder = isDarkMode ? "#475569" : "#e5e7eb";
+
   const isWav =
     shape.props.mimeType === "audio/wav" ||
     shape.props.fileName.endsWith(".wav");
@@ -334,37 +366,59 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
     ? `/api/assets/${shape.props.assetId}/file?converted=1`
     : `/api/assets/${shape.props.assetId}/file`;
 
-  const { boardId, workspaceId, syncAvailable } = useBoardContext();
   const editor = useEditor();
   const audioRef = useRef<HTMLAudioElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const commentInputRef = useRef<HTMLInputElement>(null);
   const { ref: visRef } = useVisibility<HTMLDivElement>();
-  const { comments, addComment, deleteComment } = useBoardComments(shape.props.assetId);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
-  const [newComment, setNewComment] = useState("");
-  const [posting, setPosting] = useState(false);
-  const [commentFocused, setCommentFocused] = useState(false);
-  const [isPointerOver, setIsPointerOver] = useState(false);
-  const [deleting, setDeleting] = useState<string | null>(null);
   const heightUpdateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTargetH = useRef<number>(shape.props.h);
   const userResized = useRef(false);
 
+  const seekTo = useCallback((sec: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.currentTime = sec;
+    setCurrentTime(sec);
+  }, []);
+
+  const togglePlay = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) audio.pause();
+    else audio.play();
+  }, [playing]);
+
+  const commentsHook = useMediaPlayerComments({
+    assetId: shape.props.assetId,
+    currentTime,
+    shapeId: shape.id,
+    onSeek: seekTo,
+    onTogglePlay: togglePlay,
+  });
+  const {
+    comments,
+    newComment,
+    setNewComment,
+    postComment,
+    posting,
+    commentFocused,
+    setCommentFocused,
+    commentInputRef,
+    setContainerRef,
+    commentListH,
+    handleDeleteComment,
+    deleting,
+    syncAvailable,
+    isPointerOver,
+    setIsPointerOver,
+    COMMENT_ROW_HEIGHT,
+  } = commentsHook;
+
   const { peaks, status: waveStatus } = useWaveform(shape.props.assetId);
 
-  const commentListH = Math.max(
-    MIN_COMMENT_LIST_H,
-    Math.min(
-      comments.length > 0
-        ? COMMENT_LIST_OVERHEAD + comments.length * (COMMENT_ROW_HEIGHT + COMMENT_GAP)
-        : 0,
-      MAX_COMMENT_LIST_HEIGHT,
-    ),
-  );
   const naturalH = BASE_HEIGHT + commentListH;
 
   const isCompact = shape.props.h < naturalH;
@@ -404,86 +458,11 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
       ? shape.props.fileName.slice(0, 30) + "…"
       : shape.props.fileName;
 
-  const handleDeleteComment = useCallback(
-    (commentId: string) => {
-      setDeleting(commentId);
-      deleteComment(commentId);
-      setDeleting(null);
-    },
-    [deleteComment]
-  );
-
-  const togglePlay = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (playing) {
-      audio.pause();
-    } else {
-      audio.play();
-    }
-  };
-
-  const seekTo = (sec: number) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.currentTime = sec;
-  };
-
-  const postComment = () => {
-    if (!newComment.trim() || !syncAvailable) return;
-    setPosting(true);
-    addComment(currentTime, newComment.trim());
-    setNewComment("");
-    setPosting(false);
-  };
-
-  const formatTime = (sec: number) => {
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60);
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  };
-
-  // スペースキーで再生/一時停止（選択中 or カーソル乗せ時・コメント入力中は除外）
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== " " || commentFocused) return;
-      const active = document.activeElement;
-      if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || (active as HTMLElement).isContentEditable)) return;
-      const canControl = editor.getSelectedShapeIds().includes(shape.id) || isPointerOver;
-      if (!canControl) return;
-      e.preventDefault();
-      e.stopPropagation();
-      togglePlay();
-    };
-    window.addEventListener("keydown", handleKeyDown, { capture: true });
-    return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
-  }, [shape.id, commentFocused, editor, isPointerOver, playing]);
-
-  // シェイプ外タップでコメント入力を解除
-  useEffect(() => {
-    const handleOutsideTouch = (e: MouseEvent | TouchEvent) => {
-      const container = containerRef.current;
-      const input = commentInputRef.current;
-      if (!container || !input) return;
-      const target = e instanceof TouchEvent ? e.touches[0]?.target : e.target;
-      if (target && !container.contains(target as Node)) {
-        input.blur();
-        setCommentFocused(false);
-      }
-    };
-    document.addEventListener("mousedown", handleOutsideTouch, true);
-    document.addEventListener("touchstart", handleOutsideTouch, { capture: true, passive: true });
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideTouch, true);
-      document.removeEventListener("touchstart", handleOutsideTouch, true);
-    };
-  }, []);
-
   return (
     <WheelGuard
       ref={(node) => {
         (visRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-        (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        setContainerRef(node);
       }}
       onPointerEnter={() => setIsPointerOver(true)}
       onPointerLeave={() => setIsPointerOver(false)}
@@ -496,12 +475,13 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         flexDirection: "column",
         gap: 6,
         borderRadius: 9,
-        background: "#ffffff",
-        border: "1px solid #e2e8f0",
+        background: bg,
+        border: `1px solid ${border}`,
         padding: "10px 12px",
         boxSizing: "border-box",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+        boxShadow: isDarkMode ? "0 1px 4px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.08)",
         fontFamily: "system-ui, sans-serif",
+        color: text,
       }}
     >
       {/* ファイル名（ドラッグハンドル） */}
@@ -510,7 +490,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         <span style={{
           fontSize: 11,
           fontWeight: 600,
-          color: "#111827",
+          color: text,
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
@@ -520,7 +500,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         </span>
         <FileSizeLabel sizeBytes={shape.meta?.sizeBytes as string | undefined} />
         <DownloadButton assetId={shape.props.assetId} fileName={shape.props.fileName}
-          style={{ flexShrink: 0, width: 22, height: 22, fontSize: 11, background: "#f3f4f6", border: "1px solid #e5e7eb", color: "#6b7280" }}
+          style={{ flexShrink: 0, width: 22, height: 22, fontSize: 11, background: btnBg, border: `1px solid ${btnBorder}`, color: muted }}
         />
       </div>
 
@@ -529,7 +509,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         <div style={{
           height: WAVEFORM_HIT_HEIGHT,
           borderRadius: 4,
-          background: "linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)",
+          background: skeletonBg,
           backgroundSize: "200% 100%",
         }} />
       )}
@@ -540,11 +520,15 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
           duration={duration}
           comments={comments}
           onSeek={seekTo}
+          unplayedBarColor={trackBg}
+          tooltipBg={tooltipBg}
+          tooltipColor={tooltipColor}
+          tooltipBorder={tooltipBorder}
         />
       )}
       {waveStatus === "error" && (
         <div style={{ height: WAVEFORM_HIT_HEIGHT, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ fontSize: 10, color: "#9ca3af" }}>波形を読み込めませんでした</span>
+          <span style={{ fontSize: 10, color: errorColor }}>波形を読み込めませんでした</span>
         </div>
       )}
 
@@ -574,7 +558,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         >
           {playing ? "⏸" : "▶"}
         </button>
-        <span style={{ fontSize: 10, color: "#6b7280", fontVariantNumeric: "tabular-nums" }}>
+        <span style={{ fontSize: 10, color: muted, fontVariantNumeric: "tabular-nums" }}>
           {formatTime(currentTime)} / {formatTime(duration)}
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
@@ -586,6 +570,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
               if (audioRef.current) audioRef.current.volume = v;
             }}
             accentColor={ORANGE}
+            trackBg={trackBg}
             width={196}
           />
         </div>
@@ -596,200 +581,33 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         )}
       </div>
 
-      {/* コメント入力（入力欄/ボタン以外は選択に） */}
-      <div
-        style={{
-          display: "flex",
-          gap: 4,
-          alignItems: "center",
-          opacity: syncAvailable ? 1 : 0.6,
-          pointerEvents: syncAvailable ? undefined : "none",
-        }}
-        title={!syncAvailable ? "同期エラーにより利用できません" : undefined}
-        onMouseDown={(e) => {
-          const t = e.target as HTMLElement;
-          if (t.tagName === "INPUT" || t.tagName === "BUTTON" || t.tagName === "SPAN") e.stopPropagation();
-        }}
-        onPointerDown={(e) => {
-          const t = e.target as HTMLElement;
-          if (t.tagName === "INPUT" || t.tagName === "BUTTON" || t.tagName === "SPAN") e.stopPropagation();
-        }}
-      >
-        {!syncAvailable && (
-          <span
-            title="同期エラーにより利用できません"
-            style={{
-              fontSize: 10,
-              color: "#b91c1c",
-              background: "rgba(254,226,226,0.9)",
-              padding: "1px 5px",
-              borderRadius: 4,
-              fontWeight: 500,
-              pointerEvents: "auto",
-            }}
-          >
-            同期エラー
-          </span>
-        )}
-        {commentFocused && (
-          <span style={{ fontSize: 13, color: "#9ca3af", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
-            {formatTime(currentTime)}
-          </span>
-        )}
-        <input
-          ref={commentInputRef}
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") { postComment(); commentInputRef.current?.blur(); setCommentFocused(false); }
-            if (e.key === "Escape") { commentInputRef.current?.blur(); setCommentFocused(false); setNewComment(""); }
-          }}
-          onFocus={() => setCommentFocused(true)}
-          onBlur={() => setCommentFocused(false)}
-          onTouchEnd={(e) => { e.stopPropagation(); commentInputRef.current?.focus(); }}
-          placeholder={commentFocused ? "コメントを追加..." : "💬 コメント"}
-          style={{
-            flex: 1,
-            fontSize: 14,
-            padding: commentFocused ? "6px 10px" : "5px 8px",
-            borderRadius: 4,
-            border: commentFocused ? `1px solid ${ORANGE}` : "1px solid #e5e7eb",
-            background: commentFocused ? "#fff" : "#f9fafb",
-            color: "#111827",
-            outline: "none",
-            minWidth: 0,
-            transition: "border-color 0.15s, padding 0.15s",
-            boxShadow: commentFocused ? `0 0 0 2px ${ORANGE}33` : "none",
-          }}
-        />
-        {commentFocused && (
-          <button
-            onClick={() => { postComment(); setCommentFocused(false); }}
-            disabled={posting || !newComment.trim()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); postComment(); setCommentFocused(false); }}
-            style={{
-              fontSize: 13,
-              padding: "5px 12px",
-              borderRadius: 4,
-              border: "none",
-              background: ORANGE,
-              color: "#fff",
-              cursor: "pointer",
-              flexShrink: 0,
-              opacity: posting || !newComment.trim() ? 0.4 : 1,
-              touchAction: "none",
-            }}
-          >
-            投稿
-          </button>
-        )}
-      </div>
+      {/* コメント入力 */}
+      <MediaCommentInput
+        accentColor={ORANGE}
+        syncAvailable={syncAvailable}
+        commentFocused={commentFocused}
+        currentTime={currentTime}
+        newComment={newComment}
+        onNewCommentChange={setNewComment}
+        onPostComment={postComment}
+        posting={posting}
+        commentInputRef={commentInputRef}
+        onFocus={() => setCommentFocused(true)}
+        onBlur={() => setCommentFocused(false)}
+        onCommentFocusedChange={setCommentFocused}
+      />
 
-      {/* コメントリスト（項目クリックはシークに、余白クリックは選択に） */}
-      {comments.length > 0 && (
-        <div
-          className="comment-list"
-          style={{
-            borderTop: "1px solid #f3f4f6",
-            paddingTop: 6,
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-            flex: isCompact ? 1 : undefined,
-            minHeight: 0,
-            overflowY: "auto",
-            touchAction: "pan-y",
-            opacity: syncAvailable ? 1 : 0.6,
-            pointerEvents: syncAvailable ? undefined : "none",
-          }}
-          onMouseDown={(e) => {
-            const t = e.target as HTMLElement;
-            if (t.closest("[data-comment-row]") || t.closest("button")) e.stopPropagation();
-          }}
-          onPointerDown={(e) => {
-            const t = e.target as HTMLElement;
-            if (t.closest("[data-comment-row]") || t.closest("button")) e.stopPropagation();
-          }}
-          onTouchStart={(e) => e.stopPropagation()}
-        >
-          {comments.map((c: ApiComment) => {
-            const m = Math.floor(c.timeSec / 60);
-            const s = Math.floor(c.timeSec % 60);
-            const timeStr = `${m}:${s.toString().padStart(2, "0")}`;
-            return (
-              <div
-                key={c.id}
-                data-comment-row
-                onClick={() => seekTo(c.timeSec)}
-                onTouchEnd={(e) => { e.stopPropagation(); seekTo(c.timeSec); }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "2px 4px",
-                  borderRadius: 4,
-                  cursor: "pointer",
-                  height: COMMENT_ROW_HEIGHT,
-                  flexShrink: 0,
-                }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#f9fafb"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
-              >
-                <span style={{
-                  fontSize: 13,
-                  color: ORANGE,
-                  fontVariantNumeric: "tabular-nums",
-                  flexShrink: 0,
-                  fontWeight: 600,
-                }}>
-                  {timeStr}
-                </span>
-                <span style={{
-                  fontSize: 14,
-                  color: "#374151",
-                  flex: 1,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}>
-                  {c.body}
-                </span>
-                <span style={{
-                  fontSize: 12,
-                  color: "#9ca3af",
-                  flexShrink: 0,
-                }}>
-                  {c.author.discordName}
-                </span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDeleteComment(c.id); }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); handleDeleteComment(c.id); }}
-                  disabled={deleting === c.id}
-                  style={{
-                    fontSize: 13,
-                    color: "#9ca3af",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: "0 4px",
-                    flexShrink: 0,
-                    opacity: deleting === c.id ? 0.3 : 0.6,
-                    touchAction: "none",
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* コメントリスト */}
+      <MediaCommentList
+        comments={comments}
+        accentColor={ORANGE}
+        syncAvailable={syncAvailable}
+        isCompact={isCompact}
+        commentRowHeight={COMMENT_ROW_HEIGHT}
+        onSeek={seekTo}
+        onDelete={handleDeleteComment}
+        deleting={deleting}
+      />
 
       {/* hidden audio element */}
       <audio

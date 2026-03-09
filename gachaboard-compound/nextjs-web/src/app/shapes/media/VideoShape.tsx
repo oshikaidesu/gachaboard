@@ -24,26 +24,40 @@ import {
 } from "../common";
 import { SHAPE_TYPE, type VideoShape } from "@shared/shapeDefs";
 import { useBoardContext } from "@/app/components/board/BoardContext";
-import { useBoardComments } from "@/app/components/board/BoardCommentProvider";
 import { useVisibility } from "@/app/hooks/useVisibility";
+import { useMediaPlayerComments, MIN_COMMENT_LIST_H } from "@/app/hooks/useMediaPlayerComments";
+import { formatTime } from "@/lib/formatTime";
+import { useTheme } from "@/app/components/theme/ThemeProvider";
+import { MediaCommentInput } from "./MediaCommentInput";
+import { MediaCommentList } from "./MediaCommentList";
 import type { ApiComment } from "@shared/apiTypes";
 
 export type { VideoShape } from "@shared/shapeDefs";
+export { MIN_COMMENT_LIST_H } from "@/app/hooks/useMediaPlayerComments";
 
 // ---------- 定数 ----------
 
 const BLUE = "#3b82f6";
-const TRACK_BG = "#e2e8f0";
-const BG = "#ffffff";
-const TEXT_PRIMARY = "#1e293b";
-const TEXT_MUTED = "#64748b";
+const TRACK_BG_LIGHT = "#e2e8f0";
+const TRACK_BG_DARK = "#334155";
+const BG_LIGHT = "#ffffff";
+const BG_DARK = "#1e293b";
+const TEXT_PRIMARY_LIGHT = "#1e293b";
+const TEXT_PRIMARY_DARK = "#f1f5f9";
+const TEXT_MUTED_LIGHT = "#64748b";
+const TEXT_MUTED_DARK = "#94a3b8";
+const BORDER_LIGHT = "#e2e8f0";
+const BORDER_DARK = "#334155";
+const BORDER_SUBTLE_LIGHT = "#f1f5f9";
+const BORDER_SUBTLE_DARK = "#475569";
+const CHECKER_LIGHT = "#e8e8e8";
+const CHECKER_DARK = "#334155";
+const CHECKER_BG_LIGHT = "#f4f4f4";
+const CHECKER_BG_DARK = "#0f172a";
 const SEEK_BAR_HEIGHT = 6;
 const SEEK_BAR_HIT_HEIGHT = 28; // クリック・ドラッグの当たり判定をゆるくする
 const CONTROLS_HEIGHT = 36;
 const HEADER_HEIGHT = 26;
-const COMMENT_ROW_HEIGHT = 32;
-const COMMENT_GAP = 4;
-const COMMENT_LIST_OVERHEAD = 28;
 
 /**
  * 動画エリア以外の UI（ヘッダー・コントロール・コメント入力欄）の合計高さ。
@@ -61,12 +75,6 @@ export const VIDEO_UI_OVERHEAD =
   (30 + 6) +
   2;
 
-export const MIN_COMMENT_LIST_H =
-  COMMENT_LIST_OVERHEAD + COMMENT_ROW_HEIGHT + COMMENT_GAP;
-
-/** コメントリストの最大表示高さ（超えた分はスクロール） */
-const MAX_COMMENT_LIST_HEIGHT = COMMENT_LIST_OVERHEAD + 6 * (COMMENT_ROW_HEIGHT + COMMENT_GAP);
-
 // ---------- シークバー ----------
 
 function SeekBar({
@@ -74,11 +82,13 @@ function SeekBar({
   duration,
   onSeek,
   comments = [],
+  trackBg,
 }: {
   currentTime: number;
   duration: number;
   onSeek: (sec: number) => void;
   comments?: ApiComment[];
+  trackBg: string;
 }) {
   const barRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -142,7 +152,7 @@ function SeekBar({
           right: 0,
           height: SEEK_BAR_HEIGHT,
           borderRadius: SEEK_BAR_HEIGHT / 2,
-          background: TRACK_BG,
+          background: trackBg,
           overflow: "hidden",
         }}
       >
@@ -201,11 +211,13 @@ function VolumeSlider({
   value,
   onChange,
   accentColor = BLUE,
+  trackBg,
   width = 80,
 }: {
   value: number;
   onChange: (v: number) => void;
   accentColor?: string;
+  trackBg: string;
   width?: number;
 }) {
   const barRef = useRef<HTMLDivElement>(null);
@@ -270,7 +282,7 @@ function VolumeSlider({
           right: 0,
           height: 4,
           borderRadius: 2,
-          background: TRACK_BG,
+          background: trackBg,
           overflow: "hidden",
         }}
       >
@@ -305,7 +317,17 @@ function VolumeSlider({
 // ---------- メインプレイヤー ----------
 
 function VideoPlayer({ shape }: { shape: VideoShape }) {
+  const { isDarkMode } = useTheme();
   const props = shape.props as import("@shared/shapeDefs").VideoProps;
+
+  const bg = isDarkMode ? BG_DARK : BG_LIGHT;
+  const textPrimary = isDarkMode ? TEXT_PRIMARY_DARK : TEXT_PRIMARY_LIGHT;
+  const textMuted = isDarkMode ? TEXT_MUTED_DARK : TEXT_MUTED_LIGHT;
+  const border = isDarkMode ? BORDER_DARK : BORDER_LIGHT;
+  const borderSubtle = isDarkMode ? BORDER_SUBTLE_DARK : BORDER_SUBTLE_LIGHT;
+  const trackBg = isDarkMode ? TRACK_BG_DARK : TRACK_BG_LIGHT;
+  const checker = isDarkMode ? CHECKER_DARK : CHECKER_LIGHT;
+  const checkerBg = isDarkMode ? CHECKER_BG_DARK : CHECKER_BG_LIGHT;
   // assetId をキーにしてキャッシュバスト済み src を生成する。
   // useRef で「前回の assetId」を追跡し、変わった時だけ新しい timestamp を生成する。
   const srcRef = useRef<{ assetId: string; src: string } | null>(null);
@@ -314,38 +336,65 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
   }
   const stableSrc = srcRef.current.src;
 
-  const { boardId, workspaceId, syncAvailable } = useBoardContext();
   const editor = useEditor();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const commentInputRef = useRef<HTMLInputElement>(null);
   const { ref: visRef } = useVisibility<HTMLDivElement>();
-  const { comments, addComment, deleteComment } = useBoardComments(props.assetId);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
-  const [newComment, setNewComment] = useState("");
-  const [posting, setPosting] = useState(false);
-  const [commentFocused, setCommentFocused] = useState(false);
-  const [isPointerOver, setIsPointerOver] = useState(false);
-  const [deleting, setDeleting] = useState<string | null>(null);
   const [aspectRatio, setAspectRatio] = useState(16 / 9);
   const heightUpdateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTargetH = useRef<number>(props.h);
   const userResized = useRef(false);
 
+  const seekTo = useCallback((sec: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = sec;
+    setCurrentTime(sec);
+  }, []);
+
+  const togglePlay = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (playing) {
+      video.pause();
+    } else {
+      video.play().catch((e) => {
+        if (e?.name !== "AbortError") console.error(e);
+      });
+    }
+  }, [playing]);
+
+  const commentsHook = useMediaPlayerComments({
+    assetId: props.assetId,
+    currentTime,
+    shapeId: shape.id,
+    onSeek: seekTo,
+    onTogglePlay: togglePlay,
+  });
+  const {
+    comments,
+    newComment,
+    setNewComment,
+    postComment,
+    posting,
+    commentFocused,
+    setCommentFocused,
+    commentInputRef,
+    setContainerRef,
+    commentListH,
+    handleDeleteComment,
+    deleting,
+    syncAvailable,
+    isPointerOver,
+    setIsPointerOver,
+    COMMENT_ROW_HEIGHT,
+  } = commentsHook;
+
   const videoAreaH = Math.round(props.w / aspectRatio);
-  const commentListH = Math.max(
-    MIN_COMMENT_LIST_H,
-    Math.min(
-      comments.length > 0
-        ? COMMENT_LIST_OVERHEAD + comments.length * (COMMENT_ROW_HEIGHT + COMMENT_GAP)
-        : 0,
-      MAX_COMMENT_LIST_HEIGHT,
-    ),
-  );
   const naturalH = videoAreaH + VIDEO_UI_OVERHEAD + commentListH;
 
   const isCompact = props.h < naturalH;
@@ -354,15 +403,6 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
     props.fileName.length > 36
       ? props.fileName.slice(0, 34) + "…"
       : props.fileName;
-
-  const handleDeleteComment = useCallback(
-    (commentId: string) => {
-      setDeleting(commentId);
-      deleteComment(commentId);
-      setDeleting(null);
-    },
-    [deleteComment]
-  );
 
   // コメント数・アスペクト比に応じてシェイプの高さを自動更新（ユーザーが手動リサイズしていない場合のみ）
   useEffect(() => {
@@ -394,34 +434,6 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
     prevCommentCount.current = comments.length;
   }, [comments.length, isCompact]);
 
-  const postComment = () => {
-    if (!newComment.trim() || !syncAvailable) return;
-    setPosting(true);
-    addComment(currentTime, newComment.trim());
-    setNewComment("");
-    setPosting(false);
-  };
-
-  const togglePlay = () => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (playing) {
-      video.pause();
-    } else {
-      // play() が pending 中に pause() が呼ばれると AbortError になるため無視する
-      video.play().catch((e) => {
-        if (e?.name !== "AbortError") console.error(e);
-      });
-    }
-  };
-
-  const seekTo = (sec: number) => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.currentTime = sec;
-    setCurrentTime(sec);
-  };
-
   const toggleMute = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -444,59 +456,17 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
     }
   };
 
-  const formatTime = (sec: number) => {
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60);
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  };
-
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     video.volume = volume;
   }, []);
 
-  // スペースキーで再生/一時停止（選択中 or カーソル乗せ時・コメント入力中は除外）
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== " " || commentFocused) return;
-      const active = document.activeElement;
-      if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || (active as HTMLElement).isContentEditable)) return;
-      const canControl = editor.getSelectedShapeIds().includes(shape.id) || isPointerOver;
-      if (!canControl) return;
-      e.preventDefault();
-      e.stopPropagation();
-      togglePlay();
-    };
-    window.addEventListener("keydown", handleKeyDown, { capture: true });
-    return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
-  }, [shape.id, commentFocused, editor, isPointerOver, playing]);
-
-  // シェイプ外タップでコメント入力を解除
-  useEffect(() => {
-    const handleOutsideTouch = (e: MouseEvent | TouchEvent) => {
-      const container = containerRef.current;
-      const input = commentInputRef.current;
-      if (!container || !input) return;
-      const target = e instanceof TouchEvent ? e.touches[0]?.target : e.target;
-      if (target && !container.contains(target as Node)) {
-        input.blur();
-        setCommentFocused(false);
-      }
-    };
-    document.addEventListener("mousedown", handleOutsideTouch, true);
-    document.addEventListener("touchstart", handleOutsideTouch, { capture: true, passive: true });
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideTouch, true);
-      document.removeEventListener("touchstart", handleOutsideTouch, true);
-    };
-  }, []);
-
   return (
     <WheelGuard
       ref={(node) => {
         (visRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-        (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        setContainerRef(node);
       }}
       onPointerEnter={() => setIsPointerOver(true)}
       onPointerLeave={() => setIsPointerOver(false)}
@@ -509,12 +479,12 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
         flexDirection: "column",
         gap: 0,
         borderRadius: 9,
-        background: BG,
-        border: "1px solid #e2e8f0",
+        background: bg,
+        border: `1px solid ${border}`,
         boxSizing: "border-box",
-        boxShadow: "0 1px 6px rgba(0,0,0,0.1)",
+        boxShadow: isDarkMode ? "0 1px 6px rgba(0,0,0,0.4)" : "0 1px 6px rgba(0,0,0,0.1)",
         fontFamily: "system-ui, sans-serif",
-        color: TEXT_PRIMARY,
+        color: textPrimary,
       }}
     >
       {/* ヘッダー（ドラッグハンドル） */}
@@ -527,7 +497,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
           height: HEADER_HEIGHT,
           flexShrink: 0,
           padding: "0 10px",
-          borderBottom: "1px solid #f1f5f9",
+          borderBottom: `1px solid ${borderSubtle}`,
           cursor: "grab",
         }}
       >
@@ -536,7 +506,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
           style={{
             fontSize: 11,
             fontWeight: 600,
-            color: TEXT_PRIMARY,
+            color: textPrimary,
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
@@ -547,7 +517,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
         </span>
         <FileSizeLabel sizeBytes={shape.meta?.sizeBytes as string | undefined} />
         <DownloadButton assetId={props.assetId} fileName={props.fileName}
-          style={{ flexShrink: 0, width: 20, height: 20, fontSize: 10, background: "#f1f5f9", border: "1px solid #e2e8f0", color: TEXT_MUTED }}
+          style={{ flexShrink: 0, width: 20, height: 20, fontSize: 10, background: isDarkMode ? "#334155" : "#f1f5f9", border: `1px solid ${border}`, color: textMuted }}
         />
       </div>
 
@@ -563,11 +533,11 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
           position: "relative",
           touchAction: "none",
           backgroundImage:
-            "linear-gradient(45deg, #e8e8e8 25%, transparent 25%, transparent 75%, #e8e8e8 75%)," +
-            "linear-gradient(45deg, #e8e8e8 25%, transparent 25%, transparent 75%, #e8e8e8 75%)",
+            `linear-gradient(45deg, ${checker} 25%, transparent 25%, transparent 75%, ${checker} 75%),` +
+            `linear-gradient(45deg, ${checker} 25%, transparent 25%, transparent 75%, ${checker} 75%)`,
           backgroundSize: "16px 16px",
           backgroundPosition: "0 0, 8px 8px",
-          backgroundColor: "#f4f4f4",
+          backgroundColor: checkerBg,
         }}
         onMouseDown={(e) => {
           const t = e.target as HTMLElement;
@@ -677,15 +647,15 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
           display: "flex",
           flexDirection: "column",
           gap: 6,
-          background: BG,
-          borderTop: "1px solid #f1f5f9",
+          background: bg,
+          borderTop: `1px solid ${borderSubtle}`,
         }}
       >
         {/* シークバー＋ボタン＋入力（まとめて flexShrink: 0） */}
         <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-          <SeekBar currentTime={currentTime} duration={duration} onSeek={seekTo} comments={comments} />
+          <SeekBar currentTime={currentTime} duration={duration} onSeek={seekTo} comments={comments} trackBg={trackBg} />
 
-        {/* ボタン行 */}
+          {/* ボタン行 */}
         <div
           style={{
             display: "flex",
@@ -724,7 +694,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
           <span
             style={{
               fontSize: 10,
-              color: TEXT_MUTED,
+              color: textMuted,
               fontVariantNumeric: "tabular-nums",
               flexShrink: 0,
             }}
@@ -754,7 +724,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
                 fontSize: 12,
                 padding: 0,
                 lineHeight: 1,
-                color: TEXT_MUTED,
+                color: textMuted,
                 touchAction: "none",
               }}
             >
@@ -764,191 +734,42 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
               value={muted ? 0 : volume}
               onChange={handleVolumeChange}
               accentColor={BLUE}
+              trackBg={trackBg}
               width={80}
             />
           </div>
         </div>
+        </div>
 
-        {/* コメント入力（入力欄/ボタン以外は選択に） */}
-        <div
-        style={{
-          display: "flex",
-          gap: 4,
-          alignItems: "center",
-          padding: "0 10px 6px",
-          flexShrink: 0,
-          opacity: syncAvailable ? 1 : 0.6,
-          pointerEvents: syncAvailable ? undefined : "none",
-        }}
-        title={!syncAvailable ? "同期エラーにより利用できません" : undefined}
-        onMouseDown={(e) => {
-          const t = e.target as HTMLElement;
-          if (t.tagName === "INPUT" || t.tagName === "BUTTON" || t.tagName === "SPAN") e.stopPropagation();
-        }}
-        onPointerDown={(e) => {
-          const t = e.target as HTMLElement;
-          if (t.tagName === "INPUT" || t.tagName === "BUTTON" || t.tagName === "SPAN") e.stopPropagation();
-        }}
-      >
-        {!syncAvailable && (
-          <span
-            title="同期エラーにより利用できません"
-            style={{
-              fontSize: 10,
-              color: "#b91c1c",
-              background: "rgba(254,226,226,0.9)",
-              padding: "1px 5px",
-              borderRadius: 4,
-              fontWeight: 500,
-              pointerEvents: "auto",
-            }}
-          >
-            同期エラー
-          </span>
-        )}
-        {commentFocused && (
-          <span style={{ fontSize: 13, color: TEXT_MUTED, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
-            {formatTime(currentTime)}
-          </span>
-        )}
-        <input
-          ref={commentInputRef}
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") { postComment(); commentInputRef.current?.blur(); setCommentFocused(false); }
-            if (e.key === "Escape") { commentInputRef.current?.blur(); setCommentFocused(false); setNewComment(""); }
-          }}
-          onFocus={() => setCommentFocused(true)}
-          onBlur={() => setCommentFocused(false)}
-          onTouchEnd={(e) => { e.stopPropagation(); commentInputRef.current?.focus(); }}
-          placeholder={commentFocused ? "コメントを追加..." : "💬 コメント"}
-          style={{
-            flex: 1,
-            fontSize: 14,
-            padding: commentFocused ? "6px 10px" : "5px 8px",
-            borderRadius: 4,
-            border: commentFocused ? `1px solid ${BLUE}` : "1px solid #e2e8f0",
-            background: commentFocused ? "#fff" : "#f8fafc",
-            color: TEXT_PRIMARY,
-            outline: "none",
-            minWidth: 0,
-            transition: "border-color 0.15s, padding 0.15s",
-            boxShadow: commentFocused ? `0 0 0 2px ${BLUE}33` : "none",
-          }}
+        {/* コメント入力 */}
+        <div style={{ padding: "0 10px 6px", flexShrink: 0 }}>
+          <MediaCommentInput
+            accentColor={BLUE}
+            syncAvailable={syncAvailable}
+            commentFocused={commentFocused}
+            currentTime={currentTime}
+            newComment={newComment}
+            onNewCommentChange={setNewComment}
+            onPostComment={postComment}
+            posting={posting}
+            commentInputRef={commentInputRef}
+            onFocus={() => setCommentFocused(true)}
+            onBlur={() => setCommentFocused(false)}
+            onCommentFocusedChange={setCommentFocused}
+          />
+        </div>
+
+        {/* コメントリスト */}
+        <MediaCommentList
+          comments={comments}
+          accentColor={BLUE}
+          syncAvailable={syncAvailable}
+          isCompact={isCompact}
+          commentRowHeight={COMMENT_ROW_HEIGHT}
+          onSeek={seekTo}
+          onDelete={handleDeleteComment}
+          deleting={deleting}
         />
-        {commentFocused && (
-          <button
-            onClick={() => { postComment(); setCommentFocused(false); }}
-            disabled={posting || !newComment.trim()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); postComment(); setCommentFocused(false); }}
-            style={{
-              fontSize: 13,
-              padding: "5px 12px",
-              borderRadius: 4,
-              border: "none",
-              background: BLUE,
-              color: "#fff",
-              cursor: "pointer",
-              flexShrink: 0,
-              opacity: posting || !newComment.trim() ? 0.4 : 1,
-              touchAction: "none",
-            }}
-          >
-            投稿
-          </button>
-        )}
-        </div>
-      </div>
-
-      {/* コメントリスト（項目クリックはシークに、余白クリックは選択に） */}
-      {comments.length > 0 && (
-        <div
-          className="comment-list"
-          style={{
-            borderTop: "1px solid #f1f5f9",
-            padding: "4px 10px 8px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-            flex: isCompact ? 1 : undefined,
-            minHeight: 0,
-            overflowY: "auto" as const,
-            touchAction: "pan-y",
-            opacity: syncAvailable ? 1 : 0.6,
-            pointerEvents: syncAvailable ? undefined : "none",
-          }}
-          onMouseDown={(e) => {
-            const t = e.target as HTMLElement;
-            if (t.closest("[data-comment-row]") || t.closest("button")) e.stopPropagation();
-          }}
-          onPointerDown={(e) => {
-            const t = e.target as HTMLElement;
-            if (t.closest("[data-comment-row]") || t.closest("button")) e.stopPropagation();
-          }}
-          onTouchStart={(e) => e.stopPropagation()}
-        >
-          {comments.map((c) => {
-            const m = Math.floor(c.timeSec / 60);
-            const s = Math.floor(c.timeSec % 60);
-            const timeStr = `${m}:${s.toString().padStart(2, "0")}`;
-            return (
-              <div
-                key={c.id}
-                data-comment-row
-                onClick={() => seekTo(c.timeSec)}
-                onTouchEnd={(e) => { e.stopPropagation(); seekTo(c.timeSec); }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "2px 4px",
-                  borderRadius: 4,
-                  cursor: "pointer",
-                  height: COMMENT_ROW_HEIGHT,
-                  flexShrink: 0,
-                }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#f1f5f9"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
-              >
-                <span style={{ fontSize: 13, color: BLUE, fontVariantNumeric: "tabular-nums", flexShrink: 0, fontWeight: 600 }}>
-                  {timeStr}
-                </span>
-                <span style={{ fontSize: 14, color: TEXT_PRIMARY, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {c.body}
-                </span>
-                <span style={{ fontSize: 12, color: TEXT_MUTED, flexShrink: 0 }}>
-                  {c.author.discordName}
-                </span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDeleteComment(c.id); }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); handleDeleteComment(c.id); }}
-                  disabled={deleting === c.id}
-                  style={{
-                    fontSize: 13,
-                    color: TEXT_MUTED,
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: "0 2px",
-                    flexShrink: 0,
-                    opacity: deleting === c.id ? 0.3 : 0.6,
-                    touchAction: "none",
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
       </div>
     </WheelGuard>
   );
