@@ -27,7 +27,7 @@ import { useShapeDeletePositionCapture } from "@/app/hooks/useShapeDeletePositio
 import { useSnapshotSave } from "@/app/hooks/useSnapshotPersistence";
 import { DarkModeButton } from "./DarkModeButton";
 import { BoardHeader } from "./BoardHeader";
-import { env } from "@/lib/env";
+import { getSyncWsUrl, isSyncWsUrlValid } from "@/lib/syncWsUrl";
 
 type Props = {
   boardId: string;
@@ -62,15 +62,8 @@ export default function CompoundBoard({
     new URLSearchParams(window.location.search).get("e2e") === "1";
 
   // ローカル以外（Tailscale 等）では同一オリジン /ws を利用
-  const syncWsUrl =
-    typeof window !== "undefined" &&
-    !["localhost", "127.0.0.1"].includes(window.location.hostname)
-      ? `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/ws`
-      : env.NEXT_PUBLIC_SYNC_WS_URL;
-  const useSync =
-    typeof syncWsUrl === "string" &&
-    syncWsUrl.length > 0 &&
-    !syncWsUrl.startsWith("__placeholder");
+  const syncWsUrl = getSyncWsUrl();
+  const useSync = isSyncWsUrlValid(syncWsUrl);
 
   const fetchSnapshotWhenEmpty = useCallback(async () => {
     try {

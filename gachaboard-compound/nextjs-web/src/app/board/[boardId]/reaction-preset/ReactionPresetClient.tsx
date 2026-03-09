@@ -10,7 +10,7 @@ import {
   DEFAULT_REACTION_EMOJI_LIST,
   FIXED_EMOJI_LIST,
 } from "@shared/constants";
-import { env } from "@/lib/env";
+import { getSyncWsUrl } from "@/lib/syncWsUrl";
 import { useCopyToClipboard } from "usehooks-ts";
 
 const REACTION_EMOJI_PRESET_MAP_KEY = "reactionEmojiPreset";
@@ -24,19 +24,6 @@ function getCustomEmojis(full: string[]): string[] {
 /** 固定5つ + カスタムを結合（保存用） */
 function toFullEmojiList(custom: string[]): string[] {
   return [...FIXED_EMOJI_LIST, ...custom];
-}
-
-function getSyncWsUrl(): string {
-  if (typeof window === "undefined") return "";
-  const isLocal =
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1";
-  if (!isLocal) {
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    return `${protocol}://${window.location.host}/ws`;
-  }
-  const url = env.NEXT_PUBLIC_SYNC_WS_URL;
-  return url.startsWith("__placeholder") ? "" : url;
 }
 
 type Props = {
