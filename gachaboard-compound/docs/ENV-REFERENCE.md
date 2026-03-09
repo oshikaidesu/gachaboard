@@ -35,16 +35,9 @@
 | `THUMBNAIL_DIR` | （空） | 動画サムネイルの保存ディレクトリ |
 | `MAX_UPLOAD_SIZE` | `107374182400` (100GB) | アップロード上限（バイト）。stem 等の大容量ファイル用 |
 
-### S3 / MinIO
+### S3 / MinIO（必須）
 
-**重要:** ストレージは「ローカル」か「S3/MinIO」のどちらかです。混在はできません。
-
-| モード | 条件 | 保存先 |
-|--------|------|--------|
-| **ローカル** | `S3_BUCKET` を設定しない（または空） | `nextjs-web/uploads/` |
-| **S3/MinIO** | `S3_BUCKET` + `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` をすべて設定 | オブジェクトストレージ |
-
-**初回・開発時はローカル推奨** — S3 系を一切設定しなければ `uploads/` に保存されます。MinIO を使う場合のみ以下を設定してください。
+ファイルアップロードには S3/MinIO が必須です。`env.local.template` にデフォルト値が入っています。`docker compose up -d` で MinIO を起動してください。
 
 | 変数名 | デフォルト | 説明 |
 |--------|------------|------|
@@ -53,7 +46,7 @@
 | `AWS_SECRET_ACCESS_KEY` | （空） | MinIO の場合は `minioadmin` |
 | `S3_ENDPOINT` | （空） | Next.js が MinIO に接続する URL。`npm run dev` 時は `http://localhost:9000`、Next.js を Docker 内で動かすときは `http://minio:9000` |
 | `S3_REGION` | `us-east-1` | リージョン。MinIO は `us-east-1` 等でよい |
-| `S3_PUBLIC_URL` | （空） | ブラウザが Presigned URL でアクセスするベース URL。MinIO が別ホストのとき必須（例: `http://localhost:9000`） |
+| `S3_PUBLIC_URL` | `http://localhost:9000` | ブラウザが Presigned URL でアクセスするベース URL |
 
 ### 同期（sync-server）
 

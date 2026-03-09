@@ -58,7 +58,7 @@ cp env.local.template .env.local
 | `DATABASE_URL` | そのまま（Docker 用） | `postgresql://gachaboard:gachaboard@localhost:5433/gachaboard` |
 | `SERVER_OWNER_DISCORD_ID` | 任意。自分の Discord ID を入れるとオーナー限定になる | 未設定でも可 |
 
-**ストレージ（S3/MinIO）:** 初回は設定不要。S3 系を設定しなければ `uploads/` にローカル保存されます。MinIO を使う場合は [ENV-REFERENCE.md](ENV-REFERENCE.md) の「S3 / MinIO」を参照。
+**ストレージ（S3/MinIO）:** `env.local.template` にデフォルト値が入っています。そのままで OK。MinIO は Docker で起動します（ステップ 4）。
 
 NEXTAUTH_SECRET の生成:
 
@@ -74,8 +74,10 @@ openssl rand -base64 32
 
 ```bash
 cd gachaboard-compound
-docker compose up -d postgres sync-server
+docker compose up -d
 ```
+
+postgres、sync-server、MinIO が起動します。
 
 起動確認:
 
@@ -83,7 +85,7 @@ docker compose up -d postgres sync-server
 docker compose ps
 ```
 
-`postgres` と `sync-server` の STATUS が `Up` または `healthy` になっていれば OK。
+`postgres`、`sync-server`、`minio` の STATUS が `Up` または `healthy` になっていれば OK。
 
 ---
 

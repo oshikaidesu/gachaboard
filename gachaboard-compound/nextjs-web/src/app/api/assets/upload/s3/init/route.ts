@@ -17,7 +17,10 @@ export async function POST(req: NextRequest) {
     const session = await requireLogin();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (!isS3Enabled()) {
-      return NextResponse.json({ error: "S3 is not configured" }, { status: 503 });
+      return NextResponse.json(
+        { error: "MinIO が起動していません。docker compose up -d で MinIO を起動してください。" },
+        { status: 503 }
+      );
     }
 
     const { fileName, mimeType, totalSize, boardId } = await req.json() as {
@@ -76,9 +79,8 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[S3 init]", err);
-    // 503 にするとクライアントが POST /api/assets（ローカル）にフォールバックする
     return NextResponse.json(
-      { error: msg },
+      { error: msg.includes("ECONNREFUSED") || msg.includes("connect") ? "MinIO に接続できません。docker compose up -d で MinIO を起動してください。" : msg },
       { status: 503 }
     );
   }

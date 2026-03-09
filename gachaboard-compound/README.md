@@ -56,8 +56,10 @@ cp nextjs-web/env.local.template nextjs-web/.env.local
 ### 3. インフラを起動（Docker）
 
 ```bash
-docker compose up -d postgres sync-server
+docker compose up -d
 ```
+
+postgres、sync-server、MinIO が起動します。ファイルアップロードには MinIO が必須です。
 
 ### 4. アプリを起動
 
@@ -112,7 +114,7 @@ gachaboard-compound/
 - **認証**: NextAuth + Discord OAuth
 - **DB**: PostgreSQL + Prisma
 - **リアルタイム同期**: Yjs + y-websocket
-- **ストレージ**: ローカル `uploads/` または S3 / MinIO
+- **ストレージ**: S3 / MinIO（Presigned URL で直接アップロード）
 
 ---
 

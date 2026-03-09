@@ -49,17 +49,12 @@ postgresql://gachaboard:gachaboard@localhost:5433/gachaboard
 
 ```bash
 cd gachaboard-compound
-docker compose up -d postgres sync-server
+docker compose up -d
 ```
 
 - postgres: `localhost:5433`
 - sync-server: `localhost:5858`
-
-MinIO を使う場合:
-
-```bash
-docker compose up -d
-```
+- minio: `localhost:9000`（ファイルアップロードに必須）
 
 ### 4.2 アプリ（nextjs-web）
 
@@ -75,14 +70,9 @@ http://localhost:3000 でアクセス。
 
 ---
 
-## 5. ローカル保存でプレビュー
+## 5. ファイル保存（MinIO）
 
-S3 系を設定しないと、アップロードは `nextjs-web/uploads/` に保存されます。
-
-- `uploads/assets/` - 元ファイル
-- `uploads/converted/` - 変換後（mp3, 720p mp4）
-- `uploads/thumbnails/` - 動画サムネイル
-- `uploads/waveforms/` - 音声波形 JSON
+アップロードは MinIO（S3 互換）に保存されます。`docker compose up -d` で MinIO を起動してください。
 
 ffmpeg が入っていないと動画・音声の変換は失敗します。
 

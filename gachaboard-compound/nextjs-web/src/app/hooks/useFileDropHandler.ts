@@ -13,14 +13,13 @@ import {
 
 const MAX_CONCURRENT = 4;
 
-/** 250MB 以上のファイルはチャンク送信に切り替える */
-const CHUNK_THRESHOLD = 250 * 1024 * 1024;
-/** チャンク1本あたりのサイズ（250MB）。nginx の client_max_body_size 256m に収まる値 */
-const CHUNK_SIZE = 250 * 1024 * 1024;
-/** チャンクアップロードの並列数（Ryzen 7 3D + AE 併用時に CPU 負荷を抑える） */
+/** チャンクアップロードの並列数 */
 const CHUNK_CONCURRENCY = 4;
 
 const S3_PART_SIZE = 100 * 1024 * 1024; // 100MB
+
+const S3_REQUIRED_MSG =
+  "MinIO が起動していません。docker compose up -d で MinIO を起動してください。";
 
 async function uploadFile(
   file: File,
@@ -28,31 +27,7 @@ async function uploadFile(
   onProgress?: (pct: number) => void,
   handle?: FileSystemFileHandle | null,
 ): Promise<ApiAsset> {
-  const s3Result = await uploadFileViaS3(file, boardId, onProgress, handle);
-  if (s3Result) return s3Result;
-  if (file.size >= CHUNK_THRESHOLD) {
-    return uploadFileInChunks(file, boardId, onProgress);
-  }
-  return new Promise((resolve, reject) => {
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("boardId", boardId);
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/assets");
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) onProgress?.(Math.round((e.loaded / e.total) * 100));
-    };
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error("Invalid response")); }
-      } else {
-        try { reject(new Error(JSON.parse(xhr.responseText).error ?? `Upload failed: ${xhr.status}`)); }
-        catch { reject(new Error(`Upload failed: ${xhr.status}`)); }
-      }
-    };
-    xhr.onerror = () => reject(new Error("Network error"));
-    xhr.send(fd);
-  });
+  return uploadFileViaS3(file, boardId, onProgress, handle);
 }
 
 async function uploadFileViaS3(
@@ -60,7 +35,7 @@ async function uploadFileViaS3(
   boardId: string,
   onProgress?: (pct: number) => void,
   handle?: FileSystemFileHandle | null,
-): Promise<ApiAsset | null> {
+): Promise<ApiAsset> {
   const initRes = await fetch("/api/assets/upload/s3/init", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -71,7 +46,9 @@ async function uploadFileViaS3(
       boardId,
     }),
   });
-  if (initRes.status === 503) return null;
+  if (initRes.status === 503) {
+    throw new Error(S3_REQUIRED_MSG);
+  }
   if (!initRes.ok) {
     const body = await initRes.json().catch(() => ({}));
     throw new Error((body as { error?: string }).error ?? `S3 init failed: ${initRes.status}`);
@@ -246,115 +223,6 @@ async function uploadFileViaS3Resume(
     throw new Error((body as { error?: string }).error ?? `S3 complete failed: ${completeRes.status}`);
   }
   await removeS3UploadSession(uploadId).catch(() => {});
-  onProgress?.(100);
-  return completeRes.json() as Promise<ApiAsset>;
-}
-
-const UPLOAD_SESSION_KEY = "uploadSession";
-
-function getUploadSessionKey(file: File, totalChunks: number): string {
-  return `${UPLOAD_SESSION_KEY}:${file.name}:${file.size}:${totalChunks}`;
-}
-
-async function uploadFileInChunks(
-  file: File,
-  boardId: string,
-  onProgress?: (pct: number) => void,
-): Promise<ApiAsset> {
-  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-  const sessionKey = getUploadSessionKey(file, totalChunks);
-
-  let uploadId: string | null = null;
-  if (typeof localStorage !== "undefined") {
-    const stored = localStorage.getItem(sessionKey);
-    if (stored) {
-      try {
-        const { uploadId: id } = JSON.parse(stored) as { uploadId: string };
-        const statusRes = await fetch(`/api/assets/upload/${id}/status`);
-        if (statusRes.ok) {
-          const { completedChunks: list } = await statusRes.json() as { completedChunks?: number[] };
-          if (list && list.length > 0) {
-            uploadId = id;
-          }
-        }
-      } catch {
-        // 復元失敗時は新規セッション
-      }
-    }
-  }
-
-  if (!uploadId) {
-    const initRes = await fetch("/api/assets/upload/init", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fileName: file.name,
-        mimeType: file.type || "application/octet-stream",
-        totalSize: file.size,
-        boardId,
-      }),
-    });
-    if (!initRes.ok) {
-      const body = await initRes.json().catch(() => ({}));
-      throw new Error((body as { error?: string }).error ?? `Init failed: ${initRes.status}`);
-    }
-    const body = await initRes.json() as { uploadId: string };
-    uploadId = body.uploadId;
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(sessionKey, JSON.stringify({ uploadId }));
-    }
-  }
-
-  const fetchStatus = async (): Promise<number[]> => {
-    const statusRes = await fetch(`/api/assets/upload/${uploadId!}/status`);
-    if (!statusRes.ok) return [];
-    const { completedChunks: list } = await statusRes.json() as { completedChunks?: number[] };
-    return list ?? [];
-  };
-
-  let lastError: unknown;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const completedChunks = await fetchStatus();
-    const completedSet = new Set(completedChunks);
-    const pendingIndices = Array.from({ length: totalChunks }, (_, i) => i).filter((i) => !completedSet.has(i));
-
-    if (pendingIndices.length === 0) break;
-
-    let uploadedInThisRun = 0;
-    const chunkTasks = pendingIndices.map((i) => async () => {
-      const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-      const res = await fetch(`/api/assets/upload/${uploadId!}/${i}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/octet-stream" },
-        body: chunk,
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { error?: string }).error ?? `Chunk ${i} failed: ${res.status}`);
-      }
-      uploadedInThisRun++;
-      onProgress?.(Math.round(((completedChunks.length + uploadedInThisRun) / totalChunks) * 95));
-    });
-
-    const results = await runWithConcurrency(chunkTasks, CHUNK_CONCURRENCY);
-    const rejected = results.find((r) => r.status === "rejected");
-    if (!rejected) break;
-    lastError = (rejected as PromiseRejectedResult).reason;
-    if (attempt === 2) throw lastError;
-  }
-
-  const completeRes = await fetch(`/api/assets/upload/${uploadId!}/complete`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ totalChunks }),
-  });
-  if (!completeRes.ok) {
-    const body = await completeRes.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? `Complete failed: ${completeRes.status}`);
-  }
-  if (typeof localStorage !== "undefined") {
-    localStorage.removeItem(sessionKey);
-  }
   onProgress?.(100);
   return completeRes.json() as Promise<ApiAsset>;
 }

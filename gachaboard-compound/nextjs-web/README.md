@@ -44,7 +44,7 @@ nextjs-web/
 │   └── (y-websocket-server)  # Yjs WebSocket サーバー（メモリのみ）
 ├── prisma/
 │   └── schema.prisma         # DB スキーマ
-├── uploads/                  # アップロードファイル保存先（Git管理外）
+├── uploads/                  # 変換用 tmp 等（Git管理外。アップロードは S3/MinIO）
 │   ├── assets/               # 元ファイル
 │   ├── converted/            # 変換済みファイル（mp3/mp4）
 │   └── waveforms/            # 波形データ（JSON）
@@ -99,7 +99,7 @@ npx prisma db push
 npm run dev
 ```
 
-sync-server は Docker で起動する（`docker compose up -d postgres sync-server`）。単体起動する場合:
+sync-server と MinIO は Docker で起動する（`docker compose up -d`）。単体起動する場合:
 
 ```bash
 cd nextjs-web/sync-server
@@ -122,12 +122,12 @@ PORT=5858 HOST=0.0.0.0 npm start
 | `DATABASE_URL` | PostgreSQL 接続文字列 |
 | `NEXT_PUBLIC_SYNC_WS_URL` | sync-server の WebSocket URL（例: `ws://localhost:5858`） |
 | `SERVER_OWNER_DISCORD_ID` | サーバーオーナーの Discord ID。未設定なら全員アクセス可。設定時はオーナーのみ WS にアクセス可。取得: 開発者モード ON → アイコン右クリック → ID をコピー |
-| `UPLOAD_DIR` | アップロード保存先（省略時は `uploads/assets`） |
+| `UPLOAD_DIR` | （ffmpeg 変換用 tmp 等。アップロードは S3 経由） |
 
 **環境変数の詳細**: [../docs/ENV-REFERENCE.md](../docs/ENV-REFERENCE.md) を参照。
 
 **NEXTAUTH_URL の切り替え**: `npm run env:local` / `npm run env:tailscale`。Tailscale ホスト未指定時は自動検出を試みる。詳細は [../docs/ENV-AND-DEPLOYMENT-MODES.md](../docs/ENV-AND-DEPLOYMENT-MODES.md) を参照。
 
-**ローカル保存でプレビュー**: S3 系（`S3_BUCKET` 等）を設定しなければ、すべて `uploads/` に保存される。親 [../README.md](../README.md) の「ローカル保存でプレビュー・軽量化の確認」を参照。
+**ストレージ**: S3/MinIO が必須。`env.local.template` にデフォルト値あり。`docker compose up -d` で MinIO を起動すること。
 
 **サーバーオーナー（運用）**: `SERVER_OWNER_DISCORD_ID` を設定すると、オーナー以外はワークスペースにアクセスできずトップへリダイレクト。Tailscale 運用でサーバー管理者 1 人をオーナーにする想定。詳細は [ownership-design.md](../docs/ownership-design.md)。
