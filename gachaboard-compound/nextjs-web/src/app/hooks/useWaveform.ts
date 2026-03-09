@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import pRetry from "p-retry";
 
 type WaveformStatus = "loading" | "ready" | "error";
 
@@ -12,26 +13,40 @@ type WaveformResult = {
 const RETRY_DELAY_MS = 2000;
 const MAX_RETRIES = 5;
 
+class Retryable404Error extends Error {
+  constructor() {
+    super("Waveform not ready (404)");
+    this.name = "Retryable404Error";
+  }
+}
+
 /**
  * 波形 JSON を取得。アップロード直後は波形が非同期生成中のため 404 になることがある。
- * 404 の場合はリトライする。
+ * 404 の場合は p-retry でリトライする。
  */
 async function fetchWaveformWithRetry(
   assetId: string,
   signal: AbortSignal
 ): Promise<{ peaks: number[] }> {
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    const res = await fetch(`/api/assets/${assetId}/waveform`, { signal });
-    if (res.ok) {
-      return res.json() as Promise<{ peaks: number[] }>;
+  return pRetry(
+    async () => {
+      const res = await fetch(`/api/assets/${assetId}/waveform`, { signal });
+      if (res.ok) {
+        return res.json() as Promise<{ peaks: number[] }>;
+      }
+      if (res.status === 404) {
+        throw new Retryable404Error();
+      }
+      throw new Error(`HTTP ${res.status}`);
+    },
+    {
+      retries: MAX_RETRIES,
+      minTimeout: RETRY_DELAY_MS,
+      maxTimeout: RETRY_DELAY_MS,
+      shouldRetry: ({ error }) => error instanceof Retryable404Error,
+      signal,
     }
-    if (res.status === 404 && attempt < MAX_RETRIES) {
-      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
-      continue;
-    }
-    throw new Error(`HTTP ${res.status}`);
-  }
-  throw new Error("Max retries exceeded");
+  );
 }
 
 export function useWaveform(assetId: string): WaveformResult {
