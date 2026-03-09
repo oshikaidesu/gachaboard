@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import { useOnClickOutside } from "usehooks-ts";
 import { createPortal } from "react-dom";
 import { useEditor } from "@cmpd/compound";
 import { useBoardContext } from "@/app/components/board/BoardContext";
@@ -45,24 +46,8 @@ export function ShapeReactionPanel({ shapeId, containerStyle }: Props) {
     return unsubscribe;
   }, [showPicker, editor, closePicker]);
 
-  useEffect(() => {
-    if (!showPicker) return;
-    const handler = (e: MouseEvent | TouchEvent) => {
-      const target = e instanceof TouchEvent ? e.touches[0]?.target : (e as MouseEvent).target;
-      if (
-        pickerRef.current && !pickerRef.current.contains(target as Node) &&
-        plusBtnRef.current && !plusBtnRef.current.contains(target as Node)
-      ) {
-        closePicker();
-      }
-    };
-    document.addEventListener("mousedown", handler as EventListener);
-    document.addEventListener("touchstart", handler as EventListener);
-    return () => {
-      document.removeEventListener("mousedown", handler as EventListener);
-      document.removeEventListener("touchstart", handler as EventListener);
-    };
-  }, [showPicker, closePicker]);
+  useOnClickOutside([pickerRef, plusBtnRef] as React.RefObject<HTMLElement>[], closePicker, "mousedown");
+  useOnClickOutside([pickerRef, plusBtnRef] as React.RefObject<HTMLElement>[], closePicker, "touchstart");
 
   const toggle = (emoji: string) => {
     const reacted = active.find((r) => r.emoji === emoji && r.userId === currentUserId);

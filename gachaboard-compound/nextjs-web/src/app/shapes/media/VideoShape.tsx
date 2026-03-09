@@ -187,7 +187,7 @@ function SeekBar({
       {duration > 0 && comments.map((c) => (
         <div
           key={c.id}
-          title={`${Math.floor(c.timeSec / 60)}:${String(Math.floor(c.timeSec % 60)).padStart(2, "0")} ${c.author.discordName}: ${c.body}`}
+          title={`${formatTime(c.timeSec)} ${c.author.discordName}: ${c.body}`}
           style={{
             position: "absolute",
             bottom: 0,

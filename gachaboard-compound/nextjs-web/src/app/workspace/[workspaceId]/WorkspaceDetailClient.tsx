@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { ApiBoard, ApiWorkspaceInfo } from "@shared/apiTypes";
@@ -8,7 +8,7 @@ import type { ApiWorkspaceMember } from "@/app/api/workspaces/[workspaceId]/memb
 import { Identicon, getMinidenticonColor } from "@/app/components/ui/Identicon";
 import { MoreVerticalIcon } from "@/app/components/ui/MoreVerticalIcon";
 import { RenameModal } from "@/app/components/ui/RenameModal";
-import { useCopyToClipboard } from "usehooks-ts";
+import { useCopyToClipboard, useOnClickOutside } from "usehooks-ts";
 
 type Board = ApiBoard;
 type WorkspaceInfo = ApiWorkspaceInfo;
@@ -36,6 +36,17 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
   const [kickingUserId, setKickingUserId] = useState<string | null>(null);
   const membersButtonRef = useRef<HTMLDivElement>(null);
   const menuRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const openMenuContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useOnClickOutside(membersButtonRef, () => {
+    if (showMembersPopover) setShowMembersPopover(false);
+  });
+  useLayoutEffect(() => {
+    openMenuContainerRef.current = openMenu ? (menuRefs.current.get(openMenu) ?? null) : null;
+  }, [openMenu]);
+  useOnClickOutside(openMenuContainerRef, () => {
+    if (openMenu) setOpenMenu(null);
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -58,21 +69,6 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
   }, [workspaceId, router]);
 
   useEffect(() => { load(); }, [load]);
-
-  // メニュー外クリックで閉じる
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (openMenu) {
-        const el = menuRefs.current.get(openMenu);
-        if (el && !el.contains(e.target as Node)) setOpenMenu(null);
-      }
-      if (showMembersPopover && membersButtonRef.current && !membersButtonRef.current.contains(e.target as Node)) {
-        setShowMembersPopover(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [openMenu, showMembersPopover]);
 
   const create = async () => {
     if (!newName.trim()) return;

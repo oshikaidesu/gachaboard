@@ -120,9 +120,7 @@ function WaveformCanvas({
 
     if (hit) {
       const pinX = (hit.timeSec / duration) * width;
-      const m = Math.floor(hit.timeSec / 60);
-      const s = Math.floor(hit.timeSec % 60);
-      setTooltip({ x: pinX, text: `${m}:${s.toString().padStart(2, "0")} ${hit.author.discordName}: ${hit.body}` });
+      setTooltip({ x: pinX, text: `${formatTime(hit.timeSec)} ${hit.author.discordName}: ${hit.body}` });
     } else {
       setTooltip(null);
     }

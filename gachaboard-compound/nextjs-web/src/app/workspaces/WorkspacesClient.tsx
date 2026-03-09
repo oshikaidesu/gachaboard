@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useLayoutEffect } from "react";
+import { useOnClickOutside } from "usehooks-ts";
 import Link from "next/link";
 import type { ApiWorkspace } from "@shared/apiTypes";
 import { Identicon, getMinidenticonColor } from "../components/ui/Identicon";
@@ -24,6 +25,7 @@ export default function WorkspacesClient({ currentUserId }: { currentUserId: str
   const [renameDesc, setRenameDesc] = useState("");
   const [renameSaving, setRenameSaving] = useState(false);
   const menuRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const openMenuContainerRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -34,15 +36,12 @@ export default function WorkspacesClient({ currentUserId }: { currentUserId: str
 
   useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (!openMenu) return;
-      const el = menuRefs.current.get(openMenu);
-      if (el && !el.contains(e.target as Node)) setOpenMenu(null);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+  useLayoutEffect(() => {
+    openMenuContainerRef.current = openMenu ? (menuRefs.current.get(openMenu) ?? null) : null;
   }, [openMenu]);
+  useOnClickOutside(openMenuContainerRef, () => {
+    if (openMenu) setOpenMenu(null);
+  });
 
   const create = async () => {
     if (!newName.trim()) return;

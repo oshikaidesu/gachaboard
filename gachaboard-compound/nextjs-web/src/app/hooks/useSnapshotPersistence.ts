@@ -7,7 +7,8 @@
  */
 import type { TLRecord } from "@cmpd/tlschema";
 import debounce from "lodash.debounce";
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
+import { useEventListener } from "usehooks-ts";
 import type { WebsocketProvider } from "y-websocket";
 
 const DOCUMENT_SCOPE_TYPES = new Set([
@@ -68,6 +69,17 @@ function getReactionEmojiPreset(provider: WebsocketProvider | null | undefined):
 
 export function useSnapshotSave({ store, provider, boardId, workspaceId, enabled }: UseSnapshotSaveOptions) {
   const lastSaveRef = useRef<string>("");
+  const saveRef = useRef<((source: string) => void) | null>(null);
+  const documentRef = useRef<Document | null>(typeof document !== "undefined" ? document : null);
+
+  useEventListener(
+    "visibilitychange",
+    () => {
+      if (document.visibilityState === "hidden" && saveRef.current) saveRef.current("visibilitychange");
+    },
+    documentRef
+  );
+  useEventListener("beforeunload", () => saveRef.current?.("beforeunload"));
 
   useEffect(() => {
     if (!store || !enabled) return;
@@ -101,31 +113,18 @@ export function useSnapshotSave({ store, provider, boardId, workspaceId, enabled
       }).catch(() => {});
     };
 
+    saveRef.current = save;
     const debouncedSave = debounce(() => save("debounce"), SAVE_DEBOUNCE_MS);
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        save("visibilitychange");
-      }
-    };
-
-    const handleBeforeUnload = () => {
-      save("beforeunload");
-    };
 
     const unsub = store.listen(
       () => debouncedSave(),
       { source: "user" as const, scope: "document" }
     );
 
-    window.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
     return () => {
+      saveRef.current = null;
       debouncedSave.cancel();
       unsub?.();
-      window.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [store, provider, boardId, workspaceId, enabled]);
 }

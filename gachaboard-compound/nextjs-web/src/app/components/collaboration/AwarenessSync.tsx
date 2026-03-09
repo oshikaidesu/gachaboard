@@ -7,6 +7,7 @@
  */
 import { useEditor } from "@cmpd/editor";
 import { InstancePresenceRecordType } from "@cmpd/tlschema";
+import rafThrottle from "raf-throttle";
 import { useCallback, useEffect, useRef } from "react";
 import type { WebsocketProvider } from "y-websocket";
 
@@ -18,14 +19,12 @@ type AwarenessSyncProps = {
 export function AwarenessSync({ provider, localUserId }: AwarenessSyncProps) {
   const editor = useEditor();
   const awareness = provider.awareness;
-  const rafRef = useRef<number | null>(null);
   const pendingRef = useRef<{ x: number; y: number } | null>(null);
 
-  // リモート awareness → store の instance_presence に同期（RAF で 1 フレームに 1 回にスロットル）
+  // リモート awareness → store の instance_presence に同期（raf-throttle で 1 フレームに 1 回）
   useEffect(() => {
     const store = editor.store;
     const localClientId = provider.doc.clientID;
-    let syncRafId: number | null = null;
 
     const syncRemoteToStore = () => {
       const states = awareness.getStates();
@@ -107,17 +106,11 @@ export function AwarenessSync({ provider, localUserId }: AwarenessSyncProps) {
     };
 
     syncRemoteToStore();
-    const throttledSync = () => {
-      if (syncRafId !== null) return;
-      syncRafId = requestAnimationFrame(() => {
-        syncRafId = null;
-        syncRemoteToStore();
-      });
-    };
+    const throttledSync = rafThrottle(syncRemoteToStore);
     awareness.on("change", throttledSync);
 
     return () => {
-      if (syncRafId !== null) cancelAnimationFrame(syncRafId);
+      throttledSync.cancel();
       awareness.off("change", throttledSync);
     };
   }, [editor, awareness, provider.doc.clientID]);
@@ -144,26 +137,23 @@ export function AwarenessSync({ provider, localUserId }: AwarenessSyncProps) {
     const container = document.getElementById("compound-editor");
     if (!container) return;
 
+    const throttledUpdate = rafThrottle(() => {
+      const pending = pendingRef.current;
+      if (pending) {
+        pendingRef.current = null;
+        updateLocalCursor(pending.x, pending.y);
+      }
+    });
+
     const handlePointerMove = (e: PointerEvent) => {
       const pagePoint = editor.screenToPage({ x: e.clientX, y: e.clientY });
       pendingRef.current = { x: pagePoint.x, y: pagePoint.y };
-      if (rafRef.current !== null) return;
-      rafRef.current = requestAnimationFrame(() => {
-        rafRef.current = null;
-        const pending = pendingRef.current;
-        if (pending) {
-          pendingRef.current = null;
-          updateLocalCursor(pending.x, pending.y);
-        }
-      });
+      throttledUpdate();
     };
 
     const handlePointerLeave = () => {
       pendingRef.current = null;
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
+      throttledUpdate.cancel();
       clearLocalCursor();
     };
 
@@ -173,7 +163,7 @@ export function AwarenessSync({ provider, localUserId }: AwarenessSyncProps) {
     return () => {
       container.removeEventListener("pointermove", handlePointerMove);
       container.removeEventListener("pointerleave", handlePointerLeave);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      throttledUpdate.cancel();
     };
   }, [editor, updateLocalCursor, clearLocalCursor]);
 

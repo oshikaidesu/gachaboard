@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useOnClickOutside } from "usehooks-ts";
 import { useEditor } from "@cmpd/compound";
 import { useBoardComments } from "@/app/components/board/BoardCommentProvider";
 import { useBoardContext } from "@/app/components/board/BoardContext";
@@ -88,28 +89,15 @@ export function useMediaPlayerComments({
     return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
   }, [shapeId, commentFocused, editor, isPointerOver, onTogglePlay]);
 
-  // シェイプ外タップでコメント入力を解除
-  useEffect(() => {
-    const handleOutsideTouch = (e: MouseEvent | TouchEvent) => {
-      const container = containerRef.current;
-      const input = commentInputRef.current;
-      if (!container || !input) return;
-      const target = e instanceof TouchEvent ? e.touches[0]?.target : e.target;
-      if (target && !container.contains(target as Node)) {
-        input.blur();
-        setCommentFocused(false);
-      }
-    };
-    document.addEventListener("mousedown", handleOutsideTouch, true);
-    document.addEventListener("touchstart", handleOutsideTouch, {
-      capture: true,
-      passive: true,
-    });
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideTouch, true);
-      document.removeEventListener("touchstart", handleOutsideTouch, true);
-    };
+  const handleOutsideClick = useCallback(() => {
+    const input = commentInputRef.current;
+    if (input) {
+      input.blur();
+      setCommentFocused(false);
+    }
   }, []);
+  useOnClickOutside(containerRef, handleOutsideClick, "mousedown", { capture: true });
+  useOnClickOutside(containerRef, handleOutsideClick, "touchstart", { capture: true, passive: true });
 
   return {
     comments,

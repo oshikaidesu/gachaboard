@@ -1,10 +1,13 @@
 import { useCallback } from "react";
+import LinkifyIt from "linkify-it";
 import { Editor, TLShapeId } from "@cmpd/compound";
+
+const linkify = new LinkifyIt();
 
 /** テキスト内の最初のURLを抽出する */
 function extractFirstUrl(text: string): string | null {
-  const match = text.match(/https?:\/\/[^\s]+/);
-  return match?.[0] ?? null;
+  const matches = linkify.match(text);
+  return matches?.[0]?.url ?? null;
 }
 
 const TARGET_TYPES = new Set(["geo"]);

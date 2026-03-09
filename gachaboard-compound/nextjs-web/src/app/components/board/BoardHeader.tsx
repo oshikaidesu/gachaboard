@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback } from "react";
+import { useDrag } from "@use-gesture/react";
 import { useCopyToClipboard } from "usehooks-ts";
 import Link from "next/link";
 import { Identicon } from "@/app/components/ui/Identicon";
@@ -40,21 +41,30 @@ export function BoardHeader({
   const headerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [, copyToClipboard] = useCopyToClipboard();
-  const lastClientXRef = useRef(0);
   const didDragRef = useRef(false);
+  const scrollStartRef = useRef(0);
+
+  const bindDrag = useDrag(
+    ({ movement: [mx], first, last }) => {
+      const el = headerRef.current;
+      if (!el) return;
+      if (first) {
+        scrollStartRef.current = el.scrollLeft;
+        didDragRef.current = false;
+        setIsDragging(true);
+      }
+      el.scrollLeft = scrollStartRef.current - mx;
+      if (!first) didDragRef.current = true;
+      if (last) setIsDragging(false);
+    },
+    { axis: "x" }
+  );
 
   const handleHeaderWheel = useCallback((e: React.WheelEvent) => {
     const el = headerRef.current;
     if (!el || el.scrollWidth <= el.clientWidth) return;
     e.preventDefault();
     el.scrollLeft += e.deltaY;
-  }, []);
-
-  const handleHeaderMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button !== 0) return;
-    didDragRef.current = false;
-    setIsDragging(true);
-    lastClientXRef.current = e.clientX;
   }, []);
 
   const handleHeaderClickCapture = useCallback((e: React.MouseEvent) => {
@@ -65,32 +75,14 @@ export function BoardHeader({
     }
   }, []);
 
-  useEffect(() => {
-    if (!isDragging) return;
-    const handleMove = (e: MouseEvent) => {
-      const el = headerRef.current;
-      if (!el) return;
-      const delta = e.clientX - lastClientXRef.current;
-      lastClientXRef.current = e.clientX;
-      el.scrollLeft -= delta;
-      didDragRef.current = true;
-    };
-    const handleUp = () => setIsDragging(false);
-    document.addEventListener("mousemove", handleMove);
-    document.addEventListener("mouseup", handleUp);
-    return () => {
-      document.removeEventListener("mousemove", handleMove);
-      document.removeEventListener("mouseup", handleUp);
-    };
-  }, [isDragging]);
-
   return (
     <>
       <div
         ref={headerRef}
+        {...bindDrag()}
         onWheel={handleHeaderWheel}
-        onMouseDown={handleHeaderMouseDown}
         onClickCapture={handleHeaderClickCapture}
+        style={{ touchAction: "pan-y" }}
         className="flex touch-pan-x flex-nowrap select-none items-center gap-3 overflow-x-auto border-b border-zinc-200 bg-white px-4 py-2 z-10 whitespace-nowrap [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [-webkit-overflow-scrolling:touch] dark:border-zinc-700 dark:bg-[#25292e]"
       >
         <Link
