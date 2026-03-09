@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
 import { useRouter } from "next/navigation";
+import { formatFileSize } from "@shared/utils";
+import { getFileEmoji } from "@/app/shapes";
 
 type TrashAsset = {
   id: string;
@@ -41,7 +43,7 @@ function ConfirmDeleteModal({
   onClose: () => void;
 }) {
   const count = state.ids.length;
-  const size = formatSize(state.totalBytes);
+  const size = formatFileSize(state.totalBytes);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/70">
@@ -71,28 +73,6 @@ function ConfirmDeleteModal({
 }
 
 // ---- ユーティリティ ----------------------------------------------------------
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes}B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(1)}GB`;
-}
-
-function fileIcon(kind: string, fileName: string): string {
-  if (kind === "video") return "🎬";
-  if (kind === "audio") return "🎵";
-  if (kind === "image" || kind === "gif") return "🖼️";
-  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
-  if (["zip", "tar", "gz", "7z", "rar"].includes(ext)) return "🗜️";
-  if (["pdf"].includes(ext)) return "📕";
-  if (["doc", "docx"].includes(ext)) return "📝";
-  if (["xls", "xlsx", "csv"].includes(ext)) return "📊";
-  if (["txt", "md", "log"].includes(ext)) return "📄";
-  if (["json", "yaml", "yml", "toml", "xml"].includes(ext)) return "🔧";
-  if (["js", "ts", "py", "go", "rs", "cpp", "c", "java"].includes(ext)) return "💻";
-  return "📦";
-}
 
 function sortAssets(assets: TrashAsset[], key: SortKey): TrashAsset[] {
   return [...assets].sort((a, b) => {
@@ -241,7 +221,7 @@ export default function BoardTrashClient({ boardId, boardName, workspaceId }: Pr
             {assets.length} 件
           </span>
           <span className="rounded-full bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-            合計 {formatSize(totalBytes)}
+            合計 {formatFileSize(totalBytes)}
           </span>
           <div className="ml-auto flex items-center gap-2">
             {/* 並び替え */}
@@ -318,13 +298,13 @@ export default function BoardTrashClient({ boardId, boardName, workspaceId }: Pr
                     onChange={() => toggleSelect(a.id)}
                     className="h-4 w-4 cursor-pointer rounded"
                   />
-                  <span className="inline-flex items-center leading-none"><TwemojiImg emoji={fileIcon(a.kind, a.fileName)} size={28} /></span>
+                  <span className="inline-flex items-center leading-none"><TwemojiImg emoji={getFileEmoji(a.fileName, a.kind)} size={28} /></span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-zinc-800 dark:text-zinc-200" title={a.fileName}>
                       {a.fileName}
                     </p>
                     <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                      {formatSize(bytes)}
+                      {formatFileSize(bytes)}
                       {" · "}
                       削除日: {new Date(a.deletedAt).toLocaleDateString("ja-JP")}
                       {a.lastKnownX !== null && (

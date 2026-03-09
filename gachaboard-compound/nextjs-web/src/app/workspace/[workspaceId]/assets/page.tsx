@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import MediaPlayer from "@/app/components/ui/MediaPlayer";
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
+import { formatFileSize } from "@shared/utils";
+import { getFileEmoji } from "@/app/shapes";
 
 type Asset = {
   id: string;
@@ -70,14 +72,6 @@ export default function AssetsPage() {
     await load();
   };
 
-  const formatSize = (bytes: string) => {
-    const n = Number(bytes);
-    if (n < 1024) return `${n}B`;
-    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)}KB`;
-    if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)}MB`;
-    return `${(n / 1024 / 1024 / 1024).toFixed(1)}GB`;
-  };
-
   const isMedia = (a: Asset) => a.kind === "image" || a.kind === "video" || a.kind === "audio" || a.kind === "gif";
 
   // 検索・フィルタ適用
@@ -100,23 +94,6 @@ export default function AssetsPage() {
         .map((a) => [a.board!.id, { id: a.board!.id, name: a.board!.name }])
     ).values()
   ).sort((a, b) => a.name.localeCompare(b.name));
-
-  const fileIcon = (a: Asset) => {
-    if (a.kind === "video") return "🎬";
-    if (a.kind === "audio") return "🎵";
-    const ext = a.fileName.split(".").pop()?.toLowerCase() ?? "";
-    if (["zip", "tar", "gz", "7z", "rar"].includes(ext)) return "🗜️";
-    if (["pdf"].includes(ext)) return "📕";
-    if (["doc", "docx"].includes(ext)) return "📝";
-    if (["xls", "xlsx", "csv"].includes(ext)) return "📊";
-    if (["ppt", "pptx"].includes(ext)) return "📊";
-    if (["txt", "md", "log"].includes(ext)) return "📄";
-    if (["json", "yaml", "yml", "toml", "xml"].includes(ext)) return "🔧";
-    if (["js", "ts", "py", "go", "rs", "cpp", "c", "java"].includes(ext)) return "💻";
-    if (["exe", "dmg", "pkg", "deb", "rpm"].includes(ext)) return "⚙️";
-    if (["stem", "als", "flp", "ptx", "logic"].includes(ext)) return "🎛️";
-    return "📦";
-  };
 
   return (
     <main className="flex min-h-screen flex-col bg-background bg-grid-subtle">
@@ -244,7 +221,7 @@ export default function AssetsPage() {
                 ) : null}
                 {(a.kind !== "image" && a.kind !== "gif") && (
                   <span className={a.kind === "video" ? "hidden" : ""}>
-                    <TwemojiImg emoji={fileIcon(a)} size={24} />
+                    <TwemojiImg emoji={getFileEmoji(a.fileName, a.kind)} size={24} />
                   </span>
                 )}
               </div>
@@ -257,7 +234,7 @@ export default function AssetsPage() {
                   {a.fileName}
                 </p>
                 <p className="text-xs text-zinc-400 dark:text-slate-500">
-                  {formatSize(a.sizeBytes)} · {a.uploader.name}
+                  {formatFileSize(a.sizeBytes)} · {a.uploader.name}
                   {a.board && (
                     <>
                       {" · "}
