@@ -112,5 +112,5 @@ TAILSCALE_HOST=your-machine.tail12345.ts.net npm run env:tailscale
 ## 関連ドキュメント
 
 - [ENV-REFERENCE.md](ENV-REFERENCE.md) - 全環境変数の一覧
-- [FIRST-TIME-SETUP.md](FIRST-TIME-SETUP.md) - 初回セットアップ
+- [SETUP.md](SETUP.md) - 初回セットアップ
 - [discord-auth-troubleshooting.md](discord-auth-troubleshooting.md) - 認証エラーの対処

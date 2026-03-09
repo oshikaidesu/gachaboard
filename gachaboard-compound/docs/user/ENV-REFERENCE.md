@@ -90,5 +90,5 @@ openssl rand -base64 32
 ## 関連ドキュメント
 
 - [ENV-AND-DEPLOYMENT-MODES.md](ENV-AND-DEPLOYMENT-MODES.md) - 運用モード（local / tailscale / production）の説明
-- [FIRST-TIME-SETUP.md](FIRST-TIME-SETUP.md) - 初回セットアップの手順
+- [SETUP.md](SETUP.md) - 初回セットアップの手順
 - [discord-auth-troubleshooting.md](discord-auth-troubleshooting.md) - 認証エラーのトラブルシューティング

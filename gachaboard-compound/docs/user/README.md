@@ -1,14 +1,42 @@
-# ユーザー向けドキュメント
+# 👤 ユーザー・管理者向けガイド
 
-セットアップ・運用・トラブルシューティング。
+Gachaboard の**導入・設定・運用**に関するドキュメントです。
 
 ---
 
-| ドキュメント | 内容 |
-|-------------|------|
-| [FIRST-TIME-SETUP.md](FIRST-TIME-SETUP.md) | 初回セットアップ（チェックリスト形式） |
-| [GETTING-STARTED.md](GETTING-STARTED.md) | 開発環境の詳細セットアップ |
-| [ENV-REFERENCE.md](ENV-REFERENCE.md) | 環境変数リファレンス |
-| [ENV-AND-DEPLOYMENT-MODES.md](ENV-AND-DEPLOYMENT-MODES.md) | 運用モード（local / tailscale / production） |
-| [ownership-design.md](ownership-design.md) | オーナー・権限（招待・ワークスペース） |
-| [discord-auth-troubleshooting.md](discord-auth-troubleshooting.md) | Discord 認証のトラブルシューティング |
+## 🗺️ ガイドマップ
+
+### 1. 導入 (Setup)
+- **[SETUP.md](SETUP.md)**: **【必須】** Discord アプリの作成から起動までの全手順。
+- **[ENV-REFERENCE.md](ENV-REFERENCE.md)**: 設定可能な環境変数の一覧と解説。
+
+### 2. ネットワーク・アクセス (Network)
+- **[ENV-AND-DEPLOYMENT-MODES.md](ENV-AND-DEPLOYMENT-MODES.md)**: 
+  - `local`: 自分だけで使う
+  - `tailscale`: 仲間と安全に繋ぐ（スマホ対応）
+  - `production`: 本格運用
+
+### 3. チーム運用 (Management)
+- **[ownership-design.md](ownership-design.md)**: 
+  - サーバーオーナーとワークスペースオーナーの違い
+  - 招待リンクによるメンバー追加の仕組み
+  - 権限管理（キック・編集制限など）
+
+### 4. トラブル解決 (Troubleshooting)
+- **[discord-auth-troubleshooting.md](discord-auth-troubleshooting.md)**: Discord ログインがうまくいかない場合の対処法。
+
+---
+
+## 📋 ドキュメント一覧
+
+| ファイル | 概要 |
+|:---|:---|
+| [SETUP.md](SETUP.md) | ステップバイステップの構築ガイド |
+| [ENV-REFERENCE.md](ENV-REFERENCE.md) | 環境変数の詳細リファレンス |
+| [ENV-AND-DEPLOYMENT-MODES.md](ENV-AND-DEPLOYMENT-MODES.md) | 接続モードと Tailscale の設定 |
+| [ownership-design.md](ownership-design.md) | 権限設計と招待システムの仕様 |
+| [discord-auth-troubleshooting.md](discord-auth-troubleshooting.md) | 認証エラーの解決策 |
+
+---
+
+[← ドキュメント TOP](../README.md)
