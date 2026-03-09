@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { formatFileSize } from "@shared/utils";
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
+import { downloadAsset } from "@/lib/downloadAsset";
 
 type Props = {
   assetId: string;
@@ -39,27 +40,11 @@ export function DownloadButton({ assetId, fileName, style }: Props) {
     const toastId = toast.loading("ダウンロード中...");
 
     try {
-      const res = await fetch(`/api/assets/${assetId}/file?download=1`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      const contentLength = res.headers.get("Content-Length");
-      const total = contentLength ? parseInt(contentLength, 10) : null;
-      const reader = res.body?.getReader();
-
-      if (!reader) throw new Error("ReadableStream not supported");
-
-      const chunks: Uint8Array[] = [];
-      let received = 0;
       let lastPercent = -1;
       let lastBytesUpdate = 0;
-      const BYTES_UPDATE_INTERVAL = 256 * 1024; // 256KB ごとに更新
+      const BYTES_UPDATE_INTERVAL = 256 * 1024;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        received += value.length;
-
+      await downloadAsset(assetId, fileName, (received, total) => {
         if (total) {
           const percent = Math.round((received / total) * 100);
           if (percent !== lastPercent && (percent % 5 === 0 || percent === 100)) {
@@ -71,14 +56,7 @@ export function DownloadButton({ assetId, fileName, style }: Props) {
           const sizeLabel = formatFileSize(received);
           toast.loading(sizeLabel ? `ダウンロード中... ${sizeLabel}` : "ダウンロード中...", { id: toastId });
         }
-      }
-
-      const blob = new Blob(chunks as BlobPart[]);
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = fileName;
-      a.click();
-      URL.revokeObjectURL(a.href);
+      });
 
       toast.success("ダウンロード完了", { id: toastId });
     } catch {

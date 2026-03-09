@@ -1,35 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
 import type { OgpData } from "@shared/apiTypes";
-import { OGP_CACHE_LIMIT } from "@shared/constants";
-const ogpCache = new Map<string, OgpData>();
-
-function ogpCacheSet(key: string, value: OgpData) {
-  if (ogpCache.size >= OGP_CACHE_LIMIT) {
-    const oldest = ogpCache.keys().next().value;
-    if (oldest !== undefined) ogpCache.delete(oldest);
-  }
-  ogpCache.set(key, value);
-}
-
-async function fetchOgp(url: string): Promise<OgpData> {
-  if (ogpCache.has(url)) return ogpCache.get(url)!;
-  try {
-    const res = await fetch(`/api/ogp?url=${encodeURIComponent(url)}`);
-    if (res.ok) {
-      const data = await res.json() as OgpData;
-      ogpCacheSet(url, data);
-      return data;
-    }
-  } catch {
-    // フェッチ失敗
-  }
-  const fallback: OgpData = { url };
-  ogpCacheSet(url, fallback);
-  return fallback;
-}
+import { useOgp } from "@/app/hooks/useOgp";
 
 function OgpCard({ data, width }: { data: OgpData; width: number }) {
   const domain = (() => {
@@ -182,15 +155,7 @@ type OgpPreviewItemProps = {
 };
 
 function OgpPreviewItem({ ogpUrl, width, onDismiss }: OgpPreviewItemProps) {
-  const [ogp, setOgp] = useState<OgpData | null>(() => ogpCache.get(ogpUrl) ?? null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchOgp(ogpUrl).then((data) => {
-      if (!cancelled) setOgp(data);
-    });
-    return () => { cancelled = true; };
-  }, [ogpUrl]);
+  const { data: ogp } = useOgp(ogpUrl);
 
   if (!ogp) return null;
 

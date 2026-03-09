@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { POLLING_INTERVAL_ASSET_LOADER } from "@shared/constants";
 import { useBoardContext } from "@/app/components/board/BoardContext";
+import { useAssetStatus } from "@/app/hooks/useAssetStatus";
 
 type Props = {
   assetId: string;
@@ -12,50 +11,13 @@ type Props = {
   fileName?: string | null;
 };
 
-type Status = "loading" | "transcoding" | "ready" | "unavailable";
-
 /**
  * アセットファイルが取得可能になるまでローディング表示を出す共通ラッパー。
- * HEAD 200 → ready、HEAD 202 → 変換中（ポーリング継続）、HEAD 404/410 等 → 利用不可（削除済み等）、HEAD その他 → ローディング継続
+ * HEAD 200 → ready、HEAD 202 → 変換中、HEAD 404/410 等 → 利用不可
  */
 export function AssetLoader({ assetId, children, converted, fileName }: Props) {
-  const [status, setStatus] = useState<Status>("loading");
+  const status = useAssetStatus(assetId, converted);
   const { boardId, workspaceId } = useBoardContext();
-
-  useEffect(() => {
-    // assetId が空 = アップロード中。親がシェイプを更新するまで待つだけ
-    if (!assetId) return;
-    let cancelled = false;
-
-    async function check() {
-      const url = converted
-        ? `/api/assets/${assetId}/file?converted=1`
-        : `/api/assets/${assetId}/file`;
-      while (!cancelled) {
-        try {
-          const res = await fetch(url, { method: "HEAD", cache: "no-store" });
-          if (res.status === 200) {
-            if (!cancelled) setStatus("ready");
-            return;
-          }
-          if (res.status === 202) {
-            // 変換中 — 表示を更新してポーリング継続
-            if (!cancelled) setStatus("transcoding");
-          } else if (res.status === 404 || res.status === 410) {
-            // 削除済み・存在しない — ポーリング停止
-            if (!cancelled) setStatus("unavailable");
-            return;
-          }
-        } catch {
-          // ネットワークエラーは無視してリトライ
-        }
-        await new Promise((r) => setTimeout(r, POLLING_INTERVAL_ASSET_LOADER));
-      }
-    }
-
-    check();
-    return () => { cancelled = true; };
-  }, [assetId, converted]);
 
   if (status === "ready") return <>{children}</>;
 
