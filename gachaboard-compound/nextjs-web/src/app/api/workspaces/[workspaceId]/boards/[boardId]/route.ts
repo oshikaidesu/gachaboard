@@ -53,8 +53,8 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   }
 
   // ボードに紐づくアセットのファイルを削除してからDBレコードを消す
-  const assets = await db.asset.findMany({ where: { boardId }, select: { id: true, storageKey: true, storageBackend: true } });
-  await Promise.all(assets.map((a) => deleteFile(a.storageKey, (a.storageBackend as "local" | "s3") ?? "local").catch(() => {})));
+  const assets = await db.asset.findMany({ where: { boardId }, select: { id: true, storageKey: true } });
+  await Promise.all(assets.map((a) => deleteFile(a.storageKey).catch(() => {})));
   await db.asset.deleteMany({ where: { boardId } });
 
   await db.board.delete({ where: { id: boardId } });

@@ -87,3 +87,12 @@ export type ApiBoard = Pick<
 export type ApiWorkspaceInfo = Pick<ApiWorkspace, "name" | "ownerUserId"> & {
   ownerName: string;
 };
+
+/** ワークスペースメンバー（オーナー＋招待メンバー一覧） */
+export type ApiWorkspaceMember = {
+  userId: string;
+  discordName: string;
+  avatarUrl: string | null;
+  role: "owner" | "member";
+  joinedAt: string;
+};

@@ -3,8 +3,7 @@
 import { useEffect, useState, useCallback, useRef, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import type { ApiBoard, ApiWorkspaceInfo } from "@shared/apiTypes";
-import type { ApiWorkspaceMember } from "@/app/api/workspaces/[workspaceId]/members/route";
+import type { ApiBoard, ApiWorkspaceInfo, ApiWorkspaceMember } from "@shared/apiTypes";
 import { Identicon, getMinidenticonColor } from "@/app/components/ui/Identicon";
 import { MoreVerticalIcon } from "@/app/components/ui/MoreVerticalIcon";
 import { RenameModal } from "@/app/components/ui/RenameModal";

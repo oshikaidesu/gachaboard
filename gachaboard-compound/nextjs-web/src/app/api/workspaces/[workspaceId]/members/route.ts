@@ -1,18 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { assertWorkspaceAccess, writeAuditLog } from "@/lib/authz";
 import { db } from "@/lib/db";
+import type { ApiWorkspaceMember } from "@shared/apiTypes";
 
 const KICK_GRACE_MS = 24 * 60 * 60 * 1000;
 
 type Params = { params: Promise<{ workspaceId: string }> };
-
-export type ApiWorkspaceMember = {
-  userId: string;
-  discordName: string;
-  avatarUrl: string | null;
-  role: "owner" | "member";
-  joinedAt: string;
-};
 
 function canKick(workspace: { ownerUserId: string; members: { userId: string; createdAt: Date }[] }, currentUserId: string): boolean {
   if (workspace.ownerUserId === currentUserId) return true;

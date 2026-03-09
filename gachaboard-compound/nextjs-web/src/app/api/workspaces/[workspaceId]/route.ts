@@ -62,8 +62,8 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   }
 
   // ワークスペース配下の全アセットファイルを削除してからDBレコードを消す
-  const assets = await db.asset.findMany({ where: { workspaceId }, select: { storageKey: true, storageBackend: true } });
-  await Promise.all(assets.map((a) => deleteFile(a.storageKey, (a.storageBackend as "local" | "s3") ?? "local").catch(() => {})));
+  const assets = await db.asset.findMany({ where: { workspaceId }, select: { storageKey: true } });
+  await Promise.all(assets.map((a) => deleteFile(a.storageKey).catch(() => {})));
 
   await db.workspace.delete({ where: { id: workspaceId } });
   await writeAuditLog(ctx.session.user.id, workspaceId, "workspace.delete", workspaceId);
