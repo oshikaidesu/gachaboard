@@ -28,6 +28,9 @@ import { useSnapshotSave } from "@/app/hooks/useSnapshotPersistence";
 import { DarkModeButton } from "./DarkModeButton";
 import { BoardHeader } from "./BoardHeader";
 import { getSyncWsUrl, isSyncWsUrlValid } from "@/lib/syncWsUrl";
+import { useBoardSnapshotFetch } from "@/app/hooks/useBoardSnapshotFetch";
+import { useRestoreAsset } from "@/app/hooks/useRestoreAsset";
+import { useSyncStatus } from "@/app/hooks/useSyncStatus";
 
 type Props = {
   boardId: string;
@@ -64,28 +67,8 @@ export default function CompoundBoard({
   // ローカル以外（Tailscale 等）では同一オリジン /ws を利用
   const syncWsUrl = getSyncWsUrl();
   const useSync = isSyncWsUrlValid(syncWsUrl);
-
-  const fetchSnapshotWhenEmpty = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/workspaces/${workspaceId}/boards/${boardId}/snapshot`);
-      if (!res.ok) return { records: [], reactions: {}, comments: {}, reactionEmojiPreset: null };
-      const json = (await res.json()) as {
-        records?: unknown[];
-        reactions?: Record<string, string>;
-        comments?: Record<string, string>;
-        reactionEmojiPreset?: string[] | null;
-      };
-      const records = Array.isArray(json?.records) ? json.records : [];
-      return {
-        records: records as import("@cmpd/tlschema").TLRecord[],
-        reactions: json?.reactions ?? {},
-        comments: json?.comments ?? {},
-        reactionEmojiPreset: json?.reactionEmojiPreset ?? null,
-      };
-    } catch {
-      return { records: [], reactions: {}, comments: {}, reactionEmojiPreset: null };
-    }
-  }, [workspaceId, boardId]);
+  const fetchSnapshotWhenEmpty = useBoardSnapshotFetch(workspaceId, boardId);
+  const handleRestoreAsset = useRestoreAsset(userName);
 
   const yjsStore = useYjsStore({
     roomId: boardId,
@@ -130,67 +113,7 @@ export default function CompoundBoard({
   const { registerListener: registerUrlPreviewAttacher } = useUrlPreviewAttacher();
   const { registerListener: registerPositionCapture } = useShapeDeletePositionCapture();
 
-  const handleRestoreAsset = useCallback(
-    async (editor: Editor) => {
-      if (typeof window === "undefined") return;
-      const params = new URLSearchParams(window.location.search);
-
-      const singleId = params.get("restoreAsset");
-      const multiIds = params.get("restoreAssets");
-      const assetIds = multiIds
-        ? multiIds.split(",").filter(Boolean)
-        : singleId
-          ? [singleId]
-          : [];
-
-      if (assetIds.length === 0) return;
-
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, "", cleanUrl);
-
-      /** キャンバスに既にこの assetId を参照するシェイプがあるか */
-      const hasShapeForAsset = (dbAssetId: string): boolean => {
-        for (const shape of editor.getCurrentPageShapes()) {
-          const aid = (shape.props as { assetId?: string }).assetId;
-          if (!aid) continue;
-          if (aid === dbAssetId) return true;
-          if (aid.startsWith("asset:")) {
-            const assetRecord = editor.store.get(aid as never);
-            const src = (assetRecord as { props?: { src?: string } } | undefined)?.props?.src ?? "";
-            if (src.includes(`/api/assets/${dbAssetId}/file`)) return true;
-          }
-        }
-        return false;
-      };
-
-      let lastPosition: { x: number; y: number } | null = null;
-
-      for (const assetId of assetIds) {
-        if (hasShapeForAsset(assetId)) continue;
-        try {
-          const res = await fetch(`/api/assets/${assetId}`);
-          if (!res.ok) continue;
-          const asset = (await res.json()) as ApiAsset;
-
-          const viewport = editor.getViewportScreenCenter();
-          const position = {
-            x: asset.lastKnownX ?? viewport.x - 160,
-            y: asset.lastKnownY ?? viewport.y - 120,
-          };
-
-          await placeAsset(editor, asset, position, userName);
-          lastPosition = position;
-        } catch {
-          // 復元失敗はサイレントに無視
-        }
-      }
-
-      if (lastPosition) {
-        editor.centerOnPoint({ x: lastPosition.x, y: lastPosition.y });
-      }
-    },
-    [userName]
-  );
+  const { syncStatus, syncAvailable, isSyncError, isLoading } = useSyncStatus(useSync, yjsStore);
 
   const handleMount = useCallback(
     (editor: Editor) => {
@@ -225,22 +148,6 @@ export default function CompoundBoard({
     ]
   );
 
-  const syncStatus =
-    useSync && yjsStore.status === "synced-remote"
-      ? yjsStore.connectionStatus === "online"
-        ? "同期中"
-        : "オフライン"
-      : useSync && yjsStore.status === "error"
-        ? `同期エラー: ${yjsStore.error?.message ?? "不明"}`
-        : useSync && yjsStore.status === "loading"
-          ? "接続中..."
-          : null;
-
-  const syncAvailable =
-    useSync &&
-    yjsStore.status === "synced-remote" &&
-    (yjsStore as { connectionStatus?: string }).connectionStatus === "online";
-
   const boardContextValue = useMemo(
     () => ({
       boardId,
@@ -265,7 +172,7 @@ export default function CompoundBoard({
             boardId={boardId}
             boardName={boardName}
             syncStatus={syncStatus}
-            isSyncError={useSync && yjsStore.status === "error"}
+            isSyncError={isSyncError}
             useSync={useSync}
             provider={yjsStore.provider}
             currentUserId={currentUserId}
@@ -276,64 +183,33 @@ export default function CompoundBoard({
           />
 
           <div className="flex-1 relative">
-            {useSync ? (
-              yjsStore.status === "loading" ? (
-                <div className="flex h-full items-center justify-center text-zinc-500">接続中...</div>
-              ) : yjsStore.status === "error" ? (
-                <div className="flex h-full flex-col items-center justify-center gap-4 px-4">
-                  <p className="text-red-500">同期エラー: {yjsStore.error?.message}</p>
-                  <button
-                    onClick={() => router.refresh()}
-                    className="rounded-md bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600"
-                  >
-                    再読み込み
-                  </button>
-                  <details className="max-w-md rounded border border-zinc-200 bg-zinc-50 px-4 py-3 text-left text-xs text-zinc-600 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-300">
-                    <summary className="cursor-pointer font-medium">対処法</summary>
-                    <ul className="mt-2 list-inside list-disc space-y-1">
-                      <li>同期サーバー（sync-server）が起動しているか確認してください</li>
-                      <li>開発環境: <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-700">docker compose up -d sync-server</code></li>
-                      <li>環境変数 <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-700">NEXT_PUBLIC_SYNC_WS_URL</code> が正しいか確認してください</li>
-                    </ul>
-                  </details>
-                </div>
-              ) : (
-                <Compound
-                  store={yjsStore}
-                  shapeUtils={CUSTOM_SHAPE_UTILS}
-                  tools={CUSTOM_TOOLS}
-                  initialState="select"
-                  overrides={boardOverrides}
-                  components={components}
-                  onMount={handleMount}
-                  forceMobile
-                  assetUrls={{
-                    icons: {
-                      "tool-marquee": "/icons/tool-marquee.svg",
-                      "tool-file-upload": "/icons/tool-file-upload.svg",
-                    },
-                    translations: { ja: "/translations/ja.json" },
-                  }}
+            {useSync && isLoading ? (
+              <div className="flex h-full items-center justify-center text-zinc-500">接続中...</div>
+            ) : useSync && isSyncError ? (
+              <div className="flex h-full flex-col items-center justify-center gap-4 px-4">
+                <p className="text-red-500">同期エラー: {yjsStore.error?.message}</p>
+                <button
+                  onClick={() => router.refresh()}
+                  className="rounded-md bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600"
                 >
-                  <DarkModeButton portalTarget={headerActionsEl} />
-                  <BrushModeToolbarSync />
-                  {yjsStore.provider && (
-                    <AwarenessSync
-                      provider={yjsStore.provider}
-                      localUserId={currentUserId}
-                    />
-                  )}
-                  <ConnectHandles />
-                  <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 z-10 rounded-full bg-black/50 px-4 py-1.5 text-xs text-white opacity-50 select-none dark:bg-white/20">
-                    ファイルをドロップして配置
-                  </div>
-                </Compound>
-              )
+                  再読み込み
+                </button>
+                <details className="max-w-md rounded border border-zinc-200 bg-zinc-50 px-4 py-3 text-left text-xs text-zinc-600 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-300">
+                  <summary className="cursor-pointer font-medium">対処法</summary>
+                  <ul className="mt-2 list-inside list-disc space-y-1">
+                    <li>同期サーバー（sync-server）が起動しているか確認してください</li>
+                    <li>開発環境: <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-700">docker compose up -d sync-server</code></li>
+                    <li>環境変数 <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-700">NEXT_PUBLIC_SYNC_WS_URL</code> が正しいか確認してください</li>
+                  </ul>
+                </details>
+              </div>
             ) : (
               <Compound
-                persistenceKey={`gachaboard-compound-${boardId}`}
-                sessionId={currentUserId}
-                defaultName={userName}
+                {...(useSync ? { store: yjsStore } : {
+                  persistenceKey: `gachaboard-compound-${boardId}`,
+                  sessionId: currentUserId,
+                  defaultName: userName,
+                })}
                 shapeUtils={CUSTOM_SHAPE_UTILS}
                 tools={CUSTOM_TOOLS}
                 initialState="select"
@@ -341,16 +217,22 @@ export default function CompoundBoard({
                 components={components}
                 onMount={handleMount}
                 forceMobile
-assetUrls={{
-                icons: {
-                  "tool-marquee": "/icons/tool-marquee.svg",
-                  "tool-file-upload": "/icons/tool-file-upload.svg",
-                },
+                assetUrls={{
+                  icons: {
+                    "tool-marquee": "/icons/tool-marquee.svg",
+                    "tool-file-upload": "/icons/tool-file-upload.svg",
+                  },
                   translations: { ja: "/translations/ja.json" },
                 }}
               >
                 <DarkModeButton portalTarget={headerActionsEl} />
                 <BrushModeToolbarSync />
+                {useSync && yjsStore.provider && (
+                  <AwarenessSync
+                    provider={yjsStore.provider}
+                    localUserId={currentUserId}
+                  />
+                )}
                 <ConnectHandles />
                 <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 z-10 rounded-full bg-black/50 px-4 py-1.5 text-xs text-white opacity-50 select-none dark:bg-white/20">
                   ファイルをドロップして配置
