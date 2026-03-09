@@ -7,7 +7,7 @@ import { Identicon, getMinidenticonColor } from "@/app/components/ui/Identicon";
 import { MoreVerticalIcon } from "@/app/components/ui/MoreVerticalIcon";
 import { RenameModal } from "@/app/components/ui/RenameModal";
 import { useCopyToClipboard, useOnClickOutside } from "usehooks-ts";
-import { useWorkspaceDetail } from "@/app/hooks/useWorkspaceDetail";
+import { useWorkspaceDetail } from "@/app/hooks/workspace/useWorkspaceDetail";
 
 type Board = ApiBoard;
 type WorkspaceInfo = ApiWorkspaceInfo;

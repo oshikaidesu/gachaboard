@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useCallback } from "react";
 import { useBoardContext } from "./BoardContext";
 import type { WebsocketProvider } from "y-websocket";
-import { useYMapSync } from "@/app/hooks/useYMapSync";
+import { useYMapSync } from "@/app/hooks/yjs/useYMapSync";
 
 /** Y.Doc に保存するコメント形式。author は非正規化で埋め込む */
 export type YDocComment = {

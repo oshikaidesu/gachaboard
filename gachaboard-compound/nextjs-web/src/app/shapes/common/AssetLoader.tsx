@@ -1,7 +1,7 @@
 "use client";
 
 import { useBoardContext } from "@/app/components/board/BoardContext";
-import { useAssetStatus } from "@/app/hooks/useAssetStatus";
+import { useAssetStatus } from "@/app/hooks/media/useAssetStatus";
 
 type Props = {
   assetId: string;

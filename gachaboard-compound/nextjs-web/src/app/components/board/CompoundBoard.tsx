@@ -7,7 +7,7 @@ import type { Editor } from "@cmpd/editor";
 import "@cmpd/compound/compound.css";
 import { CUSTOM_SHAPE_UTILS, placeAsset } from "@/app/shapes";
 import type { ApiAsset } from "@shared/apiTypes";
-import { useYjsStore } from "@/app/hooks/useYjsStore";
+import { useYjsStore } from "@/app/hooks/yjs/useYjsStore";
 import { SmartHandTool } from "@/app/tools/SmartHandTool";
 import { createBoardOverrides } from "./boardOverrides";
 import { CollaboratorCursorWithName } from "@/app/components/collaboration/CollaboratorCursor";
@@ -24,13 +24,13 @@ import { useAutoCreatedBy } from "@/app/hooks/useAutoCreatedBy";
 import { useDoubleClickPreview } from "@/app/hooks/useDoubleClickPreview";
 import { useUrlPreviewAttacher } from "@/app/hooks/useUrlPreviewAttacher";
 import { useShapeDeletePositionCapture } from "@/app/hooks/useShapeDeletePositionCapture";
-import { useSnapshotSave } from "@/app/hooks/useSnapshotPersistence";
+import { useSnapshotSave } from "@/app/hooks/board/useSnapshotPersistence";
 import { DarkModeButton } from "./DarkModeButton";
 import { BoardHeader } from "./BoardHeader";
 import { getSyncWsUrl, isSyncWsUrlValid } from "@/lib/syncWsUrl";
-import { useBoardSnapshotFetch } from "@/app/hooks/useBoardSnapshotFetch";
-import { useRestoreAsset } from "@/app/hooks/useRestoreAsset";
-import { useSyncStatus } from "@/app/hooks/useSyncStatus";
+import { useBoardSnapshotFetch } from "@/app/hooks/board/useBoardSnapshotFetch";
+import { useRestoreAsset } from "@/app/hooks/board/useRestoreAsset";
+import { useSyncStatus } from "@/app/hooks/board/useSyncStatus";
 
 type Props = {
   boardId: string;

@@ -2,7 +2,7 @@
 
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
 import type { OgpData } from "@shared/apiTypes";
-import { useOgp } from "@/app/hooks/useOgp";
+import { useOgp } from "@/app/hooks/media/useOgp";
 
 function OgpCard({ data, width }: { data: OgpData; width: number }) {
   const domain = (() => {

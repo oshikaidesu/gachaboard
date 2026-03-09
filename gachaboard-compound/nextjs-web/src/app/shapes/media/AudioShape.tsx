@@ -22,9 +22,9 @@ import {
   getStrokeHexForColorStyle,
 } from "../common";
 import { SHAPE_TYPE, type AudioShape } from "@shared/shapeDefs";
-import { useWaveform } from "@/app/hooks/useWaveform";
+import { useWaveform } from "@/app/hooks/media/useWaveform";
 import { useVisibility } from "@/app/hooks/useVisibility";
-import { useMediaPlayerComments, MIN_COMMENT_LIST_H } from "@/app/hooks/useMediaPlayerComments";
+import { useMediaPlayerComments, MIN_COMMENT_LIST_H } from "@/app/hooks/media/useMediaPlayerComments";
 import { formatTime } from "@/lib/formatTime";
 import { useTheme } from "@/app/components/theme/ThemeProvider";
 import { MediaCommentInput } from "./MediaCommentInput";

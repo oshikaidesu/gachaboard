@@ -25,7 +25,7 @@ import {
 import { SHAPE_TYPE, type VideoShape } from "@shared/shapeDefs";
 import { useBoardContext } from "@/app/components/board/BoardContext";
 import { useVisibility } from "@/app/hooks/useVisibility";
-import { useMediaPlayerComments, MIN_COMMENT_LIST_H } from "@/app/hooks/useMediaPlayerComments";
+import { useMediaPlayerComments, MIN_COMMENT_LIST_H } from "@/app/hooks/media/useMediaPlayerComments";
 import { formatTime } from "@/lib/formatTime";
 import { useTheme } from "@/app/components/theme/ThemeProvider";
 import { MediaCommentInput } from "./MediaCommentInput";
@@ -56,7 +56,7 @@ import {
 import type { ApiComment } from "@shared/apiTypes";
 
 export type { VideoShape } from "@shared/shapeDefs";
-export { MIN_COMMENT_LIST_H } from "@/app/hooks/useMediaPlayerComments";
+export { MIN_COMMENT_LIST_H } from "@/app/hooks/media/useMediaPlayerComments";
 
 /**
  * 動画エリア以外の UI（ヘッダー・コントロール・コメント入力欄）の合計高さ。

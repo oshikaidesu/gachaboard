@@ -1,6 +1,6 @@
 "use client";
 
-import { useInviteLink } from "@/app/hooks/useInviteLink";
+import { useInviteLink } from "@/app/hooks/invite/useInviteLink";
 
 type Props = {
   workspaceId: string;

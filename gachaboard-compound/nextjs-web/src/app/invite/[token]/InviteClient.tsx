@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useInviteInfo } from "@/app/hooks/useInviteInfo";
-import { useInviteJoin } from "@/app/hooks/useInviteJoin";
+import { useInviteInfo } from "@/app/hooks/invite/useInviteInfo";
+import { useInviteJoin } from "@/app/hooks/invite/useInviteJoin";
 
 type Props = { token: string };
 

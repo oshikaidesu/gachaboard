@@ -8,7 +8,7 @@ import { Identicon, getMinidenticonColor } from "../components/ui/Identicon";
 import { InviteLinkInline } from "../components/ui/InviteLinkInline";
 import { MoreVerticalIcon } from "../components/ui/MoreVerticalIcon";
 import { RenameModal } from "../components/ui/RenameModal";
-import { useWorkspaces } from "@/app/hooks/useWorkspaces";
+import { useWorkspaces } from "@/app/hooks/workspace/useWorkspaces";
 
 type Workspace = ApiWorkspace;
 
