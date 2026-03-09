@@ -18,3 +18,12 @@ export const CUSTOM_EMOJI_CANDIDATES = [
 ];
 /** デフォルト表示用（固定5つのみ。カスタムは空） */
 export const DEFAULT_REACTION_EMOJI_LIST = [...FIXED_EMOJI_LIST];
+
+/** アセット種別（Asset.kind 用） */
+export const ASSET_KIND = {
+  GIF: "gif",
+  IMAGE: "image",
+  VIDEO: "video",
+  AUDIO: "audio",
+  FILE: "file",
+} as const;

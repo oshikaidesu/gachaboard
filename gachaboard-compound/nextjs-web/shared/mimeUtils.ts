@@ -16,3 +16,12 @@ export function isPlayableAudio(mimeType: string): boolean {
   const base = mimeType.split(";")[0].trim().toLowerCase();
   return PLAYABLE_AUDIO_MIMES.has(base);
 }
+
+/** MIME タイプから Asset.kind を導出 */
+export function getAssetKind(mimeType: string): string {
+  if (mimeType === "image/gif") return "gif";
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (isPlayableAudio(mimeType)) return "audio";
+  return "file";
+}

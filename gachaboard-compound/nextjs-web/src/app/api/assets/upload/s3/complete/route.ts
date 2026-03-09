@@ -6,7 +6,7 @@ import { formatZodError, parseJsonBody } from "@/lib/parseJsonBody";
 import { ZodError } from "zod";
 import { isS3Enabled, completeMultipartUpload } from "@/lib/s3";
 import { runVideoConversion, runWavToMp3, runWaveform } from "@/lib/ffmpeg";
-import { isPlayableAudio } from "@shared/mimeUtils";
+import { getAssetKind, isPlayableAudio } from "@shared/mimeUtils";
 
 /**
  * POST /api/assets/upload/s3/complete
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   const board = await db.board.findUnique({ where: { id: boardId }, select: { workspaceId: true } });
   if (!board) return NextResponse.json({ error: "Board not found" }, { status: 404 });
 
-  const kind = getKind(mimeType);
+  const kind = getAssetKind(mimeType);
 
   const asset = await db.asset.create({
     data: {
@@ -69,12 +69,4 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ ...asset, sizeBytes: asset.sizeBytes.toString() }, { status: 201 });
-}
-
-function getKind(mimeType: string): string {
-  if (mimeType === "image/gif") return "gif";
-  if (mimeType.startsWith("image/")) return "image";
-  if (mimeType.startsWith("video/")) return "video";
-  if (isPlayableAudio(mimeType)) return "audio";
-  return "file";
 }
