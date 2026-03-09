@@ -128,6 +128,67 @@ async function fetchTextContent(assetId: string): Promise<string> {
   }
 }
 
+type ResolvedAssetData = {
+  assetId: string;
+  fileName: string;
+  mimeType: string;
+  kind?: string;
+};
+
+/**
+ * resolveShapeType で解決した型に応じてシェイプを作成する。
+ * placeFile / placeAsset / placeholderShape の共通処理。
+ */
+async function createShapeForResolved(
+  editor: Editor,
+  resolved: { type: string; def: { defaultProps: Record<string, unknown> } },
+  assetData: ResolvedAssetData,
+  position: { x: number; y: number },
+  meta: Record<string, unknown>,
+  options: {
+    existingShapeId?: ReturnType<typeof createShapeId>;
+    content?: string;
+    shapeId?: ReturnType<typeof createShapeId>;
+  } = {},
+): Promise<void> {
+  const { type, def } = resolved;
+  const baseProps = { ...def.defaultProps, ...assetData };
+  const { existingShapeId, content, shapeId } = options;
+  const id = shapeId ?? createShapeId();
+  const shapeMeta = meta as Record<string, string | number>;
+
+  if (type === SHAPE_TYPE.TEXT_FILE) {
+    const textContent = content ?? (assetData.assetId ? await fetchTextContent(assetData.assetId) : "");
+    editor.createShape<TextFileShape>({
+      id,
+      type,
+      x: position.x,
+      y: position.y,
+      meta: shapeMeta,
+      props: { ...baseProps, content: textContent } as TextFileShape["props"],
+    });
+  } else if (type === SHAPE_TYPE.AUDIO) {
+    editor.createShape<AudioShape>({
+      id,
+      type,
+      x: position.x,
+      y: position.y,
+      meta: shapeMeta,
+      props: baseProps as AudioShape["props"],
+    });
+  } else {
+    editor.createShape<FileIconShape>({
+      id,
+      type: SHAPE_TYPE.FILE_ICON,
+      x: position.x,
+      y: position.y,
+      meta: shapeMeta,
+      props: { ...baseProps, kind: assetData.kind ?? "file" } as FileIconShape["props"],
+    });
+  }
+  if (existingShapeId) editor.deleteShapes([existingShapeId]);
+}
+
 /**
  * アップロード済みファイル 1 件をキャンバス上に配置する。
  */
@@ -179,33 +240,12 @@ export async function placeFile(
   const resolved = resolveShapeType(mime, file.name);
   if (!resolved) return;
 
-  const { type, def } = resolved;
-  const baseProps = { ...def.defaultProps, assetId: data.id, fileName: data.fileName, mimeType: data.mimeType };
-
-  if (type === SHAPE_TYPE.TEXT_FILE) {
-    const content = await fetchTextContent(data.id);
-    editor.createShape<TextFileShape>({
-      id: createShapeId(), type, x, y, meta,
-      props: { ...baseProps, content } as TextFileShape["props"],
-    });
-    if (existingShapeId) editor.deleteShapes([existingShapeId]);
-    return;
-  }
-
-  if (type === SHAPE_TYPE.AUDIO) {
-    editor.createShape<AudioShape>({
-      id: createShapeId(), type, x, y, meta,
-      props: baseProps as AudioShape["props"],
-    });
-    if (existingShapeId) editor.deleteShapes([existingShapeId]);
-    return;
-  }
-
-  editor.createShape<FileIconShape>({
-    id: createShapeId(), type: SHAPE_TYPE.FILE_ICON, x, y, meta,
-    props: { ...baseProps, kind: data.kind } as FileIconShape["props"],
-  });
-  if (existingShapeId) editor.deleteShapes([existingShapeId]);
+  await createShapeForResolved(editor, resolved, {
+    assetId: data.id,
+    fileName: data.fileName,
+    mimeType: data.mimeType,
+    kind: data.kind,
+  }, position, meta, { existingShapeId });
 }
 
 /**
@@ -251,33 +291,12 @@ export async function placeAsset(
   const resolved = resolveShapeType(mime, data.fileName);
   if (!resolved) return;
 
-  const { type, def } = resolved;
-  const baseProps = { ...def.defaultProps, assetId: data.id, fileName: data.fileName, mimeType: data.mimeType };
-
-  if (type === SHAPE_TYPE.TEXT_FILE) {
-    const content = await fetchTextContent(data.id);
-    editor.createShape<TextFileShape>({
-      id: createShapeId(), type, x, y, meta,
-      props: { ...baseProps, content } as TextFileShape["props"],
-    });
-    if (existingShapeId) editor.deleteShapes([existingShapeId]);
-    return;
-  }
-
-  if (type === SHAPE_TYPE.AUDIO) {
-    editor.createShape<AudioShape>({
-      id: createShapeId(), type, x, y, meta,
-      props: baseProps as AudioShape["props"],
-    });
-    if (existingShapeId) editor.deleteShapes([existingShapeId]);
-    return;
-  }
-
-  editor.createShape<FileIconShape>({
-    id: createShapeId(), type: SHAPE_TYPE.FILE_ICON, x, y, meta,
-    props: { ...baseProps, kind: data.kind } as FileIconShape["props"],
-  });
-  if (existingShapeId) editor.deleteShapes([existingShapeId]);
+  await createShapeForResolved(editor, resolved, {
+    assetId: data.id,
+    fileName: data.fileName,
+    mimeType: data.mimeType,
+    kind: data.kind,
+  }, position, meta, { existingShapeId });
 }
 
 /**
@@ -305,29 +324,24 @@ export async function placeholderShape(
   const resolved = resolveShapeType(mime, file.name);
   if (!resolved) return null;
 
-  const { type, def } = resolved;
-  const baseProps = { ...def.defaultProps, assetId: "", fileName: file.name, mimeType: mime };
-
-  if (type === SHAPE_TYPE.TEXT_FILE) {
-    editor.createShape<TextFileShape>({
-      id, type, x, y, meta: progressMeta,
-      props: { ...baseProps, content: "" } as TextFileShape["props"],
-    });
-    return id;
-  }
-
-  if (type === SHAPE_TYPE.AUDIO) {
-    editor.createShape<AudioShape>({
-      id, type, x, y, meta: progressMeta,
-      props: baseProps as AudioShape["props"],
-    });
-    return id;
-  }
-
-  editor.createShape<FileIconShape>({
-    id, type: SHAPE_TYPE.FILE_ICON, x, y, meta: progressMeta,
-    props: { ...baseProps, kind: "file", w: 96, h: 96 } as FileIconShape["props"],
-  });
+  const assetData: ResolvedAssetData = {
+    assetId: "",
+    fileName: file.name,
+    mimeType: mime,
+    kind: resolved.type === SHAPE_TYPE.FILE_ICON ? "file" : undefined,
+  };
+  const defWithPlaceholderProps = {
+    ...resolved.def,
+    defaultProps: { ...resolved.def.defaultProps, w: 96, h: 96 },
+  };
+  await createShapeForResolved(
+    editor,
+    { ...resolved, def: defWithPlaceholderProps },
+    assetData,
+    position,
+    progressMeta,
+    { shapeId: id, content: resolved.type === SHAPE_TYPE.TEXT_FILE ? "" : undefined },
+  );
   return id;
 }
 
