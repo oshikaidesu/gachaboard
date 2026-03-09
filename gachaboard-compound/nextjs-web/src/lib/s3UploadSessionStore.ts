@@ -1,7 +1,10 @@
 /**
  * S3 再開可能アップロード用の IndexedDB ストア。
  * FileSystemFileHandle を保存し、再開時にファイルを再取得できるようにする。
+ * idb ライブラリを使用。
  */
+
+import { openDB } from "idb";
 
 const DB_NAME = "gachaboard-s3-uploads";
 const STORE = "sessions";
@@ -20,57 +23,43 @@ export type StoredSession = {
   createdAt: number;
 };
 
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, VERSION);
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () => resolve(req.result);
-    req.onupgradeneeded = (e) => {
-      (e.target as IDBOpenDBRequest).result.createObjectStore(STORE, { keyPath: "uploadId" });
-    };
+interface S3UploadDB {
+  sessions: {
+    key: string;
+    value: StoredSession;
+  };
+}
+
+async function getDb() {
+  return openDB<S3UploadDB>(DB_NAME, VERSION, {
+    upgrade(db) {
+      db.createObjectStore(STORE, { keyPath: "uploadId" });
+    },
   });
 }
 
 export async function saveS3UploadSession(session: StoredSession): Promise<void> {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).put(session);
-    tx.oncomplete = () => { db.close(); resolve(); };
-    tx.onerror = () => { db.close(); reject(tx.error); };
-  });
+  const db = await getDb();
+  await db.put(STORE, session);
+  db.close();
 }
 
 export async function getS3UploadSession(uploadId: string): Promise<StoredSession | null> {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readonly");
-    const req = tx.objectStore(STORE).get(uploadId);
-    req.onsuccess = () => { db.close(); resolve(req.result ?? null); };
-    req.onerror = () => { db.close(); reject(req.error); };
-  });
+  const db = await getDb();
+  const result = await db.get(STORE, uploadId);
+  db.close();
+  return result ?? null;
 }
 
 export async function listResumableS3Uploads(): Promise<StoredSession[]> {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readonly");
-    const req = tx.objectStore(STORE).getAll();
-    req.onsuccess = () => {
-      db.close();
-      const list = (req.result as StoredSession[]) ?? [];
-      resolve(list.sort((a, b) => a.createdAt - b.createdAt));
-    };
-    req.onerror = () => { db.close(); reject(req.error); };
-  });
+  const db = await getDb();
+  const list = (await db.getAll(STORE)) ?? [];
+  db.close();
+  return list.sort((a, b) => a.createdAt - b.createdAt);
 }
 
 export async function removeS3UploadSession(uploadId: string): Promise<void> {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).delete(uploadId);
-    tx.oncomplete = () => { db.close(); resolve(); };
-    tx.onerror = () => { db.close(); reject(tx.error); };
-  });
+  const db = await getDb();
+  await db.delete(STORE, uploadId);
+  db.close();
 }
