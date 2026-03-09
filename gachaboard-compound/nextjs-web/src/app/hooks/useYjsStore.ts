@@ -11,144 +11,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { WebsocketProvider } from "y-websocket";
-
-const LOCAL_ORIGIN = Symbol("local-store");
-const CAMERA_LS_PREFIX = "gachaboard-camera:";
-
-function saveCameraToLS(
-  store: ReturnType<typeof createTLStore>,
-  roomId: string
-) {
-  try {
-    const cameraRecords: Record<string, TLRecord> = {};
-    for (const rec of store.allRecords()) {
-      if (rec.typeName === "camera" || rec.typeName === "instance_page_state") {
-        cameraRecords[rec.id] = rec;
-      }
-    }
-    localStorage.setItem(
-      CAMERA_LS_PREFIX + roomId,
-      JSON.stringify(cameraRecords)
-    );
-  } catch {
-    // localStorage が使えない環境では無視
-  }
-}
-
-function restoreCameraFromLS(
-  store: ReturnType<typeof createTLStore>,
-  roomId: string
-) {
-  try {
-    const raw = localStorage.getItem(CAMERA_LS_PREFIX + roomId);
-    if (!raw) return;
-    const saved = JSON.parse(raw) as Record<string, TLRecord>;
-    const toUpdate: TLRecord[] = [];
-    for (const rec of Object.values(saved)) {
-      if (store.has(rec.id as TLRecord["id"])) {
-        toUpdate.push(rec);
-      }
-    }
-    if (toUpdate.length > 0) {
-      store.mergeRemoteChanges(() => {
-        store.put(toUpdate);
-      });
-    }
-  } catch {
-    // パース失敗等は無視
-  }
-}
-
-/** RecordsDiff 形式。store.listen の entry.changes の型 */
-type RecordsDiffLike = {
-  added: Record<string, TLRecord>;
-  updated: Record<string, [TLRecord, TLRecord]>;
-  removed: Record<string, TLRecord>;
-};
-
-/**
- * 変更が位置のみ（x,y）の更新かどうか。ドラッグ中の連続更新を検出する。
- * ドラッグ中は Y.Doc に送らず、drop 時にまとめて送るため。
- */
-function isPositionOnlyUpdate(changes: RecordsDiffLike): boolean {
-  if (Object.keys(changes.added).length > 0 || Object.keys(changes.removed).length > 0) {
-    return false;
-  }
-  const updated = Object.values(changes.updated);
-  if (updated.length === 0) return false;
-  for (const [from, to] of updated) {
-    const fromShape = from as unknown as { x?: number; y?: number; [k: string]: unknown };
-    const toShape = to as unknown as { x?: number; y?: number; [k: string]: unknown };
-    if (typeof fromShape.x !== "number" || typeof fromShape.y !== "number") return false;
-    if (typeof toShape.x !== "number" || typeof toShape.y !== "number") return false;
-    if (fromShape.x === toShape.x && fromShape.y === toShape.y) return false;
-    const fromRest = { ...fromShape, x: 0, y: 0 };
-    const toRest = { ...toShape, x: 0, y: 0 };
-    if (JSON.stringify(fromRest) !== JSON.stringify(toRest)) return false;
-  }
-  return true;
-}
-
-/**
- * RecordsDiff を Y.Map に書き込む（per-record 形式）。
- * Yjs が差分のみを送信するためネットワーク効率が向上。
- */
-function persistRecordsDiffToY(
-  yMap: Y.Map<string>,
-  changes: RecordsDiffLike,
-  isLocalUpdateRef: { current: boolean },
-  ydoc: Y.Doc
-) {
-  const toPut: TLRecord[] = [];
-  const toDelete: string[] = [];
-
-  for (const rec of Object.values(changes.added)) {
-    toPut.push(rec);
-  }
-  for (const [, to] of Object.values(changes.updated)) {
-    toPut.push(to);
-  }
-  for (const id of Object.keys(changes.removed)) {
-    toDelete.push(id);
-  }
-
-  if (toPut.length === 0 && toDelete.length === 0) return;
-
-  isLocalUpdateRef.current = true;
-  ydoc.transact(() => {
-    for (const rec of toPut) {
-      yMap.set(rec.id, JSON.stringify(rec));
-    }
-    for (const id of toDelete) {
-      yMap.delete(id);
-    }
-  }, LOCAL_ORIGIN);
-  isLocalUpdateRef.current = false;
-}
-
-const USER_COLORS = [
-  "#FF802B",
-  "#EC5E41",
-  "#F2555A",
-  "#F04F88",
-  "#E34BA9",
-  "#BD54C6",
-  "#9D5BD2",
-  "#7B66DC",
-  "#02B1CC",
-  "#11B3A3",
-  "#39B178",
-  "#55B467",
-];
-
-function getUserColor(userId: string): string {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    hash = (hash << 5) - hash + userId.charCodeAt(i);
-    hash |= 0;
-  }
-  return USER_COLORS[Math.abs(hash) % USER_COLORS.length];
-}
+import {
+  saveCameraToLS,
+  restoreCameraFromLS,
+  isPositionOnlyUpdate,
+  persistRecordsDiffToY,
+  getUserColor,
+  LOCAL_ORIGIN,
+  type RecordsDiffLike,
+} from "@/lib/yjsSyncHelpers";
 
 type UseYjsStoreOptions = {
   roomId: string;
