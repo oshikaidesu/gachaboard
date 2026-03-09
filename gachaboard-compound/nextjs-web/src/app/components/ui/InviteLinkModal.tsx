@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useCopyToClipboard } from "usehooks-ts";
 
 type Props = {
   workspaceId: string;
@@ -12,7 +13,7 @@ export function InviteLinkModal({ workspaceId, workspaceName, onClose }: Props) 
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copiedText, copyToClipboard] = useCopyToClipboard();
 
   useEffect(() => {
     fetch(`/api/workspaces/${workspaceId}/invite`)
@@ -27,19 +28,13 @@ export function InviteLinkModal({ workspaceId, workspaceName, onClose }: Props) 
     if (res.ok) {
       const { inviteUrl: url } = await res.json();
       setInviteUrl(url);
-      if (url && navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(url).then(() => setCopied(true));
-        setTimeout(() => setCopied(false), 2500);
-      }
+      if (url) copyToClipboard(url);
     }
     setCreating(false);
   };
 
   const copy = () => {
-    if (inviteUrl && navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(inviteUrl).then(() => setCopied(true));
-      setTimeout(() => setCopied(false), 2500);
-    }
+    if (inviteUrl) copyToClipboard(inviteUrl);
   };
 
   return (
@@ -65,7 +60,7 @@ export function InviteLinkModal({ workspaceId, workspaceName, onClose }: Props) 
                     onClick={copy}
                     className="rounded bg-zinc-800 px-3 py-2 text-sm text-white dark:bg-slate-600 dark:hover:bg-slate-500"
                   >
-                    {copied ? "コピー済み" : "コピー"}
+                    {inviteUrl && copiedText === inviteUrl ? "コピー済み" : "コピー"}
                   </button>
                   <button
                     onClick={() =>

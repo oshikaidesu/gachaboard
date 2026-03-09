@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
+import { useCopyToClipboard } from "usehooks-ts";
 import Link from "next/link";
 import { Identicon } from "@/app/components/ui/Identicon";
 import { UserSharePanel } from "@/app/components/collaboration/UserSharePanel";
@@ -38,6 +39,7 @@ export function BoardHeader({
 }: Props) {
   const headerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [, copyToClipboard] = useCopyToClipboard();
   const lastClientXRef = useRef(0);
   const didDragRef = useRef(false);
 
@@ -125,9 +127,7 @@ export function BoardHeader({
         )}
         <button
           onClick={() =>
-            navigator.clipboard.writeText(
-              typeof window !== "undefined" ? window.location.href : "",
-            )
+            typeof window !== "undefined" && copyToClipboard(window.location.href)
           }
           className="rounded-md border border-zinc-300 bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-200 dark:border-slate-600 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
         >

@@ -8,6 +8,7 @@ import type { ApiWorkspaceMember } from "@/app/api/workspaces/[workspaceId]/memb
 import { Identicon, getMinidenticonColor } from "@/app/components/ui/Identicon";
 import { MoreVerticalIcon } from "@/app/components/ui/MoreVerticalIcon";
 import { RenameModal } from "@/app/components/ui/RenameModal";
+import { useCopyToClipboard } from "usehooks-ts";
 
 type Board = ApiBoard;
 type WorkspaceInfo = ApiWorkspaceInfo;
@@ -25,7 +26,7 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
   const [showForm, setShowForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
-  const [copied, setCopied] = useState<string | null>(null);
+  const [copiedText, copyToClipboard] = useCopyToClipboard();
   const [tab, setTab] = useState<"active" | "trash">("active");
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
@@ -110,9 +111,7 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
   };
 
   const copyBoardUrl = (boardId: string) => {
-    navigator.clipboard.writeText(`${window.location.origin}/board/${boardId}`);
-    setCopied(boardId);
-    setTimeout(() => setCopied(null), 2000);
+    copyToClipboard(`${window.location.origin}/board/${boardId}`);
   };
 
   const openRenameBoard = (boardId: string, name: string) => {
@@ -350,7 +349,7 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId }: Pr
                           onClick={(e) => { e.preventDefault(); copyBoardUrl(b.id); setOpenMenu(null); }}
                           className="w-full px-4 py-2 text-left text-sm text-zinc-600 hover:bg-zinc-50 dark:text-slate-200 dark:hover:bg-slate-700"
                         >
-                          {copied === b.id ? "✓ コピー済み" : "URLをコピー"}
+                          {copiedText?.endsWith(`/board/${b.id}`) ? "✓ コピー済み" : "URLをコピー"}
                         </button>
                         <Link
                           href={`/board/${b.id}/trash`}

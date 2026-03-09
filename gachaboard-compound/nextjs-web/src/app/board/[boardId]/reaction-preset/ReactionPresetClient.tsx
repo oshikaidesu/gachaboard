@@ -11,6 +11,7 @@ import {
   FIXED_EMOJI_LIST,
 } from "@shared/constants";
 import { env } from "@/lib/env";
+import { useCopyToClipboard } from "usehooks-ts";
 
 const REACTION_EMOJI_PRESET_MAP_KEY = "reactionEmojiPreset";
 const REACTION_EMOJI_PRESET_EMOJIS_KEY = "emojis";
@@ -60,6 +61,7 @@ export default function ReactionPresetClient({
 }: Props) {
   const initialCustom = getCustomEmojis(initialEmojis ?? DEFAULT_REACTION_EMOJI_LIST);
   const [text, setText] = useState(() => initialCustom.join(""));
+  const [, copyToClipboard] = useCopyToClipboard();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const providerRef = useRef<WebsocketProvider | null>(null);
@@ -121,9 +123,9 @@ export default function ReactionPresetClient({
     if (res.ok) setSaved(true);
   }, [boardId, workspaceId, fullEmojis]);
 
-  const copyToClipboard = useCallback(() => {
-    navigator.clipboard.writeText(fullEmojis.join(""));
-  }, [fullEmojis]);
+  const copyEmojis = useCallback(() => {
+    copyToClipboard(fullEmojis.join(""));
+  }, [fullEmojis, copyToClipboard]);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 bg-background p-8">
@@ -149,7 +151,7 @@ export default function ReactionPresetClient({
           </h2>
           <button
             type="button"
-            onClick={copyToClipboard}
+            onClick={copyEmojis}
             className="text-xs text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
           >
             コピー
