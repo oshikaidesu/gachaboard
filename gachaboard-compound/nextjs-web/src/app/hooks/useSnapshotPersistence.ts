@@ -6,6 +6,7 @@
  * - 復元: useYjsStore の fetchSnapshotWhenEmpty 経由で Y.Doc が空のときに API から取得
  */
 import type { TLRecord } from "@cmpd/tlschema";
+import debounce from "lodash.debounce";
 import { useEffect, useRef } from "react";
 import type { WebsocketProvider } from "y-websocket";
 
@@ -66,7 +67,6 @@ function getReactionEmojiPreset(provider: WebsocketProvider | null | undefined):
 }
 
 export function useSnapshotSave({ store, provider, boardId, workspaceId, enabled }: UseSnapshotSaveOptions) {
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSaveRef = useRef<string>("");
 
   const save = (source: string) => {
@@ -102,13 +102,7 @@ export function useSnapshotSave({ store, provider, boardId, workspaceId, enabled
   useEffect(() => {
     if (!store || !enabled) return;
 
-    const scheduleSave = () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        debounceRef.current = null;
-        save("debounce");
-      }, SAVE_DEBOUNCE_MS);
-    };
+    const debouncedSave = debounce(() => save("debounce"), SAVE_DEBOUNCE_MS);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
@@ -121,7 +115,7 @@ export function useSnapshotSave({ store, provider, boardId, workspaceId, enabled
     };
 
     const unsub = store.listen(
-      () => scheduleSave(),
+      () => debouncedSave(),
       { source: "user" as const, scope: "document" }
     );
 
@@ -129,7 +123,7 @@ export function useSnapshotSave({ store, provider, boardId, workspaceId, enabled
     window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debouncedSave.cancel();
       unsub?.();
       window.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("beforeunload", handleBeforeUnload);
