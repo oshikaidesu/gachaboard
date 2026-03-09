@@ -99,13 +99,21 @@ async function createShapeForResolved(
 
   if (type === SHAPE_TYPE.TEXT_FILE) {
     const textContent = content ?? (assetData.assetId ? await fetchTextContent(assetData.assetId) : "");
+    const textProps: TextFileShape["props"] = {
+      assetId: assetData.assetId ?? "",
+      fileName: assetData.fileName ?? "",
+      mimeType: assetData.mimeType ?? "",
+      content: typeof textContent === "string" ? textContent : "",
+      w: (def.defaultProps.w as number) ?? 320,
+      h: (def.defaultProps.h as number) ?? 240,
+    };
     editor.createShape<TextFileShape>({
       id,
       type,
       x: position.x,
       y: position.y,
       meta: shapeMeta,
-      props: { ...baseProps, content: textContent } as TextFileShape["props"],
+      props: textProps,
     });
   } else if (type === SHAPE_TYPE.AUDIO) {
     const bp = baseProps as Record<string, unknown>;

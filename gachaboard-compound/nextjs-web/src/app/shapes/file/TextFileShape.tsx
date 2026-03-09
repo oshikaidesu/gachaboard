@@ -21,6 +21,7 @@ import {
 } from "../common";
 import { SHAPE_TYPE, isTextFile, type TextFileShape } from "@shared/shapeDefs";
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
+import { getSafeAssetId } from "@/lib/safeUrl";
 
 export type { TextFileShape } from "@shared/shapeDefs";
 export { isTextFile } from "@shared/shapeDefs";
@@ -49,6 +50,7 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
 
   override component(shape: TextFileShape) {
     const editor = useEditor();
+    const safeAssetId = getSafeAssetId(shape.props.assetId);
     const ext = shape.props.fileName.split(".").pop()?.toLowerCase() ?? "";
     const isCode = ["js", "ts", "jsx", "tsx", "py", "go", "rs", "cpp", "c", "java", "sh", "bash", "zsh", "html", "css"].includes(ext);
     const isJson = ["json", "yaml", "yml", "toml", "xml"].includes(ext);
@@ -124,9 +126,11 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
             <FileSizeLabel sizeBytes={shape.meta?.sizeBytes as string | undefined}
               style={{ color: isCode ? "rgba(255,255,255,0.4)" : undefined }}
             />
-            <DownloadButton assetId={shape.props.assetId} fileName={shape.props.fileName}
-              style={{ flexShrink: 0, width: 20, height: 20, fontSize: 10, background: isCode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)", border: `1px solid ${isCode ? "rgba(255,255,255,0.15)" : "#e4e4e7"}`, color: isCode ? "#cdd6f4" : "#71717a" }}
-            />
+            {safeAssetId && (
+              <DownloadButton assetId={safeAssetId} fileName={shape.props.fileName}
+                style={{ flexShrink: 0, width: 20, height: 20, fontSize: 10, background: isCode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)", border: `1px solid ${isCode ? "rgba(255,255,255,0.15)" : "#e4e4e7"}`, color: isCode ? "#cdd6f4" : "#71717a" }}
+              />
+            )}
           </div>
           <div
             style={{

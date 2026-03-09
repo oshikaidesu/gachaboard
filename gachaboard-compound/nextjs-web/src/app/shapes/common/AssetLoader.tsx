@@ -2,6 +2,7 @@
 
 import { useBoardContext } from "@/app/components/board/BoardContext";
 import { useAssetStatus } from "@/app/hooks/media/useAssetStatus";
+import { getSafeAssetId } from "@/lib/safeUrl";
 
 type Props = {
   assetId: string;
@@ -69,6 +70,8 @@ export function AssetLoader({ assetId, children, converted, fileName }: Props) {
   }
 
   const isTranscoding = status === "transcoding";
+  const safeId = getSafeAssetId(assetId);
+  const thumbUrl = isTranscoding && safeId ? `url(/api/assets/${safeId}/thumbnail)` : "none";
 
   return (
     <div style={{
@@ -81,9 +84,9 @@ export function AssetLoader({ assetId, children, converted, fileName }: Props) {
       gap: 8,
       borderRadius: 8,
       backgroundColor: isTranscoding ? "transparent" : "rgba(0,0,0,0.06)",
-      backgroundImage: isTranscoding ? `url(/api/assets/${assetId}/thumbnail)` : "none",
-      backgroundSize: isTranscoding ? "cover" : undefined,
-      backgroundPosition: isTranscoding ? "center" : undefined,
+      backgroundImage: thumbUrl,
+      backgroundSize: isTranscoding && safeId ? "cover" : undefined,
+      backgroundPosition: isTranscoding && safeId ? "center" : undefined,
       color: "#94a3b8",
       fontSize: 12,
       fontFamily: "system-ui, sans-serif",

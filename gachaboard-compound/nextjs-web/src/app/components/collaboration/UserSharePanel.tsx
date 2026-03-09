@@ -2,14 +2,18 @@
 
 /**
  * 接続中のユーザー一覧を表示。Yjs Awareness から取得。
+ * avatarUrl / color は他クライアント由来のため検証してから使用する。
  */
 import { useEffect, useState } from "react";
 import type { WebsocketProvider } from "y-websocket";
+import { getSafeColor, getSafeHref } from "@/lib/safeUrl";
 
 type UserSharePanelProps = {
   provider: WebsocketProvider;
   localUserId?: string;
 };
+
+const FALLBACK_COLOR = "#888888";
 
 type User = { id: string; name: string; color: string; avatarUrl?: string | null };
 
@@ -21,11 +25,13 @@ function getUsers(provider: WebsocketProvider): User[] {
     const user = state?.user as { id?: string; name?: string; color?: string; avatarUrl?: string | null } | undefined;
     if (user?.name && user.id && !seen.has(user.id)) {
       seen.add(user.id);
+      const safeColor = getSafeColor(user.color) ?? FALLBACK_COLOR;
+      const safeAvatarUrl = getSafeHref(user.avatarUrl ?? null);
       users.push({
         id: user.id,
         name: user.name,
-        color: user.color ?? "#888888",
-        avatarUrl: user.avatarUrl ?? null,
+        color: safeColor,
+        avatarUrl: safeAvatarUrl,
       });
     }
   });

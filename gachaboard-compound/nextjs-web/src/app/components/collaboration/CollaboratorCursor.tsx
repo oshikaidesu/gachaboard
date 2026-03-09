@@ -3,11 +3,13 @@
 import { useRef } from "react";
 import { useTransform } from "@cmpd/editor";
 import classNames from "classnames";
+import { getSafeHref } from "@/lib/safeUrl";
 
 /**
  * Discord アバター付きコラボレーターカーソル。
  * LiveCollaborators から point, color, zoom, name, meta を受け取り、
  * meta.avatarUrl（Discord アバター）を名前タグ横に表示する。
+ * avatarUrl は Yjs Awareness 由来のため getSafeHref で検証する。
  */
 export function CollaboratorCursorWithName(props: {
   className?: string;
@@ -25,7 +27,7 @@ export function CollaboratorCursorWithName(props: {
 
   useTransform(rCursor, point.x, point.y, 1 / zoom);
 
-  const avatarUrl = meta?.avatarUrl ?? null;
+  const avatarUrl = getSafeHref(meta?.avatarUrl ?? null);
 
   return (
     <div

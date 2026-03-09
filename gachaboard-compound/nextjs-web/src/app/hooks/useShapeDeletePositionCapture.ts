@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useEffect } from "react";
 import { Editor, type TLRecord, type TLAsset, type TLAssetId } from "@cmpd/compound";
+import { createDelayedActionQueue } from "@/lib/delayedActionQueue";
 
 // テスト用: 1秒猶予。本番は 10 * 60 * 1000
 const TRASH_DELAY_MS = 1000; // 10 * 60 * 1000; // 10分（Undo の猶予）
@@ -70,12 +71,6 @@ function getAssetRecords(changes: Record<string, TLRecord>): Record<string, TLRe
 
 // ---------- フック ------------------------------------------------------------
 
-type PendingTrash = {
-  timer: ReturnType<typeof setTimeout>;
-  x: number;
-  y: number;
-};
-
 /**
  * シェイプ削除時にアセットをゴミ箱へ移動し、最終位置 (x, y) を DB に保存するフック。
  *
@@ -87,7 +82,6 @@ type PendingTrash = {
  *   - ネイティブ: image / video（tldraw アセットレコードから DB ID を逆引き）
  */
 export function useShapeDeletePositionCapture() {
-  const pendingRef = useRef<Map<string, PendingTrash>>(new Map());
   const cleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -98,62 +92,35 @@ export function useShapeDeletePositionCapture() {
   }, []);
 
   const registerListener = useCallback((editor: Editor) => {
-    const scheduleTrash = (dbAssetId: string, x: number, y: number) => {
-      const prev = pendingRef.current.get(dbAssetId);
-      if (prev) clearTimeout(prev.timer);
-
-      const timer = setTimeout(() => {
-        pendingRef.current.delete(dbAssetId);
+    const queue = createDelayedActionQueue<{ x: number; y: number }>(
+      TRASH_DELAY_MS,
+      (dbAssetId, { x, y }, options) => {
         fetch(`/api/assets/${dbAssetId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "trash", lastKnownX: x, lastKnownY: y }),
-        }).catch(() => {});
-      }, TRASH_DELAY_MS);
-
-      pendingRef.current.set(dbAssetId, { timer, x, y });
-    };
-
-    const cancelTrash = (dbAssetId: string) => {
-      const prev = pendingRef.current.get(dbAssetId);
-      if (prev) {
-        clearTimeout(prev.timer);
-        pendingRef.current.delete(dbAssetId);
-      }
-    };
-
-    const flushAll = (keepalive: boolean) => {
-      for (const [dbAssetId, { timer, x, y }] of pendingRef.current) {
-        clearTimeout(timer);
-        fetch(`/api/assets/${dbAssetId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "trash", lastKnownX: x, lastKnownY: y }),
-          keepalive,
+          keepalive: options?.keepalive,
         }).catch(() => {});
       }
-      pendingRef.current.clear();
-    };
+    );
 
-    const handleBeforeUnload = () => flushAll(true);
+    const handleBeforeUnload = () => queue.flushAll({ keepalive: true });
     window.addEventListener("beforeunload", handleBeforeUnload);
 
     const unsub = editor.store.listen(
       (entry) => {
-        // 削除時: 10分後に trash をスケジュール
         const removedShapes = Object.values(entry.changes.removed).filter(hasAssetId);
         const removedAssets = getAssetRecords(entry.changes.removed);
         for (const shape of removedShapes) {
           const dbAssetId = resolveDbAssetId(shape, removedAssets, editor);
-          if (dbAssetId) scheduleTrash(dbAssetId, shape.x, shape.y);
+          if (dbAssetId) queue.schedule(dbAssetId, { x: shape.x, y: shape.y });
         }
 
-        // 追加時（Undo）: 該当 assetId の trash をキャンセル
         const addedShapes = Object.values(entry.changes.added).filter(hasAssetId);
         const addedAssets = getAssetRecords(entry.changes.added);
         for (const shape of addedShapes) {
           const dbAssetId = resolveDbAssetId(shape, addedAssets, editor);
-          if (dbAssetId) cancelTrash(dbAssetId);
+          if (dbAssetId) queue.cancel(dbAssetId);
         }
       },
       { source: "user", scope: "document" }
@@ -161,7 +128,7 @@ export function useShapeDeletePositionCapture() {
 
     const cleanup = () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      flushAll(false); // アンマウント時は即時フラッシュ（keepalive 不要）
+      queue.flushAll();
       unsub?.();
     };
     cleanupRef.current = cleanup;

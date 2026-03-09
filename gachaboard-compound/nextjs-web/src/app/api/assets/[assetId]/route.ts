@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { assertAssetReadAccess, assertAssetWriteAccess } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { deleteFile } from "@/lib/storage";
+import { assetIdSchema } from "@/lib/validators";
 import { headers } from "next/headers";
 import { env } from "@/lib/env";
 
@@ -12,6 +13,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const hdrs = env.E2E_TEST_MODE ? await headers() : null;
   const isE2e = hdrs?.get("x-e2e-user-id");
   const { assetId } = await params;
+  if (!assetIdSchema.safeParse(assetId).success) return NextResponse.json({ error: "Invalid assetId" }, { status: 400 });
   if (!isE2e) {
     const ctx = await assertAssetReadAccess(assetId);
     if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -26,6 +28,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 // 論理削除 or 復元 or 位置情報更新
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { assetId } = await params;
+  if (!assetIdSchema.safeParse(assetId).success) return NextResponse.json({ error: "Invalid assetId" }, { status: 400 });
   const ctx = await assertAssetWriteAccess(assetId);
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -62,6 +65,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 // 完全削除（ゴミ箱内のみ）
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const { assetId } = await params;
+  if (!assetIdSchema.safeParse(assetId).success) return NextResponse.json({ error: "Invalid assetId" }, { status: 400 });
   const ctx = await assertAssetWriteAccess(assetId);
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 

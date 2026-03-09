@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { assertAssetReadAccess } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { getPresignedGetUrl, headS3Object, s3KeyThumbnail } from "@/lib/s3";
+import { assetIdSchema } from "@/lib/validators";
 import { env } from "@/lib/env";
 
 type Params = { params: Promise<{ assetId: string }> };
@@ -13,6 +14,7 @@ type Params = { params: Promise<{ assetId: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { assetId } = await params;
+    if (!assetIdSchema.safeParse(assetId).success) return new NextResponse(null, { status: 400 });
     if (!env.E2E_TEST_MODE) {
       const ctx = await assertAssetReadAccess(assetId);
       if (!ctx) return new NextResponse(null, { status: 401 });

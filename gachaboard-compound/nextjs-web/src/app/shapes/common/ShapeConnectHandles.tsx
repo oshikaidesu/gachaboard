@@ -38,6 +38,14 @@ const CORNER_CURSORS: Record<Corner, string> = {
   bottom_right: "nwse-resize",
 };
 
+/** 各コーナーの dx/dy から newW, newH, newX, newY を算出する係数 */
+const CORNER_RESIZE: Record<Corner, { wMul: number; hMul: number; adjustX: boolean; adjustY: boolean }> = {
+  top_left: { wMul: -1, hMul: -1, adjustX: true, adjustY: true },
+  top_right: { wMul: 1, hMul: -1, adjustX: false, adjustY: true },
+  bottom_left: { wMul: -1, hMul: 1, adjustX: true, adjustY: false },
+  bottom_right: { wMul: 1, hMul: 1, adjustX: false, adjustY: false },
+};
+
 type Props = {
   shapeId: TLShapeId;
   w: number;
@@ -188,34 +196,12 @@ export function ShapeConnectHandles({ shapeId, w, h }: Props) {
       const zoom = editor.getZoomLevel();
       const dx = (ev.clientX - startX) / zoom;
       const dy = (ev.clientY - startY) / zoom;
+      const { wMul, hMul, adjustX, adjustY } = CORNER_RESIZE[c];
 
-      let newW = startW;
-      let newH = startH;
-      let newX = startShapeX;
-      let newY = startShapeY;
-
-      switch (c) {
-        case "top_left":
-          newW = Math.max(20, startW - dx);
-          newH = Math.max(20, startH - dy);
-          newX = startShapeX + (startW - newW);
-          newY = startShapeY + (startH - newH);
-          break;
-        case "top_right":
-          newW = Math.max(20, startW + dx);
-          newH = Math.max(20, startH - dy);
-          newY = startShapeY + (startH - newH);
-          break;
-        case "bottom_left":
-          newW = Math.max(20, startW - dx);
-          newH = Math.max(20, startH + dy);
-          newX = startShapeX + (startW - newW);
-          break;
-        case "bottom_right":
-          newW = Math.max(20, startW + dx);
-          newH = Math.max(20, startH + dy);
-          break;
-      }
+      const newW = Math.max(20, startW + wMul * dx);
+      const newH = Math.max(20, startH + hMul * dy);
+      const newX = adjustX ? startShapeX + (startW - newW) : startShapeX;
+      const newY = adjustY ? startShapeY + (startH - newH) : startShapeY;
 
       editor.updateShapes([{
         id: shapeId,

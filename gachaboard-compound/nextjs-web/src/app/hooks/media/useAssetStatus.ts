@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { POLLING_INTERVAL_ASSET_LOADER } from "@shared/constants";
+import { getSafeAssetId } from "@/lib/safeUrl";
 
 export type AssetStatus = "loading" | "transcoding" | "ready" | "unavailable";
 
@@ -13,13 +14,14 @@ export function useAssetStatus(assetId: string, converted?: boolean): AssetStatu
   const [status, setStatus] = useState<AssetStatus>("loading");
 
   useEffect(() => {
-    if (!assetId) return;
+    const safe = getSafeAssetId(assetId);
+    if (!safe) return;
     let cancelled = false;
 
     async function check() {
       const url = converted
-        ? `/api/assets/${assetId}/file?converted=1`
-        : `/api/assets/${assetId}/file`;
+        ? `/api/assets/${safe}/file?converted=1`
+        : `/api/assets/${safe}/file`;
       while (!cancelled) {
         try {
           const res = await fetch(url, { method: "HEAD", cache: "no-store" });

@@ -154,6 +154,7 @@ export const SHAPE_DEFS: Record<string, ShapeDef> = {
 /**
  * MIME とファイル名から最適なカスタムシェイプ型を返す。
  * image/video はネイティブアセットで扱うため null を返す。
+ * PDF は画像取り出し処理を避け file-icon で表示する。
  */
 export function resolveShapeType(
   mime: string,
@@ -161,6 +162,9 @@ export function resolveShapeType(
 ): { type: string; def: ShapeDef } | null {
   if (mime.startsWith("image/")) {
     return null;
+  }
+  if (mime === "application/pdf") {
+    return { type: SHAPE_TYPE.FILE_ICON, def: SHAPE_DEFS[SHAPE_TYPE.FILE_ICON] };
   }
   const sorted = Object.entries(SHAPE_DEFS).sort(
     ([, a], [, b]) => b.priority - a.priority,

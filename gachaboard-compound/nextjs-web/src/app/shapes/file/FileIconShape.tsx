@@ -21,6 +21,8 @@ import {
 } from "../common";
 import { SHAPE_TYPE, type FileIconShape } from "@shared/shapeDefs";
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
+import { useTheme } from "@/app/components/theme/ThemeProvider";
+import { getSafeAssetId } from "@/lib/safeUrl";
 
 export type { FileIconShape } from "@shared/shapeDefs";
 
@@ -54,7 +56,10 @@ function truncateWithExtension(fileName: string, maxLen: number): string {
 }
 
 function UploadProgressDisplay({ fileName, progress, w }: { fileName: string; progress: number; w: number; h: number }) {
+  const { isDarkMode } = useTheme();
   const shortName = truncateWithExtension(fileName, 14);
+  const textColor = isDarkMode ? "#94a3b8" : "#64748b";
+  const trackBg = isDarkMode ? "#334155" : "#e2e8f0";
   return (
     <div style={{
       width: "100%", height: "100%",
@@ -63,8 +68,8 @@ function UploadProgressDisplay({ fileName, progress, w }: { fileName: string; pr
       gap: 6, padding: "8px 10px", boxSizing: "border-box",
     }}>
       <TwemojiImg emoji="⬆️" size={32} style={{ opacity: 0.5 }} />
-      <span style={{ fontSize: 10, color: "#64748b", textAlign: "center", maxWidth: w - 16 }}>{shortName}</span>
-      <div style={{ width: "100%", height: 6, background: "#e2e8f0", borderRadius: 3, overflow: "hidden" }}>
+      <span style={{ fontSize: 10, color: textColor, textAlign: "center", maxWidth: w - 16 }}>{shortName}</span>
+      <div style={{ width: "100%", height: 6, background: trackBg, borderRadius: 3, overflow: "hidden" }}>
         <div style={{
           height: "100%", borderRadius: 3,
           background: "linear-gradient(90deg, #3b82f6, #6366f1)",
@@ -79,9 +84,17 @@ function UploadProgressDisplay({ fileName, progress, w }: { fileName: string; pr
 
 function FileIconContent({ shape }: { shape: FileIconShape }) {
   const [hovered, setHovered] = React.useState(false);
+  const { isDarkMode } = useTheme();
   const emoji = getFileEmoji(shape.props.fileName, shape.props.kind);
   const name = shape.props.fileName;
+  const safeAssetId = getSafeAssetId(shape.props.assetId);
   const shortName = truncateWithExtension(name, 14);
+  const labelStyle = isDarkMode
+    ? { background: "rgba(30,41,59,0.9)", color: "#e2e8f0", borderRadius: 3, padding: "1px 3px" as const }
+    : { background: "rgba(255,255,255,0.85)", color: "#1e293b", borderRadius: 3, padding: "1px 3px" as const };
+  const overlayStyle = isDarkMode
+    ? { background: "rgba(30,41,59,0.95)", border: "1px solid #475569", color: "#cbd5e1", boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }
+    : { background: "rgba(255,255,255,0.9)", border: "1px solid #e5e7eb", color: "#6b7280", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" };
 
   return (
     <div
@@ -98,10 +111,10 @@ function FileIconContent({ shape }: { shape: FileIconShape }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {shape.props.kind === "image" || shape.props.kind === "gif" ? (
+      {(shape.props.kind === "image" || shape.props.kind === "gif") && safeAssetId ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={`/api/assets/${shape.props.assetId}/file`}
+          src={`/api/assets/${safeAssetId}/file`}
           alt={name}
           style={{
             width: 64,
@@ -122,9 +135,7 @@ function FileIconContent({ shape }: { shape: FileIconShape }) {
           maxWidth: shape.props.w - 8,
           lineHeight: 1.3,
           pointerEvents: "none",
-          background: "rgba(255,255,255,0.85)",
-          borderRadius: 3,
-          padding: "1px 3px",
+          ...labelStyle,
         }}
       >
         {shortName}
@@ -132,11 +143,13 @@ function FileIconContent({ shape }: { shape: FileIconShape }) {
       {hovered && (
         <div style={{ position: "absolute", top: 2, right: 2, display: "flex", alignItems: "center", gap: 3 }}>
           <FileSizeLabel sizeBytes={shape.meta?.sizeBytes as string | undefined}
-            style={{ background: "rgba(255,255,255,0.9)", borderRadius: 3, padding: "1px 4px", border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}
+            style={{ ...overlayStyle, borderRadius: 3, padding: "1px 4px" }}
           />
-          <DownloadButton assetId={shape.props.assetId} fileName={shape.props.fileName}
-            style={{ width: 20, height: 20, fontSize: 11, background: "rgba(255,255,255,0.9)", border: "1px solid #e5e7eb", color: "#6b7280", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}
-          />
+          {safeAssetId && (
+            <DownloadButton assetId={safeAssetId} fileName={shape.props.fileName}
+              style={{ width: 20, height: 20, fontSize: 11, ...overlayStyle }}
+            />
+          )}
         </div>
       )}
     </div>
@@ -166,32 +179,44 @@ export class FileIconShapeUtil extends BaseBoxShapeUtil<FileIconShape> {
   }
 
   override component(shape: FileIconShape) {
-    const editor = useEditor();
-    const uploadProgress = typeof shape.meta?.uploadProgress === "number" ? shape.meta.uploadProgress : null;
-    const isUploading = !shape.props.assetId && uploadProgress !== null;
-    const strokeHex = getStrokeHexForColorStyle(getColorForShape(shape.id));
+    return <FileIconShapeInner shape={shape} />;
+  }
 
-    return (
-      <HTMLContainer
-        id={shape.id}
-        style={{
-          width: shape.props.w,
-          height: shape.props.h,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 4,
-          cursor: "pointer",
-          userSelect: "none",
-          pointerEvents: "all",
-          position: "relative",
-          overflow: "visible",
-          border: `3px solid ${strokeHex}`,
-          borderRadius: 6,
-          boxSizing: "border-box",
-        }}
-      >
+  override indicator(shape: FileIconShape) {
+    return <rect width={shape.props.w} height={shape.props.h} rx={6} />;
+  }
+}
+
+function FileIconShapeInner({ shape }: { shape: FileIconShape }) {
+  const editor = useEditor();
+  const { isDarkMode } = useTheme();
+  const uploadProgress = typeof shape.meta?.uploadProgress === "number" ? shape.meta.uploadProgress : null;
+  const isUploading = !shape.props.assetId && uploadProgress !== null;
+  const strokeHex = getStrokeHexForColorStyle(getColorForShape(shape.id));
+  const bgColor = isDarkMode ? "#1e293b" : "#ffffff";
+
+  return (
+    <HTMLContainer
+      id={shape.id}
+      style={{
+        width: shape.props.w,
+        height: shape.props.h,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 4,
+        cursor: "pointer",
+        userSelect: "none",
+        pointerEvents: "all",
+        position: "relative",
+        overflow: "visible",
+        background: bgColor,
+        border: `3px solid ${strokeHex}`,
+        borderRadius: 6,
+        boxSizing: "border-box",
+      }}
+    >
         <CreatorLabel name={getCreatedBy(shape)} rank={getCreationRank(editor, shape)} />
         {isUploading ? (
           <UploadProgressDisplay
@@ -207,11 +232,6 @@ export class FileIconShapeUtil extends BaseBoxShapeUtil<FileIconShape> {
         )}
         <ShapeReactionPanel shapeId={shape.id} />
         <ShapeConnectHandles shapeId={shape.id} w={shape.props.w} h={shape.props.h} />
-      </HTMLContainer>
-    );
-  }
-
-  override indicator(shape: FileIconShape) {
-    return <rect width={shape.props.w} height={shape.props.h} rx={6} />;
-  }
+    </HTMLContainer>
+  );
 }

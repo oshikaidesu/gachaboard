@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { assertAssetReadAccess } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { getObjectStream, headS3Object, s3KeyWaveform } from "@/lib/s3";
+import { assetIdSchema } from "@/lib/validators";
 
 type Params = { params: Promise<{ assetId: string }> };
 
@@ -11,6 +12,7 @@ type Params = { params: Promise<{ assetId: string }> };
  */
 export async function GET(_req: NextRequest, { params }: Params) {
   const { assetId } = await params;
+  if (!assetIdSchema.safeParse(assetId).success) return NextResponse.json({ error: "Invalid assetId" }, { status: 400 });
   const ctx = await assertAssetReadAccess(assetId);
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const asset = await db.asset.findUnique({ where: { id: assetId } });

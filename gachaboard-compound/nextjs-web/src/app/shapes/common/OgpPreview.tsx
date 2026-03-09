@@ -2,47 +2,55 @@
 
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
 import type { OgpData } from "@shared/apiTypes";
+import { getSafeHref } from "@/lib/safeUrl";
 import { useOgp } from "@/app/hooks/media/useOgp";
 
 function OgpCard({ data, width }: { data: OgpData; width: number }) {
+  const safeHref = getSafeHref(data.url);
+  const safeImage = data.image ? getSafeHref(data.image) : null;
+
   const domain = (() => {
-    try {
-      return new URL(data.url).hostname.replace(/^www\./, "");
-    } catch {
-      return data.url;
+    if (safeHref) {
+      try {
+        return new URL(safeHref).hostname.replace(/^www\./, "");
+      } catch {
+        return data.url;
+      }
     }
+    return data.url;
   })();
 
   const cardHeight = Math.round(width * 0.56);
 
-  return (
-    <a
-      href={data.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        width: "100%",
-        height: cardHeight,
-        borderRadius: "0 0 8px 8px",
-        overflow: "hidden",
-        border: "1px solid #e4e4e7",
-        borderTop: "none",
-        background: "#ffffff",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
-        textDecoration: "none",
-        color: "inherit",
-      }}
-      onPointerDown={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-    >
-      {data.image ? (
+  const cardStyle = {
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    width: "100%",
+    height: cardHeight,
+    borderRadius: "0 0 8px 8px",
+    overflow: "hidden" as const,
+    border: "1px solid #e4e4e7",
+    borderTop: "none",
+    background: "#ffffff",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
+    textDecoration: "none",
+    color: "inherit",
+  };
+
+  const cardContent = (
+    <>
+      {safeImage ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={data.image}
+          src={safeImage}
           alt={data.title ?? ""}
-          style={{ width: "100%", flex: 1, objectFit: "cover", display: "block", minHeight: 0 }}
+          style={{
+            width: "100%",
+            flex: 1,
+            objectFit: "cover",
+            display: "block",
+            minHeight: 0,
+          }}
           draggable={false}
         />
       ) : (
@@ -117,12 +125,41 @@ function OgpCard({ data, width }: { data: OgpData; width: number }) {
           {domain}
         </span>
       </div>
-    </a>
+    </>
+  );
+
+  if (safeHref) {
+    return (
+      <a
+        href={safeHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={cardStyle}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        {cardContent}
+      </a>
+    );
+  }
+
+  return (
+    <div
+      style={cardStyle}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      {cardContent}
+    </div>
   );
 }
 
+const YOUTUBE_ID_RE = /^[\w-]{11}$/;
+
 function YoutubeCard({ data, width }: { data: OgpData; width: number }) {
   const height = Math.round(width * 9 / 16);
+  const validId = data.youtubeId && YOUTUBE_ID_RE.test(data.youtubeId);
+  if (!validId) return null;
   return (
     <div
       style={{
@@ -139,6 +176,7 @@ function YoutubeCard({ data, width }: { data: OgpData; width: number }) {
     >
       <iframe
         src={`https://www.youtube.com/embed/${data.youtubeId}`}
+        sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
         style={{ width: "100%", height: "100%", border: "none", display: "block" }}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen

@@ -1,3 +1,5 @@
+import { getSafeAssetId } from "@/lib/safeUrl";
+
 /**
  * アセットファイルをダウンロードする。
  * ストリーム読み取りと進捗コールバックをサポート。
@@ -7,7 +9,9 @@ export async function downloadAsset(
   fileName: string,
   onProgress?: (received: number, total: number | null) => void
 ): Promise<void> {
-  const res = await fetch(`/api/assets/${assetId}/file?download=1`);
+  const safe = getSafeAssetId(assetId);
+  if (!safe) throw new Error("Invalid assetId");
+  const res = await fetch(`/api/assets/${safe}/file?download=1`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
   const contentLength = res.headers.get("Content-Length");

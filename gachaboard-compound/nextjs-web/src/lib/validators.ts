@@ -12,6 +12,14 @@ export const inviteTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{32,64}$/);
 /** 非負整数の文字列 */
 export const chunkIndexSchema = z.string().regex(/^\d+$/).transform((v) => parseInt(v, 10)).pipe(z.number().int().min(0));
 
+/** フロントの getSafeAssetId と同等。パストラバーサル・CSS injection 防止 */
+export const assetIdSchema = z
+  .string()
+  .min(1)
+  .max(255)
+  .regex(/^[\w][\w.\-]*$/)
+  .refine((s) => !s.includes("..") && !s.includes("/") && !s.includes("\\"));
+
 /** @deprecated uploadIdSchema.safeParse(value).success を使用 */
 export function isValidUploadId(value: string): boolean {
   return uploadIdSchema.safeParse(value).success;

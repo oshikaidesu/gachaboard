@@ -27,6 +27,7 @@ import { useVisibility } from "@/app/hooks/useVisibility";
 import { useMediaPlayerComments, MIN_COMMENT_LIST_H } from "@/app/hooks/media/useMediaPlayerComments";
 import { formatTime } from "@/lib/formatTime";
 import { useTheme } from "@/app/components/theme/ThemeProvider";
+import { getSafeAssetId } from "@/lib/safeUrl";
 import { MediaCommentInput } from "./MediaCommentInput";
 import { MediaCommentList } from "./MediaCommentList";
 import { WaveformCanvas } from "./WaveformCanvas";
@@ -161,6 +162,7 @@ function VolumeSlider({
 
 function AudioPlayer({ shape }: { shape: AudioShape }) {
   const { isDarkMode } = useTheme();
+  const safeAssetId = getSafeAssetId(shape.props.assetId);
 
   const bg = isDarkMode ? BG_DARK : BG_LIGHT;
   const text = isDarkMode ? TEXT_DARK : TEXT_LIGHT;
@@ -178,9 +180,9 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
   const isWav =
     shape.props.mimeType === "audio/wav" ||
     shape.props.fileName.endsWith(".wav");
-  const src = isWav
-    ? `/api/assets/${shape.props.assetId}/file?converted=1`
-    : `/api/assets/${shape.props.assetId}/file`;
+  const src = safeAssetId
+    ? (isWav ? `/api/assets/${safeAssetId}/file?converted=1` : `/api/assets/${safeAssetId}/file`)
+    : "";
 
   const editor = useEditor();
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -315,9 +317,11 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
           {shortName}
         </span>
         <FileSizeLabel sizeBytes={shape.meta?.sizeBytes as string | undefined} />
-        <DownloadButton assetId={shape.props.assetId} fileName={shape.props.fileName}
-          style={{ flexShrink: 0, width: 22, height: 22, fontSize: 11, background: btnBg, border: `1px solid ${btnBorder}`, color: muted }}
-        />
+        {safeAssetId && (
+          <DownloadButton assetId={safeAssetId} fileName={shape.props.fileName}
+            style={{ flexShrink: 0, width: 22, height: 22, fontSize: 11, background: btnBg, border: `1px solid ${btnBorder}`, color: muted }}
+          />
+        )}
       </div>
 
       {/* 波形 */}

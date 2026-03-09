@@ -4,12 +4,14 @@
  * Yjs Awareness と compound の instance_presence をブリッジする。
  * - リモートの awareness 変更 → store に instance_presence を put/remove
  * - ローカルのポインター移動 → awareness の cursor を更新
+ * - avatarUrl / color は他クライアント由来のため検証してから store に格納
  */
 import { useEditor } from "@cmpd/editor";
 import { InstancePresenceRecordType } from "@cmpd/tlschema";
 import rafThrottle from "raf-throttle";
 import { useCallback, useEffect, useRef } from "react";
 import type { WebsocketProvider } from "y-websocket";
+import { getSafeColor, getSafeHref } from "@/lib/safeUrl";
 
 type AwarenessSyncProps = {
   provider: WebsocketProvider;
@@ -58,7 +60,8 @@ export function AwarenessSync({ provider, localUserId }: AwarenessSyncProps) {
         const cursor = state?.cursor as { x: number; y: number; type?: string; rotation?: number } | null | undefined;
         const dragging = state?.dragging as { shapeId: string; x: number; y: number } | null | undefined;
         const userName = user?.name ?? "Unknown";
-        const color = user?.color ?? "#888888";
+        const color = getSafeColor(user?.color) ?? "#888888";
+        const avatarUrl = getSafeHref(user?.avatarUrl ?? null);
         const presenceId = InstancePresenceRecordType.createId(userId);
 
         toPut.push(
@@ -85,7 +88,7 @@ export function AwarenessSync({ provider, localUserId }: AwarenessSyncProps) {
             brush: null,
             scribbles: [],
             chatMessage: "",
-            meta: { avatarUrl: user?.avatarUrl ?? null, dragging: dragging ?? null },
+            meta: { avatarUrl, dragging: dragging ?? null },
           })
         );
       });

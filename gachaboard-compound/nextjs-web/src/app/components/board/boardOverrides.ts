@@ -12,24 +12,15 @@ import {
   createShapeId,
 } from "@cmpd/editor";
 import { brushModeAtom } from "@/app/tools/SmartHandTool";
+import {
+  GEO_SIZES,
+  GEO_DEFAULT_SIZE,
+  TOOLBAR_ALLOWED_IDS,
+  HIDE_ACTION_IDS,
+} from "./boardOverridesConfig";
 
 export type BoardOverridesOptions = {
   onFileUploadAll: () => void;
-};
-
-const GEO_SIZES: Record<string, { w: number; h: number }> = {
-  star: { w: 200, h: 190 },
-  cloud: { w: 300, h: 180 },
-  rectangle: { w: 200, h: 120 },
-  ellipse: { w: 200, h: 120 },
-  triangle: { w: 200, h: 120 },
-  diamond: { w: 200, h: 120 },
-  hexagon: { w: 200, h: 120 },
-  octagon: { w: 200, h: 120 },
-  oval: { w: 200, h: 120 },
-  pentagon: { w: 200, h: 120 },
-  heart: { w: 200, h: 120 },
-  rhombus: { w: 200, h: 120 },
 };
 
 export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverrides {
@@ -136,7 +127,7 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
           }
 
           if (source === "toolbar") {
-            const size = GEO_SIZES[geoId] ?? { w: 200, h: 120 };
+            const size = GEO_SIZES[geoId] ?? GEO_DEFAULT_SIZE;
             const scale = 1 / editor.getZoomLevel();
             const vp = editor.getViewportPageBounds();
             const cx = vp.x + vp.w / 2;
@@ -189,11 +180,10 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
     const fileUploadAllTool = tools["file-upload-all"];
     if (!selectTool) return schema;
 
-    const ALLOWED_IDS = ["select", "draw", "eraser", "file-upload-all", "rectangle"];
     const filtered = schema
       .map((item) => {
         const id = item.toolItem?.id;
-        if (!id || !ALLOWED_IDS.includes(id)) return null;
+        if (!id || !TOOLBAR_ALLOWED_IDS.includes(id)) return null;
         if (id === "select") return toolbarItem(selectTool);
         return item;
       })
@@ -218,7 +208,6 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
     return filtered;
   },
   actionsMenu(editor, schema) {
-    const HIDE_ACTION_IDS = ["rotate-cw", "rotate-ccw", "toggle-dark-mode"];
     return schema.filter(
       (item) =>
         item.type !== "item" ||

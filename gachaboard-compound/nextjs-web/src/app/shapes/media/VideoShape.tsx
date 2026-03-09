@@ -28,6 +28,7 @@ import { useVisibility } from "@/app/hooks/useVisibility";
 import { useMediaPlayerComments, MIN_COMMENT_LIST_H } from "@/app/hooks/media/useMediaPlayerComments";
 import { formatTime } from "@/lib/formatTime";
 import { useTheme } from "@/app/components/theme/ThemeProvider";
+import { getSafeAssetId } from "@/lib/safeUrl";
 import { MediaCommentInput } from "./MediaCommentInput";
 import { MediaCommentList } from "./MediaCommentList";
 import { SeekBar } from "./SeekBar";
@@ -188,6 +189,7 @@ function VolumeSlider({
 function VideoPlayer({ shape }: { shape: VideoShape }) {
   const { isDarkMode } = useTheme();
   const props = shape.props as import("@shared/shapeDefs").VideoProps;
+  const safeAssetId = getSafeAssetId(props.assetId);
 
   const bg = isDarkMode ? BG_DARK : BG_LIGHT;
   const textPrimary = isDarkMode ? TEXT_PRIMARY_DARK : TEXT_PRIMARY_LIGHT;
@@ -197,13 +199,11 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
   const trackBg = isDarkMode ? TRACK_BG_DARK : TRACK_BG_LIGHT;
   const checker = isDarkMode ? CHECKER_DARK : CHECKER_LIGHT;
   const checkerBg = isDarkMode ? CHECKER_BG_DARK : CHECKER_BG_LIGHT;
-  // assetId をキーにしてキャッシュバスト済み src を生成する。
-  // useRef で「前回の assetId」を追跡し、変わった時だけ新しい timestamp を生成する。
   const srcRef = useRef<{ assetId: string; src: string } | null>(null);
-  if (!srcRef.current || srcRef.current.assetId !== props.assetId) {
-    srcRef.current = { assetId: props.assetId, src: `/api/assets/${props.assetId}/file?v=${Date.now()}` };
+  if (safeAssetId && (!srcRef.current || srcRef.current.assetId !== safeAssetId)) {
+    srcRef.current = { assetId: safeAssetId, src: `/api/assets/${safeAssetId}/file?v=${Date.now()}` };
   }
-  const stableSrc = srcRef.current.src;
+  const stableSrc = srcRef.current?.src ?? "";
 
   const editor = useEditor();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -385,9 +385,11 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
           {shortName}
         </span>
         <FileSizeLabel sizeBytes={shape.meta?.sizeBytes as string | undefined} />
-        <DownloadButton assetId={props.assetId} fileName={props.fileName}
-          style={{ flexShrink: 0, width: 20, height: 20, fontSize: 10, background: isDarkMode ? "#334155" : "#f1f5f9", border: `1px solid ${border}`, color: textMuted }}
-        />
+        {safeAssetId && (
+          <DownloadButton assetId={safeAssetId} fileName={props.fileName}
+            style={{ flexShrink: 0, width: 20, height: 20, fontSize: 10, background: isDarkMode ? "#334155" : "#f1f5f9", border: `1px solid ${border}`, color: textMuted }}
+          />
+        )}
       </div>
 
       {/* 動画エリア */}
@@ -468,7 +470,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
         <video
           ref={videoRef}
           src={stableSrc}
-          poster={`/api/assets/${props.assetId}/thumbnail`}
+          poster={safeAssetId ? `/api/assets/${safeAssetId}/thumbnail` : undefined}
           preload="metadata"
           autoPlay={false}
           controls={false}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import pRetry from "p-retry";
+import { getSafeAssetId } from "@/lib/safeUrl";
 
 type WaveformStatus = "loading" | "ready" | "error";
 
@@ -54,13 +55,14 @@ export function useWaveform(assetId: string): WaveformResult {
   const [status, setStatus] = useState<WaveformStatus>("loading");
 
   useEffect(() => {
-    if (!assetId) return;
+    const safe = getSafeAssetId(assetId);
+    if (!safe) return;
     let cancelled = false;
     const controller = new AbortController();
     setStatus("loading");
     setPeaks([]);
 
-    fetchWaveformWithRetry(assetId, controller.signal)
+    fetchWaveformWithRetry(safe, controller.signal)
       .then((data) => {
         if (cancelled) return;
         setPeaks(data.peaks ?? []);

@@ -166,3 +166,60 @@
 - **削除**: `Board.reactionEmojiPreset` カラム（Prisma スキーマ）
 - **移行先**: `snapshotData.reactionEmojiPreset`（Y.Doc の reactionEmojiPreset yMap と双方向同期）
 - **マイグレーション**: 全 Board の reactionEmojiPreset を snapshotData にコピー後、`prisma db push` でカラム削除
+
+---
+
+## Phase 8: OGP プレビュー XSS 対策
+
+### 8-1. 問題
+- **useOgp**: API が 400 を返した場合、未検証の `url` をフォールバックとして返していた
+- **OgpCard**: `href={data.url}` に `javascript:` 等が入るとクリックで XSS が発生
+- **攻撃経路**: 共同編集者が geo シェイプに `meta.ogpUrls = ["javascript:..."]` を設定し、他ユーザーのクリックで実行
+
+### 8-2. 対策
+- **新規**: `src/lib/safeUrl.ts` - `getSafeHref(url)` で `url-sanitizer` により http/https のみ許可。`getSafeColor(color)` で hex のみ許可（CSS インジェクション防止）
+- **useOgp**: API 失敗時はフォールバックを返さず `null` を返す
+- **OgpPreview**: OgpCard で `data.url` と `data.image` を `getSafeHref` で検証。安全でない場合はリンク・画像を無効化
+- **YoutubeCard**: `youtubeId` を正規表現で検証（11 文字の英数字・ハイフン・アンダースコアのみ）
+
+### 8-3. Yjs Awareness 由来データの検証（Phase 8 追加）
+- **CollaboratorCursor**: `meta.avatarUrl` を `getSafeHref` で検証
+- **UserSharePanel**: `avatarUrl` を `getSafeHref`、`color` を `getSafeColor` で検証
+- **AwarenessSync**: store に格納する前に `avatarUrl` と `color` を検証
+- **WorkspaceMembersPopover**: API 由来の `avatarUrl` を `getSafeHref` で検証（防御の二重化）
+
+---
+
+## Phase 9: YouTube iframe sandbox & assetId バリデーション
+
+### 9-1. YouTube iframe sandbox 属性の追加
+- **問題**: `OgpPreview.tsx` の YouTube embed iframe に `sandbox` 属性がなく、埋め込みコンテンツが親ウィンドウをナビゲートしたりポップアップを開く余地があった
+- **対策**: `sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"` を追加し、必要最小限の機能のみ許可
+
+### 9-2. assetId CSS injection / パストラバーサル防止
+- **問題**: Y.Doc 由来の `shape.props.assetId` が未検証のまま URL パス（`/api/assets/${assetId}/file`）や CSS `backgroundImage: url(...)` に埋め込まれていた。悪意ある共同編集者が:
+  - `assetId` に `)`, `url(https://evil.com/...` を仕込んで **CSS injection** で外部 URL を読み込ませる（ユーザートラッキング）
+  - `../` 等を仕込んで **パストラバーサル** で意図しない API エンドポイントにリクエストさせる
+- **対策**: `src/lib/safeUrl.ts` に `getSafeAssetId()` を追加。英数字・ハイフン・ドット・アンダースコアのみ許可、`/`, `\`, `..` を拒否
+- **適用箇所**:
+  - `AssetLoader.tsx` - `backgroundImage` の URL 構築
+  - `FileIconShape.tsx` - `<img src>` と `<DownloadButton>`
+  - `VideoShape.tsx` - `<video src>`, `poster`, `<DownloadButton>`
+  - `AudioShape.tsx` - `<audio src>`, `<DownloadButton>`
+  - `TextFileShape.tsx` - `<DownloadButton>`
+  - `NativeShapeWrappers.tsx` - `WrappedImageShapeUtil` の `apiAssetId`
+  - `downloadAsset.ts` - `fetch()` の URL パス
+  - `useAssetStatus.ts` - HEAD リクエストの URL パス
+  - `useWaveform.ts` - 波形データ取得の URL パス
+
+---
+
+## Phase 10: バックエンド assetId バリデーション
+
+- **目的**: フロントの検証をバイパスして直接 API を叩かれた場合の防御の二重化
+- **対策**: `src/lib/validators.ts` に `assetIdSchema`（Zod）を追加。フロントの `getSafeAssetId` と同等ルール
+- **適用箇所**:
+  - `api/assets/[assetId]/file/route.ts` - HEAD, GET
+  - `api/assets/[assetId]/thumbnail/route.ts` - GET
+  - `api/assets/[assetId]/waveform/route.ts` - GET
+  - `api/assets/[assetId]/route.ts` - GET, PATCH, DELETE

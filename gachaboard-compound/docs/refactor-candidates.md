@@ -52,7 +52,6 @@
 | ファイル | 行数 | メモ |
 |----------|------|------|
 | `useShapeDeletePositionCapture.ts` | 174 | 責務は 1 つに近いが、ロジックがやや複雑 |
-| `WorkspaceDetailClient.tsx` | 416 | ボード一覧・ゴミ箱タブ・アセット一覧を 1 ページに集約 |
 
 ---
 
@@ -65,24 +64,28 @@
 
 ---
 
-## 6.2 巨大コンポーネント（状態過多）
+## 6.2 巨大コンポーネント（状態過多） ✅ 完了
 
-| ファイル | 行数 | 状態数 | 問題 |
-|----------|------|--------|------|
-| `WorkspaceDetailClient.tsx` | 416 | 22+ | ボード一覧・ゴミ箱・アセット・メンバー・招待・リネーム・メニュー・作成フォームを 1 ファイルに集約 |
-| `assets/page.tsx` | 308 | 12+ | アセット一覧・検索・フィルタ・プレビュー・削除・タブを 1 ページに集約 |
+**WorkspaceDetailClient** を以下に分割済み:
+- `components/WorkspaceMembersPopover.tsx` - メンバー一覧・キック
+- `components/WorkspaceBoardCard.tsx` - ボードカード 1 件＋三点メニュー
+- `components/BoardCreateForm.tsx` - 新規ボード作成フォーム
 
-**提案**: WorkspaceDetailClient を `WorkspaceBoardsTab`, `WorkspaceTrashTab`, `WorkspaceAssetsTab`, `WorkspaceMembersPopover` 等に分割。assets/page も同様にタブ・フィルタ・リストを分離。
+**assets/page** を以下に分割済み:
+- `assets/components/AssetPreviewModal.tsx` - プレビューモーダル
+- `assets/components/AssetFilters.tsx` - 検索・ボード・種類フィルタ
+- `assets/components/AssetListItem.tsx` - アセット 1 行表示
 
 ---
 
-## 6.3 複雑なロジック（分割候補）
+## 6.3 複雑なロジック（分割候補） ✅ 一部軽量化済み
 
 | ファイル | 行数 | メモ |
 |----------|------|------|
-| `ShapeConnectHandles.tsx` | 329 | 接続ハンドル・リサイズ・矢印の描画・ドラッグを 1 コンポーネントに集約 |
+| `ShapeConnectHandles.tsx` | ~320 | リサイズロジックを `CORNER_RESIZE` config 駆動に置き換え（switch → 係数テーブル） |
 | `NativeShapeWrappers.tsx` | 325 | 複数ネイティブシェイプのラッパーを 1 ファイルに |
-| `boardOverrides.ts` | 238 | ツール・アクション・geo サイズ・キーボードショートカットを 1 関数で返す |
+| `boardOverrides.ts` | ~220 | `boardOverridesConfig.ts` に GEO_SIZES, TOOLBAR_ALLOWED_IDS, HIDE_ACTION_IDS を抽出 |
+| `useShapeDeletePositionCapture.ts` | ~145 | `lib/delayedActionQueue.ts` に遅延キューをユーティリティ化 |
 
 ---
 

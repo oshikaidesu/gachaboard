@@ -34,6 +34,7 @@ import {
   FileSizeLabel,
   getColorForShape,
 } from "./common";
+import { getSafeAssetId } from "@/lib/safeUrl";
 
 // ---------- ファクトリ関数 ---------------------------------------------------
 
@@ -138,11 +139,10 @@ export class WrappedImageShapeUtil extends (wrapWithExtras(
     const base = super.component(shape);
     const { w, h, assetId } = shape.props;
 
-    // asset レコードから API の assetId とファイル名を取得
     const asset = assetId ? editor.getAsset(assetId) : null;
     const src: string = (asset?.props as { src?: string } | undefined)?.src ?? "";
-    // src は "/api/assets/{id}/file" 形式
-    const apiAssetId = src.match(/\/api\/assets\/([^/]+)\/file/)?.[1] ?? "";
+    const rawApiAssetId = src.match(/\/api\/assets\/([^/]+)\/file/)?.[1] ?? "";
+    const apiAssetId = getSafeAssetId(rawApiAssetId) ?? "";
     const fileName: string = (asset?.props as { name?: string } | undefined)?.name ?? "image";
 
     return (

@@ -14,7 +14,7 @@ function ogpCacheSet(key: string, value: OgpData) {
   ogpCache.set(key, value);
 }
 
-async function fetchOgpData(url: string): Promise<OgpData> {
+async function fetchOgpData(url: string): Promise<OgpData | null> {
   if (ogpCache.has(url)) return ogpCache.get(url)!;
   try {
     const res = await fetch(`/api/ogp?url=${encodeURIComponent(url)}`);
@@ -23,15 +23,18 @@ async function fetchOgpData(url: string): Promise<OgpData> {
       ogpCacheSet(url, data);
       return data;
     }
+    // API が 400 等を返した場合（javascript: 等の危険な URL）は
+    // フォールバックを返さず null。XSS 防止。
+    return null;
   } catch {
-    // フェッチ失敗
+    return null;
   }
-  const fallback: OgpData = { url };
-  ogpCacheSet(url, fallback);
-  return fallback;
 }
 
-export function useOgp(url: string | null): { data: OgpData | null; loading: boolean } {
+export function useOgp(url: string | null): {
+  data: OgpData | null;
+  loading: boolean;
+} {
   const [data, setData] = useState<OgpData | null>(() =>
     url && ogpCache.has(url) ? ogpCache.get(url)! : null
   );
