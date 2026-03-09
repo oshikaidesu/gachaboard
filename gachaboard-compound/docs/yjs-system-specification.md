@@ -36,7 +36,7 @@
 |----------|------|------------|
 | **ネットワーク** | Tailscale | 端末間 P2P 暗号化トンネル。グローバル IP・ポート開放不要。最大 100 台（無料） |
 | **ドキュメント同期** | Yjs + y-websocket | CRDT でオフライン編集もマージ可能。sync-server はメモリのみ（ゼロ構成） |
-| **ファイル保存** | ローカル `uploads/` または S3 / **MinIO** | 小規模ならローカルで完結。S3 互換で MinIO に切り替え可能 |
+| **ファイル保存** | S3 / **MinIO** | S3 互換必須。MinIO で自前サーバー内に完結可能 |
 | **公開** | Tailscale / Cloudflare Tunnel | 身内向けは Tailscale で P2P。外部公開時は Tunnel で HTTPS |
 
 ### 0.3 設計思想（数値）
@@ -45,7 +45,7 @@
 |------|------------|
 | **同時接続** | 最大 30 人。y-websocket-server 単体で十分。100 人超は別構成 |
 | **ボード規模** | 約 1000 シェイプ。ローカルサーバー・1TB ストレージ想定 |
-| **依存の最小化** | メタデータは PostgreSQL、ファイルは S3/MinIO/ローカル。クラウド必須の SaaS にしない |
+| **依存の最小化** | メタデータは PostgreSQL、ファイルは S3/MinIO。クラウド必須の SaaS にしない |
 | **認証** | Discord OAuth 必須。匿名排除で身内運用 |
 
 ---
@@ -238,7 +238,7 @@
 | **y-websocket-server** | ゼロ構成でメモリ内ルーム管理。 Awareness 標準サポート。30 人なら十分 | 永続化なし。サーバー再起動で Y.Doc 消失。100 人超は別構成が必要 |
 | **NextAuth** | Discord OAuth をそのまま利用。身内運用で追加 ID 連携が不要 | Discord 依存。プロバイダ障害時にログイン不可 |
 | **PostgreSQL + Prisma** | リレーション・制約を活かしたスキーマ。型安全な ORM。マイグレーション管理 | 現状 `prisma db push` 運用。本番では migrate 運用への移行検討 |
-| **S3 / MinIO** | ローカルで完結可能。S3 互換で AWS / R2 に切替え容易。Presigned URL で直接アップロード | MinIO は単一障害点。バックアップ・冗長化は別途検討 |
+| **S3 / MinIO** | MinIO で自前サーバー内に完結可能。S3 互換で AWS / R2 に切替え容易。Presigned URL で直接アップロード | MinIO は単一障害点。バックアップ・冗長化は別途検討 |
 | **fluent-ffmpeg** | 業界標準 ffmpeg の Node ラッパー。wav→mp3、動画 720p、波形 JSON を網羅 | ffmpeg バイナリ必須。大容量ファイルで同期変換タイムアウト（2 分）のリスク。ジョブ化は未対応 |
 | **Tailscale** | P2P 暗号化トンネル。グローバル IP・ポート開放不要。無料 100 台 | ホスト PC 停止でサービス停止。スリープ無効化・UPS 検討が必要 |
 | **cheerio** | 軽量 HTML パース。OGP 取得にフルブラウザ不要 | 動的 JS レンダリングのサイトには対応不可。一部サイトで OGP 取得失敗 |
@@ -284,7 +284,7 @@ tldraw 組み込み型: image, note, geo, text, arrow, draw, highlight, line, fr
 | **User** | discordId, discordName, avatarUrl | Discord OAuth ユーザー |
 | **Workspace** | ownerUserId, name, description, deletedAt | プロジェクト単位（3〜4 個想定） |
 | **Board** | workspaceId, name, snapshotData, deletedAt | ボード（ソフト削除対応） |
-| **Asset** | boardId, uploaderId, kind, mimeType, storageKey, storageBackend, lastKnownX/Y | アップロードファイル |
+| **Asset** | boardId, uploaderId, kind, mimeType, storageKey, storageBackend, lastKnownX/Y | アップロードファイル（storageBackend は `"s3"` のみ） |
 | **S3UploadSession** | uploadId, s3Key, storageKey, boardId, uploaderId | S3 マルチパートアップロード |
 
 **Y.Doc に統合**（DB テーブルなし）:

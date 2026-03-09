@@ -1,8 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useCallback, useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useCallback } from "react";
 import { useBoardContext } from "./BoardContext";
 import type { WebsocketProvider } from "y-websocket";
+import { useYMapSync } from "@/app/hooks/useYMapSync";
 
 /** Y.Doc に保存するコメント形式。author は非正規化で埋め込む */
 export type YDocComment = {
@@ -77,6 +78,16 @@ function commentsByAsset(all: DisplayComment[]): Map<string, DisplayComment[]> {
   return map;
 }
 
+function parseComment(value: string): DisplayComment | null {
+  try {
+    const c = JSON.parse(value) as YDocComment;
+    if (c && c.id && c.assetId && !c.deletedAt) return toDisplayComment(c);
+  } catch {
+    /* skip parse error */
+  }
+  return null;
+}
+
 export function BoardCommentProvider({
   children,
   provider,
@@ -85,24 +96,7 @@ export function BoardCommentProvider({
   provider?: WebsocketProvider;
 }) {
   const { currentUserId, userName, avatarUrl } = useBoardContext();
-  const [byAsset, setByAsset] = useState<Map<string, DisplayComment[]>>(new Map());
-  const byIdRef = useRef<Map<string, DisplayComment>>(new Map());
-
-  const applyYUpdate = useCallback((yMap: { forEach: (fn: (v: string, k: string) => void) => void }) => {
-    const byId = new Map<string, DisplayComment>();
-    yMap.forEach((value) => {
-      try {
-        const c = JSON.parse(value) as YDocComment;
-        if (c && c.id && c.assetId && !c.deletedAt) {
-          byId.set(c.id, toDisplayComment(c));
-        }
-      } catch {
-        /* skip parse error */
-      }
-    });
-    byIdRef.current = byId;
-    setByAsset(commentsByAsset(Array.from(byId.values())));
-  }, []);
+  const byAsset = useYMapSync(provider, COMMENTS_MAP_KEY, parseComment, commentsByAsset);
 
   const addComment = useCallback(
     (assetId: string, timeSec: number, body: string) => {
@@ -141,17 +135,6 @@ export function BoardCommentProvider({
     },
     [provider]
   );
-
-  useEffect(() => {
-    if (!provider) return;
-    const ydoc = provider.doc;
-    const yMap = ydoc.getMap<string>(COMMENTS_MAP_KEY);
-
-    const handler = () => applyYUpdate(yMap);
-    handler();
-    yMap.observe(handler);
-    return () => yMap.unobserve(handler);
-  }, [provider, applyYUpdate]);
 
   const getComments = useCallback(
     (assetId: string) => byAsset.get(assetId) ?? [],

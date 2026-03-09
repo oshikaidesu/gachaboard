@@ -39,8 +39,10 @@ Gachaboard のドキュメントを体系的にまとめた索引です。
 
 | ドキュメント | 内容 |
 |-------------|------|
+| [LIBRARIES.md](LIBRARIES.md) | 使用ライブラリ一覧 |
 | [yjs-system-specification.md](yjs-system-specification.md) | Yjs 同期の詳細仕様 |
 | [database-and-storage-inventory.md](database-and-storage-inventory.md) | DB・ストレージ一覧（永続化レイヤー） |
+| [refactor-candidates.md](refactor-candidates.md) | リファクタ候補（スパゲティ化しているコード） |
 | [security-and-refactor-changelog.md](security-and-refactor-changelog.md) | セキュリティ・リファクタリング変更履歴 |
 | [multi-cursor-implementation-guide.md](multi-cursor-implementation-guide.md) | マルチカーソル実装 |
 | [sync-improvement-implementation-guide.md](sync-improvement-implementation-guide.md) | 同期アーキテクチャ改善 |

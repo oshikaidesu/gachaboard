@@ -5,6 +5,19 @@
 
 ---
 
+## 0. サービス構成（起動するもの）
+
+| サービス | ポート | 役割 |
+|----------|--------|------|
+| **Next.js** | 3000 | Web アプリ本体（認証・API・フロント） |
+| **PostgreSQL** | 5433 | ユーザー・ワークスペース・ボード・アセットのメタデータ |
+| **sync-server** | 5858 | Yjs WebSocket サーバー（リアルタイム共同編集） |
+| **MinIO** | 9000 | S3 互換ストレージ（ファイル本体） |
+
+最小構成（アプリ + DB）に、リアルタイム同期とファイルストレージを足した構成。`docker compose up -d` で postgres / sync-server / minio を起動。Next.js は `npm run dev` で別途起動。
+
+---
+
 ## 1. 全体マップ
 
 ```mermaid
@@ -12,7 +25,6 @@ flowchart TB
     subgraph Server [サーバー側]
         PG[(PostgreSQL)]
         Mem[Y.Doc メモリ]
-        Local[uploads/ ローカル]
         S3[S3/MinIO]
     end
     subgraph Client [クライアント側]
@@ -27,7 +39,6 @@ flowchart TB
     IDB <--> Client
     LS <--> Client
     MemMap <--> Client
-    NextJS --> Local
     NextJS --> S3
     Client --> NextJS
 ```
@@ -84,29 +95,28 @@ flowchart TB
 
 ---
 
-## 4. ファイルストレージ
+## 4. ファイルストレージ（S3/MinIO）
 
-### 4.1 ローカル（`uploads/`）
+### 4.1 バケット構造・環境変数
 
-| ディレクトリ | 用途 |
-|--------------|------|
-| `uploads/assets/` | 元ファイル |
-| `uploads/converted/` | 変換済み（mp3, 720p mp4） |
-| `uploads/thumbnails/` | 動画サムネイル JPEG |
-| `uploads/waveforms/` | 音声波形 JSON |
-| `uploads/chunks/` | チャンクアップロード一時 |
-
-- S3 未設定時はここに保存。`UPLOAD_DIR` 等で制御
-
-### 4.2 S3 / MinIO
-
-- バケット内に上記と同様のパス構造
+- バケット内パス: `assets/`, `converted/`, `thumbnails/`, `waveforms/` 等
 - 環境変数: `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_ENDPOINT`, `S3_REGION`, `S3_PUBLIC_URL`
 
-### 4.3 参照
+### 4.2 配信フロー（Presigned URL）
+
+- **アップロード**: クライアント → init API（認可）→ Presigned PUT URL → S3 に直接アップロード
+- **配信**: クライアント → file/thumbnail API（認可）→ 302 リダイレクト → Presigned GET URL → S3 から直接取得
+- **波形**: waveform API は fetch が CORS で弾かれるため Next.js 経由でプロキシ（データは小さい）
+- Next.js は認可と Presigned URL 発行のみ。実データは S3 とクライアント間で直接転送
+
+### 4.3 MinIO CORS
+
+MinIO を別オリジン（例: localhost:9000）で使う場合、バケットに CORS を設定する必要があります。`mc` または MinIO Console で、アプリのオリジン（例: `http://localhost:3000`）を許可してください。
+
+### 4.4 参照
 
 - `Asset.storageKey`: ファイル名（UUID + 拡張子）
-- `Asset.storageBackend`: `"local"` | `"s3"`
+- `Asset.storageBackend`: `"s3"`（S3 のみ）
 
 ---
 
@@ -125,7 +135,6 @@ flowchart TB
 |------|------|
 | `COMPOUND_USER_DATA_v3` | compound ユーザー設定（ダークモード等） |
 | `gachaboard-camera:{roomId}` | ボードごとのカメラ位置・instance_page_state |
-| `uploadSession:{fileName}:{size}:{chunks}` | チャンクアップロード再開用の uploadId |
 
 ### 5.3 メモリキャッシュ（Map）
 
@@ -155,7 +164,6 @@ flowchart LR
         ReactionPreset[reactionEmojiPreset]
     end
     subgraph Storage [ファイル]
-        Local[uploads/]
         S3Storage[S3/MinIO]
     end
     User --> WS
@@ -166,7 +174,6 @@ flowchart LR
     Snapshot --> Comments
     Snapshot --> ReactionPreset
     Board --> Asset
-    Asset --> Local
     Asset --> S3Storage
     Shapes --> IndexedDB
     Reactions --> IndexedDB
@@ -176,7 +183,7 @@ flowchart LR
 
 - **シェイプ・リアクション・コメント（Y.Doc）**: クライアント ↔ sync-server で WebSocket 同期。IndexedDB に永続
 - **snapshotData**: records + reactions + comments + reactionEmojiPreset を定期的に PostgreSQL へ保存。sync-server 再起動時の復旧用
-- **Asset**: メタデータは PostgreSQL、実体はローカル or S3
+- **Asset**: メタデータは PostgreSQL、実体は S3/MinIO
 
 ---
 

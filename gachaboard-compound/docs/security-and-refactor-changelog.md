@@ -39,8 +39,9 @@
 |--------|----------|
 | `assets/[assetId]` GET | `assertAssetReadAccess` |
 | `assets/[assetId]` PATCH/DELETE | `assertAssetWriteAccess` |
-| `assets/[assetId]/file` HEAD/GET | `assertAssetReadAccess` |
-| `assets/[assetId]/thumbnail` GET | `assertAssetReadAccess` |
+| `assets/[assetId]/file` HEAD/GET | `assertAssetReadAccess` → 302 リダイレクト（Presigned URL）で S3 直接取得 |
+| `assets/[assetId]/thumbnail` GET | `assertAssetReadAccess` → 302 リダイレクト |
+| `assets/[assetId]/waveform` GET | `assertAssetReadAccess` → Next.js 経由でプロキシ（fetch CORS 回避） |
 | `assets/[assetId]/waveform` GET | `assertAssetReadAccess` |
 | `assets` POST | `assertWorkspaceWriteAccess` で workspace 書き込み権限を確認 |
 | `assets` GET | `workspaceId` または `boardId` 必須。boardId なら `assertBoardAccess`、workspaceId なら `assertWorkspaceAccess`（SERVER_OWNER モード対応） |
@@ -79,7 +80,7 @@
 ### 4-2. アップロードサイズ制限
 - **ファイル**: `src/lib/env.ts`, `api/assets/route.ts`, `api/assets/upload/init/route.ts`, `api/assets/upload/s3/init/route.ts`
 - **内容**: `MAX_UPLOAD_SIZE`（デフォルト 100GB）でファイルサイズをチェック
-- **補足**: 実際の転送はチャンク（S3: 100MB/part、ローカル: 250MB/chunk）で行うため、メモリ負荷は小さい
+- **補足**: 実際の転送はチャンク（S3: 100MB/part）で行うため、メモリ負荷は小さい
 
 ### 4-3. その他
 - **puppeteer**: `dependencies` → `devDependencies` へ移動

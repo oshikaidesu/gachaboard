@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { uploadIdSchema } from "@/lib/validators";
+import { s3UploadIdSchema } from "@/lib/validators";
 
 export const createWorkspaceSchema = z.object({
   name: z.string().min(1).max(200).trim(),
@@ -33,7 +33,7 @@ export const uploadCompleteSchema = z.object({
 });
 
 export const s3CompleteSchema = z.object({
-  uploadId: uploadIdSchema,
+  uploadId: s3UploadIdSchema,
   key: z.string().min(1),
   parts: z.array(
     z.object({

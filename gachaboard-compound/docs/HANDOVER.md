@@ -75,7 +75,7 @@ npx prisma migrate dev
 | 同期 | Yjs, y-websocket |
 | 認証 | NextAuth, Discord OAuth |
 | DB | PostgreSQL, Prisma |
-| ストレージ | S3 互換（AWS/MinIO）またはローカル |
+| ストレージ | S3 互換（AWS/MinIO）必須 |
 | メディア変換 | fluent-ffmpeg |
 
 ---

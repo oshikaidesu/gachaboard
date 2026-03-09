@@ -136,10 +136,27 @@ export async function abortMultipartUpload(key: string, uploadId: string) {
   }));
 }
 
+/** Presigned GET のオプション */
+export type PresignedGetOptions = {
+  /** Content-Disposition の上書き（例: attachment; filename*=UTF-8''foo.mp4） */
+  responseContentDisposition?: string;
+  /** Content-Type の上書き */
+  responseContentType?: string;
+};
+
 /** オブジェクトの Presigned GET URL を取得（クライアントがアクセスする URL で署名） */
-export async function getPresignedGetUrl(key: string, expiresIn = 3600): Promise<string> {
+export async function getPresignedGetUrl(
+  key: string,
+  expiresIn = 3600,
+  opts?: PresignedGetOptions
+): Promise<string> {
   const client = getPresigningClient();
-  const cmd = new GetObjectCommand({ Bucket: bucket(), Key: key });
+  const cmd = new GetObjectCommand({
+    Bucket: bucket(),
+    Key: key,
+    ...(opts?.responseContentDisposition && { ResponseContentDisposition: opts.responseContentDisposition }),
+    ...(opts?.responseContentType && { ResponseContentType: opts.responseContentType }),
+  });
   return getSignedUrl(client, cmd, { expiresIn });
 }
 

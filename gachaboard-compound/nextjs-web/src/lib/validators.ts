@@ -1,7 +1,10 @@
 import { z } from "zod";
 
-/** UUID v4 形式のスキーマ（uploadId 等に使用） */
+/** UUID v4 形式のスキーマ（汎用） */
 export const uploadIdSchema = z.string().uuid();
+
+/** AWS S3 Multipart Upload の UploadId（UUID ではない不透明な文字列） */
+export const s3UploadIdSchema = z.string().min(1).max(500);
 
 /** base64url 英数字・-・_ のみ。長さ 32〜64 文字（crypto.randomBytes(32).toString('base64url') は 43 文字） */
 export const inviteTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{32,64}$/);

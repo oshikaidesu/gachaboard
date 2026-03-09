@@ -29,9 +29,9 @@
 
 ### 2.1 依存の最小化
 
-- **クラウド SaaS にしない**: PostgreSQL、MinIO/ローカル、自前 sync-server で完結
+- **クラウド SaaS にしない**: PostgreSQL、MinIO、自前 sync-server で完結
 - **Tailscale でネットワーク構築**: グローバル IP・ポート開放不要。最大 100 台（無料）
-- **S3 互換**: AWS S3 でも MinIO でもローカルでも動く
+- **S3 互換**: AWS S3 でも MinIO でも動く
 
 ### 2.2 スケールの前提
 
@@ -86,12 +86,8 @@
 
 ## 5. ファイル保存の考え方
 
-| モード | 条件 | 保存先 |
-|--------|------|--------|
-| ローカル | S3 系が未設定 | `nextjs-web/uploads/` |
-| S3 / MinIO | `S3_BUCKET` 等を設定 | オブジェクトストレージ |
-
-- 小規模・検証時: ローカルで完結
+- **S3/MinIO 必須**: ファイルは S3 互換ストレージにのみ保存
+- 開発・検証: `docker compose up -d` で MinIO を起動
 - 本番: MinIO または AWS S3 で永続化
 
 ---

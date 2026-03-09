@@ -75,7 +75,7 @@ model Asset {
   fileName        String
   sizeBytes       BigInt
   storageKey      String         @unique
-  storageBackend  String         @default("local") // "local" | "s3"
+  storageBackend  String         @default("s3") // S3 のみ
   deletedAt       DateTime?
   lastKnownX   Float?
   lastKnownY   Float?

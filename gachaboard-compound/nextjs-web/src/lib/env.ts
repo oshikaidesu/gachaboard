@@ -71,6 +71,10 @@ export const env = createEnv({
 });
 
 // E2E テストモードは本番環境で使用禁止（認証バイパス等の重大な脆弱性）
-if (env.E2E_TEST_MODE && env.NODE_ENV === "production") {
-  throw new Error("[env] E2E_TEST_MODE は本番環境で使用できません");
+// サーバーでのみ実行: クライアントで env を import した際、E2E_TEST_MODE 等の
+// サーバー専用変数に触れないようにする（Next.js の client/server 分離）
+if (typeof window === "undefined") {
+  if (env.E2E_TEST_MODE && env.NODE_ENV === "production") {
+    throw new Error("[env] E2E_TEST_MODE は本番環境で使用できません");
+  }
 }

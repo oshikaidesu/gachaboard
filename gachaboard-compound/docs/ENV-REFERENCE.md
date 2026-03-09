@@ -28,11 +28,6 @@
 
 | 変数名 | デフォルト | 説明 |
 |--------|------------|------|
-| `UPLOAD_DIR` | （空） | アップロードファイルの保存ディレクトリ。未設定時は `uploads/` |
-| `CONVERTED_DIR` | （空） | 変換済みファイル（mp3, 720p mp4）の保存ディレクトリ |
-| `WAVEFORM_DIR` | （空） | 音声波形 JSON の保存ディレクトリ |
-| `CHUNKS_DIR` | （空） | チャンクアップロードの一時ディレクトリ |
-| `THUMBNAIL_DIR` | （空） | 動画サムネイルの保存ディレクトリ |
 | `MAX_UPLOAD_SIZE` | `107374182400` (100GB) | アップロード上限（バイト）。stem 等の大容量ファイル用 |
 
 ### S3 / MinIO（必須）
@@ -46,14 +41,15 @@
 | `AWS_SECRET_ACCESS_KEY` | （空） | MinIO の場合は `minioadmin` |
 | `S3_ENDPOINT` | （空） | Next.js が MinIO に接続する URL。`npm run dev` 時は `http://localhost:9000`、Next.js を Docker 内で動かすときは `http://minio:9000` |
 | `S3_REGION` | `us-east-1` | リージョン。MinIO は `us-east-1` 等でよい |
-| `S3_PUBLIC_URL` | `http://localhost:9000` | ブラウザが Presigned URL でアクセスするベース URL |
+| `S3_PUBLIC_URL` | `http://localhost:9000` | ブラウザが Presigned URL でアクセスするベース URL。**重要**: アップロード・配信ともクライアントは S3 に直接アクセスし、認可は Next.js API が Presigned URL 発行で行う |
 
 ### 同期（sync-server）
 
 | 変数名 | デフォルト | 説明 |
 |--------|------------|------|
 | `SYNC_SERVER_URL` | `http://sync-server:5858` | サーバー内部から sync-server への URL。Docker 内では `sync-server`、ローカル単体では `http://localhost:5858` |
-| `NEXT_PUBLIC_SYNC_WS_URL` | `ws://localhost:5858` | クライアント用 WebSocket URL。同一オリジンなら `/ws` 経由で Next.js が転送するため未設定でよい場合が多い |
+| `NEXT_PUBLIC_SYNC_WS_URL` | `ws://localhost:5858` | クライアント用 WebSocket URL。localhost では直接接続。Tailscale 等では `/ws` 経由で Next.js が転送 |
+| `SYNC_SERVER_INTERNAL_URL` | `http://127.0.0.1:5858` | Next.js の `/ws` リライト先。`npm run dev` 時は localhost。Next.js を Docker 内で動かすときは `http://sync-server:5858` |
 
 ---
 
@@ -65,7 +61,7 @@
 |------|-------|-----------|------------|
 | `NEXTAUTH_URL` | `http://localhost:3000` | `http://<自分のTailscaleホスト>:3000` | `https://...` または `http://<IP or ドメイン>:3000` |
 | `DATABASE_URL` | `postgresql://gachaboard:gachaboard@localhost:5433/gachaboard` | 同上 | 本番 DB の接続文字列 |
-| `NEXT_PUBLIC_SYNC_WS_URL` | 未設定（同一オリジン `/ws` 使用） | 同上 | 同上 |
+| `NEXT_PUBLIC_SYNC_WS_URL` | `ws://localhost:5858` | `ws://<ホスト>/ws`（Next.js 経由） | 同上 |
 
 ---
 

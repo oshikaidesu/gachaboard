@@ -1,8 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useCallback, useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useCallback } from "react";
 import { useBoardContext } from "./BoardContext";
 import type { WebsocketProvider } from "y-websocket";
+import { useYMapSync } from "@/app/hooks/useYMapSync";
 
 type Reaction = {
   id: string;
@@ -40,6 +41,21 @@ export function useBoardReactions(shapeId: string): {
   };
 }
 
+function parseReaction(value: string): Reaction | null {
+  try {
+    const r = JSON.parse(value) as Reaction;
+    if (r && r.id && r.shapeId && !r.deletedAt) {
+      return {
+        ...r,
+        user: r.user ?? { id: r.userId, discordName: "?", avatarUrl: null },
+      };
+    }
+  } catch {
+    /* skip parse error */
+  }
+  return null;
+}
+
 function reactionsToMap(all: Reaction[]): Map<string, Reaction[]> {
   const map = new Map<string, Reaction[]>();
   for (const r of all) {
@@ -58,27 +74,7 @@ export function BoardReactionProvider({
   provider?: WebsocketProvider;
 }) {
   const { currentUserId, userName, avatarUrl } = useBoardContext();
-  const [byShape, setByShape] = useState<Map<string, Reaction[]>>(new Map());
-  const byIdRef = useRef<Map<string, Reaction>>(new Map());
-
-  const applyYUpdate = useCallback((yMap: { forEach: (fn: (v: string, k: string) => void) => void }) => {
-    const byId = new Map<string, Reaction>();
-    yMap.forEach((value) => {
-      try {
-        const r = JSON.parse(value) as Reaction;
-        if (r && r.id && r.shapeId && !r.deletedAt) {
-          byId.set(r.id, {
-            ...r,
-            user: r.user ?? { id: r.userId, discordName: "?", avatarUrl: null },
-          });
-        }
-      } catch {
-        /* skip parse error */
-      }
-    });
-    byIdRef.current = byId;
-    setByShape(reactionsToMap(Array.from(byId.values())));
-  }, []);
+  const byShape = useYMapSync(provider, REACTIONS_MAP_KEY, parseReaction, reactionsToMap);
 
   const addReaction = useCallback(
     (shapeId: string, emoji: string) => {
@@ -115,17 +111,6 @@ export function BoardReactionProvider({
     },
     [provider]
   );
-
-  useEffect(() => {
-    if (!provider) return;
-    const ydoc = provider.doc;
-    const yMap = ydoc.getMap<string>(REACTIONS_MAP_KEY);
-
-    const handler = () => applyYUpdate(yMap);
-    handler();
-    yMap.observe(handler);
-    return () => yMap.unobserve(handler);
-  }, [provider, applyYUpdate]);
 
   const getReactions = useCallback(
     (shapeId: string) => byShape.get(shapeId) ?? [],
