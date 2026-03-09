@@ -3,6 +3,7 @@
  * useFileDropHandler から分離。
  */
 
+import pLimit from "p-limit";
 import {
   saveS3UploadSession,
   removeS3UploadSession,
@@ -18,24 +19,10 @@ const CHUNK_CONCURRENCY = 4;
 
 export async function runWithConcurrency<T>(
   tasks: (() => Promise<T>)[],
-  limit: number,
+  concurrency: number,
 ): Promise<PromiseSettledResult<T>[]> {
-  const results: PromiseSettledResult<T>[] = new Array(tasks.length);
-  let next = 0;
-
-  async function worker() {
-    while (next < tasks.length) {
-      const idx = next++;
-      try {
-        results[idx] = { status: "fulfilled", value: await tasks[idx]() };
-      } catch (e) {
-        results[idx] = { status: "rejected", reason: e };
-      }
-    }
-  }
-
-  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, () => worker()));
-  return results;
+  const limit = pLimit(concurrency);
+  return Promise.allSettled(tasks.map((task) => limit(() => task())));
 }
 
 export async function uploadFileViaS3(
