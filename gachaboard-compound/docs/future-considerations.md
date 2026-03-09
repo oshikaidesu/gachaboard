@@ -56,13 +56,15 @@
 
 ## 4. 小規模ライブラリ置き換え（優先度低）
 
-| 項目 | 候補 | 効果 |
-|------|------|------|
-| IndexedDB | idb | 可読性向上 |
-| File System Access | browser-fs-access | メンテ済み実装 |
-| IntersectionObserver | react-intersection-observer | SSR 対応 |
-| デバウンス | lodash.debounce | わずかなコード削減 |
-| フォーム | react-hook-form + Zod | バリデーション統一 |
+| 項目 | 現状 | 候補 | 効果 |
+|------|------|------|------|
+| IndexedDB | `s3UploadSessionStore.ts` 自前 | idb | 可読性向上、型安全 |
+| File System Access | `lib/fileAccess.ts` 自前 | browser-fs-access | メンテ済み実装、エッジケース対応 |
+| IntersectionObserver | `useVisibility` 等で自前 | react-intersection-observer | SSR 対応 |
+| デバウンス | 各所で自前 | lodash.debounce | わずかなコード削減 |
+| フォーム | 各所で自前 | react-hook-form + Zod | バリデーション統一 |
+| ファイルサイズ表示 | `formatFileSize` (shared/utils) | pretty-bytes | 軽量、多言語対応 |
+| 時刻表示 | `formatTime` (lib/formatTime) | date-fns format | 日付も統一可能 |
 
 ---
 
