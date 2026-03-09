@@ -71,7 +71,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Move to trash first" }, { status: 400 });
   }
 
-  await deleteFile(asset.storageKey, (asset.storageBackend as "local" | "s3") ?? "local");
+  await deleteFile(asset.storageKey);
   await db.asset.delete({ where: { id: assetId } });
 
   return NextResponse.json({ ok: true });

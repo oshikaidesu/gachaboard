@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { assertWorkspaceAccess, assertWorkspaceOwner, requireLogin, writeAuditLog } from "@/lib/authz";
 import { db } from "@/lib/db";
+import { createBoardSchema } from "@/lib/apiSchemas";
+import { formatZodError, parseJsonBody } from "@/lib/parseJsonBody";
+import { ZodError } from "zod";
 
 type Params = { params: Promise<{ workspaceId: string }> };
 
@@ -33,13 +36,16 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { session } = ctx;
-  const body = await req.json() as { name: string };
-  if (!body.name?.trim()) {
-    return NextResponse.json({ error: "name required" }, { status: 400 });
+  let body: { name: string };
+  try {
+    body = await parseJsonBody(req, createBoardSchema);
+  } catch (e) {
+    if (e instanceof ZodError) return NextResponse.json({ error: formatZodError(e) }, { status: 400 });
+    throw e;
   }
 
   const board = await db.board.create({
-    data: { workspaceId, name: body.name.trim() },
+    data: { workspaceId, name: body.name },
   });
 
   await writeAuditLog(session.user.id, workspaceId, "board.create", board.id);

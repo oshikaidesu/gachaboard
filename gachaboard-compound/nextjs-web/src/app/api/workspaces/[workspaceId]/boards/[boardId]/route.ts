@@ -3,6 +3,9 @@ import { assertWorkspaceAccess, assertWorkspaceOwner, requireLogin, writeAuditLo
 import { db } from "@/lib/db";
 import { deleteFile } from "@/lib/storage";
 import { env } from "@/lib/env";
+import { patchBoardSchema } from "@/lib/apiSchemas";
+import { formatZodError, parseJsonBody } from "@/lib/parseJsonBody";
+import { ZodError } from "zod";
 
 type Params = { params: Promise<{ workspaceId: string; boardId: string }> };
 
@@ -14,7 +17,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const { session } = ctx;
 
-  const body = await req.json() as { action: "trash" | "restore" | "rename"; name?: string };
+  let body: { action: "trash" | "restore" | "rename"; name?: string };
+  try {
+    body = await parseJsonBody(req, patchBoardSchema);
+  } catch (e) {
+    if (e instanceof ZodError) return NextResponse.json({ error: formatZodError(e) }, { status: 400 });
+    throw e;
+  }
 
   const board = await db.board.findUnique({ where: { id: boardId } });
   if (!board || board.workspaceId !== workspaceId) {

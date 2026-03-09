@@ -3,6 +3,9 @@ import { requireLogin } from "@/lib/authz";
 import { env } from "@/lib/env";
 import { db } from "@/lib/db";
 import { isS3Enabled, createMultipartUpload, getPresignedPutUrl, s3KeyAssets } from "@/lib/s3";
+import { uploadInitSchema } from "@/lib/apiSchemas";
+import { formatZodError, parseJsonBody } from "@/lib/parseJsonBody";
+import { ZodError } from "zod";
 import { randomUUID } from "crypto";
 import path from "path";
 
@@ -23,16 +26,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { fileName, mimeType, totalSize, boardId } = await req.json() as {
-      fileName: string;
-      mimeType: string;
-      totalSize: number;
-      boardId: string;
-    };
-
-    if (!fileName || !mimeType || !totalSize || !boardId) {
-      return NextResponse.json({ error: "fileName, mimeType, totalSize, boardId are required" }, { status: 400 });
+    let body: { fileName: string; mimeType: string; totalSize: number; boardId: string };
+    try {
+      body = await parseJsonBody(req, uploadInitSchema);
+    } catch (e) {
+      if (e instanceof ZodError) return NextResponse.json({ error: formatZodError(e) }, { status: 400 });
+      throw e;
     }
+    const { fileName, mimeType, totalSize, boardId } = body;
     if (totalSize > env.MAX_UPLOAD_SIZE) {
       return NextResponse.json(
         { error: `File too large. Max ${Math.round(env.MAX_UPLOAD_SIZE / 1024 / 1024)}MB` },
