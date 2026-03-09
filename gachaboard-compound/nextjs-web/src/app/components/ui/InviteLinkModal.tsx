@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useCopyToClipboard } from "usehooks-ts";
+import { useInviteLink } from "@/app/hooks/useInviteLink";
 
 type Props = {
   workspaceId: string;
@@ -10,32 +9,7 @@ type Props = {
 };
 
 export function InviteLinkModal({ workspaceId, workspaceName, onClose }: Props) {
-  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [copiedText, copyToClipboard] = useCopyToClipboard();
-
-  useEffect(() => {
-    fetch(`/api/workspaces/${workspaceId}/invite`)
-      .then((res) => (res.ok ? res.json() : { inviteUrl: null }))
-      .then((data) => setInviteUrl(data.inviteUrl))
-      .finally(() => setLoading(false));
-  }, [workspaceId]);
-
-  const createOrReset = async () => {
-    setCreating(true);
-    const res = await fetch(`/api/workspaces/${workspaceId}/invite`, { method: "POST" });
-    if (res.ok) {
-      const { inviteUrl: url } = await res.json();
-      setInviteUrl(url);
-      if (url) copyToClipboard(url);
-    }
-    setCreating(false);
-  };
-
-  const copy = () => {
-    if (inviteUrl) copyToClipboard(inviteUrl);
-  };
+  const { inviteUrl, loading, creating, copiedText, createOrReset, copy } = useInviteLink(workspaceId);
 
   return (
     <div
