@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useBoardComments } from "@/app/components/board/BoardCommentProvider";
 import { useBoardContext } from "@/app/components/board/BoardContext";
+import { formatTime } from "@/lib/formatTime";
 
 type Props = {
   assetId: string;
@@ -50,12 +51,6 @@ export default function MediaPlayer({ assetId, mimeType, fileName, workspaceId, 
       setNewComment("");
     }
     setPosting(false);
-  };
-
-  const formatTime = (sec: number) => {
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60);
-    return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
   return (
