@@ -30,34 +30,33 @@ import { formatTime } from "@/lib/formatTime";
 import { useTheme } from "@/app/components/theme/ThemeProvider";
 import { MediaCommentInput } from "./MediaCommentInput";
 import { MediaCommentList } from "./MediaCommentList";
+import { SeekBar } from "./SeekBar";
+import {
+  BLUE,
+  TRACK_BG_LIGHT,
+  TRACK_BG_DARK,
+  BG_LIGHT,
+  BG_DARK,
+  TEXT_PRIMARY_LIGHT,
+  TEXT_PRIMARY_DARK,
+  TEXT_MUTED_LIGHT,
+  TEXT_MUTED_DARK,
+  BORDER_LIGHT,
+  BORDER_DARK,
+  BORDER_SUBTLE_LIGHT,
+  BORDER_SUBTLE_DARK,
+  CHECKER_LIGHT,
+  CHECKER_DARK,
+  CHECKER_BG_LIGHT,
+  CHECKER_BG_DARK,
+  CONTROLS_HEIGHT,
+  HEADER_HEIGHT,
+  SEEK_BAR_HIT_HEIGHT,
+} from "./mediaConstants";
 import type { ApiComment } from "@shared/apiTypes";
 
 export type { VideoShape } from "@shared/shapeDefs";
 export { MIN_COMMENT_LIST_H } from "@/app/hooks/useMediaPlayerComments";
-
-// ---------- 定数 ----------
-
-const BLUE = "#3b82f6";
-const TRACK_BG_LIGHT = "#e2e8f0";
-const TRACK_BG_DARK = "#334155";
-const BG_LIGHT = "#ffffff";
-const BG_DARK = "#1e293b";
-const TEXT_PRIMARY_LIGHT = "#1e293b";
-const TEXT_PRIMARY_DARK = "#f1f5f9";
-const TEXT_MUTED_LIGHT = "#64748b";
-const TEXT_MUTED_DARK = "#94a3b8";
-const BORDER_LIGHT = "#e2e8f0";
-const BORDER_DARK = "#334155";
-const BORDER_SUBTLE_LIGHT = "#f1f5f9";
-const BORDER_SUBTLE_DARK = "#475569";
-const CHECKER_LIGHT = "#e8e8e8";
-const CHECKER_DARK = "#334155";
-const CHECKER_BG_LIGHT = "#f4f4f4";
-const CHECKER_BG_DARK = "#0f172a";
-const SEEK_BAR_HEIGHT = 6;
-const SEEK_BAR_HIT_HEIGHT = 28; // クリック・ドラッグの当たり判定をゆるくする
-const CONTROLS_HEIGHT = 36;
-const HEADER_HEIGHT = 26;
 
 /**
  * 動画エリア以外の UI（ヘッダー・コントロール・コメント入力欄）の合計高さ。
@@ -74,136 +73,6 @@ export const VIDEO_UI_OVERHEAD =
   (1 + 6 + SEEK_BAR_HIT_HEIGHT + 6 + (CONTROLS_HEIGHT - 10) + 8) +
   (30 + 6) +
   2;
-
-// ---------- シークバー ----------
-
-function SeekBar({
-  currentTime,
-  duration,
-  onSeek,
-  comments = [],
-  trackBg,
-}: {
-  currentTime: number;
-  duration: number;
-  onSeek: (sec: number) => void;
-  comments?: ApiComment[];
-  trackBg: string;
-}) {
-  const barRef = useRef<HTMLDivElement>(null);
-  const [dragging, setDragging] = useState(false);
-
-  const calcTime = useCallback(
-    (clientX: number) => {
-      const bar = barRef.current;
-      if (!bar || duration <= 0) return 0;
-      const rect = bar.getBoundingClientRect();
-      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-      return ratio * duration;
-    },
-    [duration]
-  );
-
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    if (duration <= 0) return;
-    setDragging(true);
-    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
-    onSeek(calcTime(e.clientX));
-  };
-
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    if (!dragging || duration <= 0) return;
-    onSeek(calcTime(e.clientX));
-  };
-
-  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    setDragging(false);
-  };
-
-  const playedPct = duration > 0 ? (currentTime / duration) * 100 : 0;
-
-  return (
-    <div
-      ref={barRef}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onMouseDown={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
-      style={{
-        position: "relative",
-        width: "100%",
-        height: SEEK_BAR_HIT_HEIGHT,
-        display: "flex",
-        alignItems: "center",
-        cursor: duration > 0 ? "pointer" : "default",
-        flexShrink: 0,
-        touchAction: "none",
-      }}
-    >
-      {/* トラック */}
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          height: SEEK_BAR_HEIGHT,
-          borderRadius: SEEK_BAR_HEIGHT / 2,
-          background: trackBg,
-          overflow: "hidden",
-        }}
-      >
-        {/* 再生済み部分 */}
-        <div
-          style={{
-            width: `${playedPct}%`,
-            height: "100%",
-            background: BLUE,
-            borderRadius: SEEK_BAR_HEIGHT / 2,
-            transition: dragging ? "none" : "width 0.1s linear",
-          }}
-        />
-      </div>
-      {/* つまみ */}
-      {duration > 0 && (
-        <div
-          style={{
-            position: "absolute",
-            left: `calc(${playedPct}% - 6px)`,
-            width: 12,
-            height: 12,
-            borderRadius: "50%",
-            background: BLUE,
-            boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-            transition: dragging ? "none" : "left 0.1s linear",
-            pointerEvents: "none",
-          }}
-        />
-      )}
-      {/* コメントピン */}
-      {duration > 0 && comments.map((c) => (
-        <div
-          key={c.id}
-          title={`${formatTime(c.timeSec)} ${c.author.discordName}: ${c.body}`}
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: `calc(${(c.timeSec / duration) * 100}% - 3px)`,
-            width: 6,
-            height: 6,
-            borderRadius: "50%",
-            background: BLUE,
-            opacity: 0.7,
-            pointerEvents: "none",
-          }}
-        />
-      ))}
-    </div>
-  );
-}
 
 // ---------- 音量スライダー（PointerCapture 方式） ----------
 

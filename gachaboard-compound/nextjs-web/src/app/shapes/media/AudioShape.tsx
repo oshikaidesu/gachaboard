@@ -29,208 +29,26 @@ import { formatTime } from "@/lib/formatTime";
 import { useTheme } from "@/app/components/theme/ThemeProvider";
 import { MediaCommentInput } from "./MediaCommentInput";
 import { MediaCommentList } from "./MediaCommentList";
-import type { ApiComment } from "@shared/apiTypes";
+import { WaveformCanvas } from "./WaveformCanvas";
+import {
+  ORANGE,
+  GRAY_LIGHT,
+  GRAY_DARK,
+  BG_LIGHT,
+  BG_DARK,
+  TEXT_LIGHT,
+  TEXT_DARK,
+  MUTED_LIGHT,
+  MUTED_DARK,
+  BORDER_LIGHT,
+  BORDER_DARK,
+  SKELETON_LIGHT,
+  SKELETON_DARK,
+  WAVEFORM_HIT_HEIGHT,
+  BASE_HEIGHT,
+} from "./mediaConstants";
 
 export type { AudioShape } from "@shared/shapeDefs";
-
-// ---------- 定数 ----------
-
-const ORANGE = "#ff5500";
-const GRAY_LIGHT = "#d1d5db";
-const GRAY_DARK = "#475569";
-const BG_LIGHT = "#ffffff";
-const BG_DARK = "#1e293b";
-const TEXT_LIGHT = "#111827";
-const TEXT_DARK = "#f1f5f9";
-const MUTED_LIGHT = "#6b7280";
-const MUTED_DARK = "#94a3b8";
-const BORDER_LIGHT = "#e2e8f0";
-const BORDER_DARK = "#334155";
-const SKELETON_LIGHT = "linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)";
-const SKELETON_DARK = "linear-gradient(90deg, #334155 25%, #475569 50%, #334155 75%)";
-const WAVEFORM_HEIGHT = 48;
-const WAVEFORM_HIT_HEIGHT = 56; // タップ・クリックの当たり判定をゆるくする
-const BAR_GAP = 1;
-const BASE_HEIGHT = 190;
-
-// ---------- 波形 SVG ----------
-
-const WAVEFORM_VIEW_WIDTH = 360;
-
-function WaveformCanvas({
-  peaks,
-  currentTime,
-  duration,
-  comments,
-  onSeek,
-  unplayedBarColor,
-  tooltipBg,
-  tooltipColor,
-  tooltipBorder,
-}: {
-  peaks: number[];
-  currentTime: number;
-  duration: number;
-  comments: ApiComment[];
-  onSeek: (sec: number) => void;
-  unplayedBarColor: string;
-  tooltipBg: string;
-  tooltipColor: string;
-  tooltipBorder: string;
-}) {
-  const [tooltip, setTooltip] = useState<{ x: number; text: string } | null>(null);
-
-  const barWidth = peaks.length > 0
-    ? (WAVEFORM_VIEW_WIDTH - BAR_GAP * (peaks.length - 1)) / peaks.length
-    : 0;
-  const playedRatio = duration > 0 ? currentTime / duration : 0;
-  const boundary = Math.floor(playedRatio * peaks.length);
-
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (duration <= 0) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    onSeek(ratio * duration);
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (duration <= 0) return;
-    e.stopPropagation();
-    e.preventDefault();
-    const touch = e.changedTouches[0];
-    if (!touch) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
-    onSeek(ratio * duration);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (duration <= 0 || comments.length === 0) {
-      setTooltip(null);
-      return;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const width = rect.width;
-
-    const hit = comments.find((c) => {
-      const pinX = (c.timeSec / duration) * width;
-      return Math.abs(mouseX - pinX) < 16;
-    });
-
-    if (hit) {
-      const pinX = (hit.timeSec / duration) * width;
-      setTooltip({ x: pinX, text: `${formatTime(hit.timeSec)} ${hit.author.discordName}: ${hit.body}` });
-    } else {
-      setTooltip(null);
-    }
-  };
-
-  return (
-    <div
-      style={{
-        position: "relative",
-        width: "100%",
-        height: WAVEFORM_HIT_HEIGHT,
-        display: "flex",
-        alignItems: "center",
-        touchAction: "none",
-        cursor: duration > 0 ? "pointer" : "default",
-      }}
-      onClick={handleClick}
-      onTouchEnd={handleTouchEnd}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={() => setTooltip(null)}
-      onTouchStart={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
-    >
-      <svg
-        viewBox={`0 0 ${WAVEFORM_VIEW_WIDTH} ${WAVEFORM_HEIGHT}`}
-        preserveAspectRatio="none"
-        width="100%"
-        height={WAVEFORM_HEIGHT}
-        style={{ display: "block", pointerEvents: "none" }}
-      >
-        {peaks.map((peak, i) => {
-          const barH = Math.max(2, peak * WAVEFORM_HEIGHT);
-          const x = i * (barWidth + BAR_GAP);
-          const y = (WAVEFORM_HEIGHT - barH) / 2;
-          return (
-            <rect
-              key={i}
-              x={x}
-              y={y}
-              width={barWidth}
-              height={barH}
-              rx={1}
-              fill={i < boundary ? ORANGE : unplayedBarColor}
-            />
-          );
-        })}
-      </svg>
-
-      {/* コメントピン — クリックでシーク（当たり判定を広く） */}
-      {duration > 0 && comments.map((c) => (
-        <div
-          key={c.id}
-          onClick={() => onSeek(c.timeSec)}
-          onMouseDown={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-          onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); onSeek(c.timeSec); }}
-          style={{
-            position: "absolute",
-            bottom: "50%",
-            left: `calc(${(c.timeSec / duration) * 100}% - 12px)`,
-            width: 24,
-            height: 24,
-            marginBottom: -12,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-          }}
-        >
-          <span
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: ORANGE,
-            }}
-          />
-        </div>
-      ))}
-
-      {/* ツールチップ */}
-      {tooltip && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: "100%",
-            left: tooltip.x,
-            transform: "translateX(-50%)",
-            background: tooltipBg,
-            color: tooltipColor,
-            fontSize: 10,
-            padding: "3px 8px",
-            borderRadius: 4,
-            whiteSpace: "nowrap",
-            pointerEvents: "none",
-            zIndex: 10,
-            maxWidth: 200,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            border: `1px solid ${tooltipBorder}`,
-            boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
-          }}
-        >
-          {tooltip.text}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ---------- 音量スライダー（PointerCapture 方式） ----------
 
