@@ -1,10 +1,12 @@
 /**
  * File System Access API のサポート検出とファイル選択。
- * Chromium 系ブラウザで利用可能。再開可能アップロードに使用。
+ * browser-fs-access ライブラリを使用。
  */
 
+import { fileOpen, supported } from "browser-fs-access";
+
 export function isFileSystemAccessSupported(): boolean {
-  return typeof window !== "undefined" && "showOpenFilePicker" in window;
+  return typeof window !== "undefined" && supported;
 }
 
 export type OpenFileResult =
@@ -20,14 +22,16 @@ export async function openFileWithHandle(): Promise<OpenFileResult> {
     return { ok: false, error: "File System Access API に対応していません" };
   }
   try {
-    const [handle] = await (window as unknown as {
-      showOpenFilePicker: (opts?: { types?: { description?: string; accept?: Record<string, string[]> }[]; multiple?: boolean }) => Promise<FileSystemFileHandle[]>;
-    }).showOpenFilePicker({
-      types: [{ description: "すべてのファイル", accept: { "*/*": [] } }],
+    const fileWithHandle = await fileOpen({
+      description: "すべてのファイル",
+      mimeTypes: ["*/*"],
       multiple: false,
     });
-    const file = await handle.getFile();
-    return { ok: true, file, handle };
+    const handle = fileWithHandle.handle;
+    if (!handle) {
+      return { ok: false, error: "ファイルハンドルを取得できませんでした" };
+    }
+    return { ok: true, file: fileWithHandle, handle };
   } catch (e) {
     if (e instanceof Error && e.name === "AbortError") {
       return { ok: false, error: "キャンセルされました" };
@@ -45,36 +49,23 @@ export type OpenAllFilesResult =
  * File System Access API 対応時は複数選択可。未対応時は input フォールバック。
  */
 export async function openAllFilesPicker(): Promise<OpenAllFilesResult> {
-  if (isFileSystemAccessSupported()) {
-    try {
-      const handles = await (window as unknown as {
-        showOpenFilePicker: (opts?: { types?: { description?: string; accept?: Record<string, string[]> }[]; multiple?: boolean }) => Promise<FileSystemFileHandle[]>;
-      }).showOpenFilePicker({
-        types: [{ description: "すべてのファイル", accept: { "*/*": [] } }],
-        multiple: true,
-      });
-      const files = await Promise.all(handles.map((h) => h.getFile()));
-      return { ok: true, files, handles };
-    } catch (e) {
-      if (e instanceof Error && e.name === "AbortError") {
-        return { ok: false, error: "キャンセルされました" };
-      }
-      return { ok: false, error: e instanceof Error ? e.message : "ファイルを開けませんでした" };
+  try {
+    const results = await fileOpen({
+      description: "すべてのファイル",
+      mimeTypes: ["*/*"],
+      multiple: true,
+    });
+    const files = Array.isArray(results) ? results : [results];
+    const filtered = files.filter((f) => f.size > 0);
+    if (filtered.length === 0) {
+      return { ok: false, error: "キャンセルされました" };
     }
+    const handles = filtered.map((f) => f.handle ?? null);
+    return { ok: true, files: filtered, handles };
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      return { ok: false, error: "キャンセルされました" };
+    }
+    return { ok: false, error: e instanceof Error ? e.message : "ファイルを開けませんでした" };
   }
-  return new Promise((resolve) => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.multiple = true;
-    input.onchange = () => {
-      const files = input.files ? Array.from(input.files).filter((f) => f.size > 0) : [];
-      input.remove();
-      if (files.length === 0) {
-        resolve({ ok: false, error: "キャンセルされました" });
-      } else {
-        resolve({ ok: true, files, handles: files.map(() => null) });
-      }
-    };
-    input.click();
-  });
 }
