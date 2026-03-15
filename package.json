@@ -1,6 +1,14 @@
 {
   "name": "gachaboard",
+  "version": "0.1.0",
   "private": true,
+  "description": "ホワイトボード + ファイルサーバのP2Pシステム。動画・音声・画像をドラッグ＆ドロップで配置し、リアルタイムで共同編集できる。",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oshikaidesu/gachaboard.git"
+  },
+  "homepage": "https://github.com/oshikaidesu/gachaboard",
   "scripts": {
     "up": "docker compose --profile app up -d",
     "down": "docker compose --profile app down",

@@ -24,6 +24,7 @@ echo "=== Gachaboard 起動（ローカルモード）==="
 
 check_required || exit 1
 check_env_exists "$ROOT_DIR" || exit 1
+ensure_env_symlink "$ROOT_DIR"
 
 echo ">>> 1. ポート変数を同期"
 bash "$SCRIPTS_DIR/lib/sync-env-ports.sh" 2>/dev/null || true

@@ -13,6 +13,21 @@ const nextConfig: NextConfig = {
     fetches: { fullUrl: false },
   },
   async headers() {
+    // CSP: 信頼できるオリジンのみ。Next.js のインラインスクリプトのため script-src に unsafe-inline/unsafe-eval を含む
+    // Tailscale HTTPS → /minio 経由で S3 にアクセス。localhost 時は http://localhost:PORT で直接アクセス。
+    const csp = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https: http://localhost:* http://127.0.0.1:*",
+      "font-src 'self' data: https://unpkg.com",
+      "connect-src 'self' blob: ws: wss: https: http://localhost:* http://127.0.0.1:*",
+      "media-src 'self' blob: https: http://localhost:* http://127.0.0.1:*",
+      "frame-src https://www.youtube.com",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join("; ");
     return [
       {
         source: "/:path*",
@@ -21,14 +36,19 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "Content-Security-Policy", value: csp },
         ],
       },
     ];
   },
   experimental: {
+    // 動画・大容量ファイルのアップロード用。本番ではリバースプロキシ等で制限を検討すること。
     serverActions: { bodySizeLimit: "100gb" },
   },
-  allowedDevOrigins: ["uooooooooooo.tail16829c.ts.net", "desktop-hn7hdbv-1.tail16829c.ts.net"],
+  // 開発時の Hot Reload 等で許可するオリジン。カンマ区切りで指定（例: ALLOWED_DEV_ORIGINS=https://a.tailxxx.ts.net,https://b.tailxxx.ts.net）
+  allowedDevOrigins: process.env.ALLOWED_DEV_ORIGINS
+    ? process.env.ALLOWED_DEV_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean)
+    : [],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "cdn.discordapp.com" },

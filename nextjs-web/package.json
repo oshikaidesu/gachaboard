@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "env:local": "bash scripts/switch-env.sh local",
     "env:tailscale": "bash scripts/switch-env.sh tailscale",
     "e2e:server": "concurrently -k \"cd sync-server && PORT=5860 npm run start\" \"E2E_TEST_MODE=1 NEXT_PUBLIC_SYNC_WS_URL=ws://localhost:5860 next dev --port 3010\"",

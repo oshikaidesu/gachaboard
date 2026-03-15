@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import getYouTubeID from "get-youtube-id";
 import { requireLogin } from "@/lib/authz";
 import { env } from "@/lib/env";
+import { checkRateLimit, getRateLimitKey } from "@/lib/rateLimit";
 import type { OgpData } from "@shared/apiTypes";
 import { OGP_CACHE_TTL_MS, OGP_FETCH_TIMEOUT_MS } from "@shared/constants";
 
 const cache = new Map<string, { data: OgpData; ts: number }>();
+const OGP_RATE_LIMIT_PER_MIN = 30;
 
 /** x.com / twitter.com を fxtwitter.com に変換して OGP を正しく取得できるようにする */
 function toFxTwitterUrl(url: string): string {
@@ -39,6 +41,11 @@ export async function GET(req: NextRequest) {
   if (!isE2eMode) {
     const session = await requireLogin();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const key = getRateLimitKey(req, "ogp");
+  if (!checkRateLimit(key, OGP_RATE_LIMIT_PER_MIN)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": "60" } });
   }
 
   const rawUrl = req.nextUrl.searchParams.get("url");

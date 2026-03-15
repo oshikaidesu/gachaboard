@@ -120,6 +120,33 @@ check_env_exists() {
   return 0
 }
 
+# プロジェクトルートの .env が nextjs-web/.env.local へのシンボリックリンクか確認し、
+# 通常ファイルになっていたら修復する（二重管理で env が食い違う問題を防止）
+# 使用: ensure_env_symlink "$ROOT_DIR"
+ensure_env_symlink() {
+  local root_dir="${1:-.}"
+  local env_local="${root_dir}/nextjs-web/.env.local"
+  local env_root="${root_dir}/.env"
+
+  [[ -f "$env_local" ]] || return 0
+
+  if [[ -L "$env_root" ]]; then
+    return 0
+  fi
+
+  if [[ -f "$env_root" ]]; then
+    echo ">>> .env が通常ファイルです。シンボリックリンクに修復します..."
+    cp "$env_root" "$env_local"
+    rm "$env_root"
+    ln -s "nextjs-web/.env.local" "$env_root"
+    echo "    ✓ .env → nextjs-web/.env.local シンボリックリンク復元"
+    return 0
+  fi
+
+  ln -s "nextjs-web/.env.local" "$env_root"
+  echo "    ✓ .env → nextjs-web/.env.local シンボリックリンク作成"
+}
+
 # Docker Engine が応答するか（docker info で CLI 経由の接続を確認）
 _docker_engine_alive() {
   docker info >/dev/null 2>&1

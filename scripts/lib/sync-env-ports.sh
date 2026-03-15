@@ -44,9 +44,15 @@ if grep -q "^DATABASE_URL=" "$ENV_FILE"; then
   update_env_var "DATABASE_URL" "$new_url"
 fi
 
-# S3_ENDPOINT, S3_PUBLIC_URL
+# S3_ENDPOINT（内部用は常に localhost）
 update_env_var "S3_ENDPOINT" "http://localhost:${MINIO_API_HOST_PORT}"
-update_env_var "S3_PUBLIC_URL" "http://localhost:${MINIO_API_HOST_PORT}"
+# S3_PUBLIC_URL: Tailscale（NEXTAUTH_URL が https）のときは空にして getS3PublicUrl() に https://ホスト/minio を導出させる
+NEXTAUTH_VAL=$(get_var NEXTAUTH_URL "")
+if echo "$NEXTAUTH_VAL" | grep -qE "^https://"; then
+  update_env_var "S3_PUBLIC_URL" ""
+else
+  update_env_var "S3_PUBLIC_URL" "http://localhost:${MINIO_API_HOST_PORT}"
+fi
 
 # NEXT_PUBLIC_SYNC_WS_URL, SYNC_SERVER_INTERNAL_URL
 update_env_var "NEXT_PUBLIC_SYNC_WS_URL" "ws://localhost:${SYNC_SERVER_HOST_PORT}"

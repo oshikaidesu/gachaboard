@@ -2,15 +2,35 @@
  * MinIO プロキシ API route
  * /minio/* へのリクエストを S3_ENDPOINT（デフォルト: localhost:18583）に転送する。
  * Host ヘッダを S3_ENDPOINT のホストに設定し、presigned URL の署名と一致させる。
+ *
+ * セキュリティ: アクセス制御は presigned URL の署名に依存する。このプロキシ自体には
+ * 認証はかけていない（presigned URL は署名済みのため、URL を知っている者のみが有効に操作できる）。
+ * CORS はアプリのオリジン（NEXTAUTH_URL）のみ許可し、第三者サイトからの JS アクセスを防ぐ。
  */
 import { NextRequest, NextResponse } from "next/server";
+import { env } from "@/lib/env";
 
-// S3_ENDPOINT と同じホスト名を使う（署名の host と一致させるため）
 const MINIO_ORIGIN = process.env.S3_ENDPOINT || "http://localhost:18583";
+
+/** 許可するオリジン（アプリのベース URL の origin のみ。同一オリジンのみ CORS 許可） */
+function getAllowedOrigin(): string {
+  return new URL(env.NEXTAUTH_URL).origin;
+}
+
+function corsHeaders(req: NextRequest): HeadersInit {
+  const allowOrigin = getAllowedOrigin();
+  const requestOrigin = req.headers.get("origin");
+  const acao = requestOrigin === allowOrigin ? requestOrigin : allowOrigin;
+  return {
+    "access-control-allow-origin": acao,
+    "access-control-allow-methods": "GET, PUT, POST, DELETE, HEAD, OPTIONS",
+    "access-control-allow-headers": "*",
+    "access-control-expose-headers": "etag, x-amz-request-id",
+  };
+}
 
 async function proxy(req: NextRequest) {
   const url = new URL(req.url);
-  // /minio/my-bucket/... → /my-bucket/...
   const minioPath = url.pathname.replace(/^\/minio/, "");
   const dest = `${MINIO_ORIGIN}${minioPath}${url.search}`;
 
@@ -32,13 +52,8 @@ async function proxy(req: NextRequest) {
   }
 
   const res = await fetch(dest, init);
-
   const respHeaders = new Headers(res.headers);
-  // CORS: ブラウザからの直接リクエストを許可
-  respHeaders.set("access-control-allow-origin", "*");
-  respHeaders.set("access-control-allow-methods", "GET, PUT, POST, DELETE, HEAD, OPTIONS");
-  respHeaders.set("access-control-allow-headers", "*");
-  respHeaders.set("access-control-expose-headers", "etag, x-amz-request-id");
+  Object.entries(corsHeaders(req)).forEach(([k, v]) => respHeaders.set(k, v));
 
   return new NextResponse(res.body, {
     status: res.status,
@@ -52,13 +67,9 @@ export async function PUT(req: NextRequest) { return proxy(req); }
 export async function POST(req: NextRequest) { return proxy(req); }
 export async function DELETE(req: NextRequest) { return proxy(req); }
 export async function HEAD(req: NextRequest) { return proxy(req); }
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, {
     status: 204,
-    headers: {
-      "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET, PUT, POST, DELETE, HEAD, OPTIONS",
-      "access-control-allow-headers": "*",
-    },
+    headers: corsHeaders(req),
   });
 }

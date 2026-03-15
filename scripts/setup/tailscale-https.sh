@@ -43,8 +43,9 @@ HOST=$(get_hostname) || {
 echo ">>> ホスト名: $HOST"
 
 # ポートを .env と nextjs-web/.env.local の両方から読み取り（Next.js が使う値と一致させる）
-# デフォルト: 18580 (Next.js), 18583 (MinIO)
+# デフォルト: 18580 (Next.js), 18582 (sync), 18583 (MinIO)
 APP_PORT="18580"
+SYNC_PORT="18582"
 MINIO_PORT="18583"
 
 env_local="${ROOT_DIR}/nextjs-web/.env.local"
@@ -56,6 +57,16 @@ for f in "$env_local" "$env_root"; do
   p=$(grep -E '^PORT=' "$f" 2>/dev/null | cut -d= -f2- | tr -d '"\r')
   if [[ -n "$p" ]]; then
     APP_PORT="$p"
+    break
+  fi
+done
+
+# Sync: SYNC_SERVER_HOST_PORT
+for f in "$env_local" "$env_root"; do
+  [[ -f "$f" ]] || continue
+  p=$(grep -E '^SYNC_SERVER_HOST_PORT=' "$f" 2>/dev/null | cut -d= -f2- | tr -d '"\r')
+  if [[ -n "$p" ]]; then
+    SYNC_PORT="$p"
     break
   fi
 done
@@ -77,11 +88,22 @@ for f in "$env_local" "$env_root"; do
 done
 
 # Caddyfile 生成（Caddy 2.5+ は *.ts.net で Tailscale から自動証明書取得）
-echo ">>> Caddyfile を生成 (Next.js:$APP_PORT, MinIO:$MINIO_PORT)"
+echo ">>> Caddyfile を生成 (Next.js:$APP_PORT, sync:$SYNC_PORT, MinIO:$MINIO_PORT)"
 cat > "$CADDYFILE" << EOF
 # Gachaboard - Tailscale HTTPS
 # Caddy 2.5+ が *.ts.net で Tailscale から自動証明書取得（tailscale cert 不要）
 $HOST {
+    # WebSocket（sync-server）: Tailscale / localhost のみ許可（接続時のみチェックで軽い）
+    handle_path /ws/* {
+        @allow remote_ip 100.64.0.0/10 127.0.0.0/8
+        handle @allow {
+            reverse_proxy localhost:$SYNC_PORT
+        }
+        handle {
+            respond "Forbidden" 403
+        }
+    }
+
     # Next.js
     reverse_proxy localhost:$APP_PORT
 

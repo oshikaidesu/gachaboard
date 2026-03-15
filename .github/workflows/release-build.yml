@@ -29,12 +29,13 @@ jobs:
 
       - name: Create dist zip
         run: |
-          # 配布用: ビルド済み .next を含む（node_modules は除く）
           zip -r gachaboard-dist.zip . \
             -x "node_modules/*" \
             -x "nextjs-web/node_modules/*" \
             -x ".env" \
             -x ".git/*" \
+            -x ".cursor/*" \
+            -x "Caddyfile" \
             -x "*.zip"
 
       - name: Upload artifact

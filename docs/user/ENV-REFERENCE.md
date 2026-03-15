@@ -32,6 +32,12 @@
 
 **自動同期**: `PORT`、`POSTGRES_HOST_PORT`、`SYNC_SERVER_HOST_PORT`、`MINIO_API_HOST_PORT` を編集するだけで、`DATABASE_URL`、`S3_*`、`NEXT_PUBLIC_SYNC_WS_URL` 等は `npm run setup:env` および起動時に自動反映されます。手動で合わせる必要はありません。
 
+### 開発用（Next.js）
+
+| 変数名 | デフォルト | 説明 |
+|--------|------------|------|
+| `ALLOWED_DEV_ORIGINS` | （未設定） | 開発時の Hot Reload 等で許可するオリジン。カンマ区切り（例: `https://a.tailxxx.ts.net,https://b.tailxxx.ts.net`）。未設定時は空配列 |
+
 ### 認証・権限
 
 | 変数名 | デフォルト | 説明 |

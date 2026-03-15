@@ -70,14 +70,31 @@ export const env = createEnv({
   },
 });
 
-/** S3_PUBLIC_URL が未設定時、NEXTAUTH_URL から自動導出（env 切り替えを NEXTAUTH_URL だけにできる） */
+/**
+ * ブラウザから見た S3 リソースの公開 URL ベースを返す。
+ *
+ * NEXTAUTH_URL が HTTPS（Tailscale 等）の場合、S3_PUBLIC_URL が localhost を
+ * 指していても混合コンテンツ（HTTPS→HTTP）になるため /minio プロキシ経由に強制する。
+ */
 export function getS3PublicUrl(): string {
-  if (env.S3_PUBLIC_URL) return env.S3_PUBLIC_URL;
-  const u = new URL(env.NEXTAUTH_URL);
-  if (u.hostname === "localhost" || u.hostname === "127.0.0.1") {
-    return "http://localhost:18583";
+  const authUrl = new URL(env.NEXTAUTH_URL);
+  const isHttps = authUrl.protocol === "https:";
+
+  if (env.S3_PUBLIC_URL) {
+    try {
+      const pub = new URL(env.S3_PUBLIC_URL);
+      if (isHttps && (pub.hostname === "localhost" || pub.hostname === "127.0.0.1")) {
+        return `${authUrl.origin}/minio`;
+      }
+    } catch { /* invalid URL — fall through */ }
+    return env.S3_PUBLIC_URL;
   }
-  return `${u.origin}/minio`;
+
+  if (authUrl.hostname === "localhost" || authUrl.hostname === "127.0.0.1") {
+    const port = env.S3_ENDPOINT ? new URL(env.S3_ENDPOINT).port || "18583" : "18583";
+    return `http://localhost:${port}`;
+  }
+  return `${authUrl.origin}/minio`;
 }
 
 // E2E テストモードは本番環境で使用禁止（認証バイパス等の重大な脆弱性）
