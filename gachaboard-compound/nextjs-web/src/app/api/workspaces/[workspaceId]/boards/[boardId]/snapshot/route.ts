@@ -5,32 +5,36 @@ import { env } from "@/lib/env";
 
 type Params = { params: Promise<{ workspaceId: string; boardId: string }> };
 
+type SnapshotData = {
+  records?: unknown[];
+  reactions?: Record<string, string>;
+  comments?: Record<string, string>;
+  reactionEmojiPreset?: string[] | null;
+  savedAt?: string;
+} | null;
+
 /** GET - Board.snapshotData を取得（sync-server 復旧時の復元用） */
 export async function GET(_req: NextRequest, { params }: Params) {
   const { workspaceId, boardId } = await params;
 
-  // E2E モード時は認証なしで許可（smoke テスト・スクリーンショット用）
+  let data: SnapshotData = null;
+
   if (!env.E2E_TEST_MODE) {
     const ctx = await assertBoardAccess(boardId);
     if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (ctx.board.workspaceId !== workspaceId) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    data = ctx.board.snapshotData as SnapshotData;
+  } else {
+    const board = await db.board.findUnique({
+      where: { id: boardId },
+      select: { snapshotData: true },
+    });
+    if (!board) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    data = board.snapshotData as SnapshotData;
   }
 
-  const board = await db.board.findUnique({
-    where: { id: boardId },
-    select: { snapshotData: true },
-  });
-  if (!board) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  const data = board.snapshotData as {
-    records?: unknown[];
-    reactions?: Record<string, string>;
-    comments?: Record<string, string>;
-    reactionEmojiPreset?: string[] | null;
-    savedAt?: string;
-  } | null;
   const reactionEmojiPreset = data?.reactionEmojiPreset ?? null;
 
   return NextResponse.json({
@@ -45,20 +49,26 @@ export async function GET(_req: NextRequest, { params }: Params) {
 /** PUT - Board.snapshotData を保存（定期的・離脱時にクライアントから送信） */
 export async function PUT(req: NextRequest, { params }: Params) {
   const { workspaceId, boardId } = await params;
+
+  let current: Record<string, unknown> = {};
+
   if (!env.E2E_TEST_MODE) {
     const ctx = await assertBoardAccess(boardId);
     if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (ctx.board.workspaceId !== workspaceId) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    current = (ctx.board.snapshotData as Record<string, unknown> | null) ?? {};
   } else {
-    const boardCheck = await db.board.findUnique({
+    const board = await db.board.findUnique({
       where: { id: boardId },
-      select: { workspaceId: true },
+      select: { workspaceId: true, snapshotData: true },
     });
-    if (boardCheck && boardCheck.workspaceId !== workspaceId) {
+    if (!board) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (board.workspaceId !== workspaceId) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    current = (board.snapshotData as Record<string, unknown> | null) ?? {};
   }
 
   const body = (await req.json()) as {
@@ -76,14 +86,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
         ? body.reactionEmojiPreset.filter((e): e is string => typeof e === "string")
         : null
       : undefined;
-
-  const board = await db.board.findUnique({
-    where: { id: boardId },
-    select: { snapshotData: true },
-  });
-  if (!board) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  const current = (board.snapshotData as Record<string, unknown> | null) ?? {};
   const snapshotData = {
     ...current,
     records,
@@ -104,20 +106,26 @@ export async function PUT(req: NextRequest, { params }: Params) {
 /** PATCH - reactionEmojiPreset のみ部分更新（reaction-preset ページ用） */
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { workspaceId, boardId } = await params;
+
+  let current: Record<string, unknown> = {};
+
   if (!env.E2E_TEST_MODE) {
     const ctx = await assertBoardAccess(boardId);
     if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (ctx.board.workspaceId !== workspaceId) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    current = (ctx.board.snapshotData as Record<string, unknown> | null) ?? {};
   } else {
-    const boardCheck = await db.board.findUnique({
+    const board = await db.board.findUnique({
       where: { id: boardId },
-      select: { workspaceId: true },
+      select: { workspaceId: true, snapshotData: true },
     });
-    if (boardCheck && boardCheck.workspaceId !== workspaceId) {
+    if (!board) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (board.workspaceId !== workspaceId) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    current = (board.snapshotData as Record<string, unknown> | null) ?? {};
   }
 
   const body = (await req.json()) as { reactionEmojiPreset?: string[] | null };
@@ -127,14 +135,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         ? body.reactionEmojiPreset.filter((e): e is string => typeof e === "string")
         : null
       : null;
-
-  const board = await db.board.findUnique({
-    where: { id: boardId },
-    select: { snapshotData: true },
-  });
-  if (!board) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  const current = (board.snapshotData as Record<string, unknown> | null) ?? {};
   const snapshotData = {
     ...current,
     reactionEmojiPreset,
