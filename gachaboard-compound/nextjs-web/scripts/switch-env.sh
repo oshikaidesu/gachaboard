@@ -6,16 +6,26 @@ ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV_FILE="${ROOT}/.env.local"
 
 # Tailscale ホスト名を自動検出（TAILSCALE_HOST 未設定時）
+# tailscale status --json から取得。jq がなくても grep/sed でフォールバック
 detect_tailscale_host() {
-  if command -v tailscale >/dev/null 2>&1; then
-    if command -v jq >/dev/null 2>&1; then
-      local dns
-      dns=$(tailscale status --json --peers=false 2>/dev/null | jq -r '.Self.DNSName // empty')
-      if [[ -n "$dns" && "$dns" != "null" ]]; then
-        echo "${dns%.}"  # 末尾の . を削除
-        return 0
-      fi
-    fi
+  if ! command -v tailscale >/dev/null 2>&1; then
+    return 1
+  fi
+  local json
+  json=$(tailscale status --json --peers=false 2>/dev/null) || return 1
+  [[ -z "$json" ]] && return 1
+
+  local dns
+  if command -v jq >/dev/null 2>&1; then
+    dns=$(echo "$json" | jq -r '.Self.DNSName // empty')
+  else
+    # jq なし: grep/sed で "DNSName":"host.tail12345.ts.net." を抽出
+    dns=$(echo "$json" | grep -o '"DNSName"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"\([^"]*\)"$/\1/')
+  fi
+
+  if [[ -n "$dns" && "$dns" != "null" ]]; then
+    echo "${dns%.}"  # 末尾の . を削除
+    return 0
   fi
   return 1
 }
@@ -43,14 +53,14 @@ case "${1:-}" in
       echo "詳細: docs/ENV-AND-DEPLOYMENT-MODES.md の「Tailscale ホスト名の調べ方」を参照"
       exit 1
     fi
-    NEW_URL="http://${TAILSCALE_HOST}:3000"
-    MODE="Tailscale (${TAILSCALE_HOST})"
+    NEW_URL="https://${TAILSCALE_HOST}"
+    MODE="Tailscale HTTPS (${TAILSCALE_HOST})"
     ;;
   *)
     echo "Usage: $0 local | tailscale"
     echo ""
     echo "  local     - NEXTAUTH_URL=http://localhost:3000（通常開発・WebSocket も動作）"
-    echo "  tailscale - NEXTAUTH_URL を Tailscale ホストに設定（スマホからログイン用）"
+    echo "  tailscale - NEXTAUTH_URL を Tailscale ホストに設定（HTTPS・Caddy 前提）"
     echo "              TAILSCALE_HOST 未指定時は tailscale status から自動検出を試みます"
     echo ""
     echo "例: TAILSCALE_HOST=your-machine.tail12345.ts.net $0 tailscale"
@@ -65,13 +75,25 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-if grep -q '^NEXTAUTH_URL=' "$ENV_FILE"; then
-  tmp=$(mktemp)
-  sed "s|^NEXTAUTH_URL=.*|NEXTAUTH_URL=${NEW_URL}|" "$ENV_FILE" > "$tmp"
-  mv "$tmp" "$ENV_FILE"
-else
-  echo "NEXTAUTH_URL=${NEW_URL}" >> "$ENV_FILE"
-fi
+# NEXTAUTH_URL を更新（S3_PUBLIC_URL は NEXTAUTH_URL から自動導出されるため不要）
+update_env_var() {
+  local key="$1"
+  local val="$2"
+  if grep -q "^${key}=" "$ENV_FILE"; then
+    tmp=$(mktemp)
+    sed "s|^${key}=.*|${key}=${val}|" "$ENV_FILE" > "$tmp"
+    mv "$tmp" "$ENV_FILE"
+  else
+    echo "${key}=${val}" >> "$ENV_FILE"
+  fi
+}
+
+update_env_var "NEXTAUTH_URL" "$NEW_URL"
 
 echo "✓ NEXTAUTH_URL を ${MODE} に設定しました: ${NEW_URL}"
+echo "  S3_PUBLIC_URL は NEXTAUTH_URL から自動導出（localhost→:9000、それ以外→/minio）"
 echo "  Next.js を起動中なら Ctrl+C で止めてから npm run dev で再起動してください。"
+if [[ "${MODE}" == Tailscale* ]]; then
+  echo ""
+  echo "  ※ HTTPS: Tailscale Serve または Caddy のいずれかが必要。docs/user/TAILSCALE_HTTPS_SETUP.md を参照。"
+fi

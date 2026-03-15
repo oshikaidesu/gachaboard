@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/test-results
+video-shape-inspection*.json
 
 # next.js
 /.next/

@@ -4,6 +4,7 @@ import { useRef, useState, useCallback } from "react";
 import { useDrag } from "@use-gesture/react";
 import { useCopyToClipboard } from "usehooks-ts";
 import Link from "next/link";
+import { GachaboardLogo } from "@/app/components/ui/GachaboardLogo";
 import { Identicon } from "@/app/components/ui/Identicon";
 import { UserSharePanel } from "@/app/components/collaboration/UserSharePanel";
 import type { StoredSession } from "@/lib/s3UploadSessionStore";
@@ -85,6 +86,7 @@ export function BoardHeader({
         style={{ touchAction: "pan-y" }}
         className="flex touch-pan-x flex-nowrap select-none items-center gap-3 overflow-x-auto border-b border-zinc-200 bg-white px-4 py-2 z-10 whitespace-nowrap [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [-webkit-overflow-scrolling:touch] dark:border-zinc-700 dark:bg-[#25292e]"
       >
+        <GachaboardLogo size="sm" href={`/workspace/${workspaceId}`} />
         <Link
           href={`/workspace/${workspaceId}`}
           className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline dark:text-slate-300 dark:hover:text-white"

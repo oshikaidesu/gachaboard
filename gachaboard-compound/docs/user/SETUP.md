@@ -69,19 +69,58 @@ docker compose ps
 
 `postgres`、`sync-server`、`minio` が `Up` または `healthy` になっていれば OK。
 
+**アプリ側からまとめて確認**（DB 接続・MinIO・sync・Next.js）:
+
+```bash
+cd nextjs-web && npm run status
+```
+
 ---
 
 ## ステップ 5: アプリを起動
+
+### ワンコマンド起動（env 切り替え込み）
+
+```bash
+cd nextjs-web
+npm run start:tailscale   # Tailscale モード（スマホ等からアクセス用・デフォルト）
+npm run start:local       # ローカルモード（localhost のみ）
+npm run start:tailscale:reset   # リセット＆再起動（Docker 停止 → 再起動）
+npm run start:local:reset
+```
+
+初回のみ、先に `npm install --legacy-peer-deps` と `npx prisma generate`、`npx prisma db push` を実行してください。
+
+#### 起動スクリプトが自動で行うこと
+
+| ステップ | 内容 |
+|----------|------|
+| 1. env 切り替え | `.env.local` の `NEXTAUTH_URL` を自動設定（Tailscale モードは Tailscale CLI からホスト名を自動取得して `https://<ホスト>` に設定） |
+| 2. Docker 起動 | `docker compose up -d` を実行。失敗時は Docker Desktop の状態を判定し、自動で起動・再起動を試みる（macOS のみ、最大 5 分待機） |
+| 3. Next.js 起動 | ポート 3000 を解放（既存プロセスの停止）→ `npm run dev` を実行 |
+| 4. 起動確認 | Next.js が応答するまで最大 60 秒待機 |
+| 5. ブラウザを開く | 起動成功時のみ、ブラウザでアプリ URL を開く（macOS: 前面のブラウザに新タブで追加） |
+
+**Docker 自動起動の詳細（macOS）:**
+
+- Docker Desktop が**未起動** → `open -a Docker` で起動し、Engine の準備完了まで待機
+- Docker Desktop の GUI は動いているが **Engine がハング** → 完全終了 → 再起動 → Engine の準備完了まで待機
+- Docker 接続以外のエラー → エラーメッセージを表示して終了
+
+**`--reset` オプション:** Docker コンテナを一度停止してから再起動します。DB やストレージのデータは保持されます。
+
+### 手動起動
 
 ```bash
 cd nextjs-web
 npm install --legacy-peer-deps
 npx prisma generate
 npx prisma db push
+npm run env:local   # または npm run env:tailscale
 npm run dev
 ```
 
-ブラウザで http://localhost:3000 を開き、Discord でログイン → ワークスペース作成 → ボード作成 → 編集開始。
+ブラウザで http://localhost:3000（ローカル）または Tailscale URL（Tailscale モード）を開き、Discord でログイン → ワークスペース作成 → ボード作成 → 編集開始。
 
 ---
 
@@ -97,10 +136,14 @@ npm run dev
 
 PC 以外から Tailscale 経由でアクセスする場合:
 
-1. **ホスト名を調べる**: `tailscale status --json --peers=false | jq -r .Self.DNSName`
-2. **NEXTAUTH_URL を切り替え**: `cd nextjs-web && npm run env:tailscale`（未指定時は自動検出を試みる）
-3. **Discord Redirect を追加**: `http://<ホスト名>:3000/api/auth/callback/discord`
-4. **Next.js を再起動**
+1. **Tailscale CLI をインストール**（`tailscale` コマンドが見つからない場合）:
+   ```bash
+   brew install tailscale jq
+   ```
+2. **ホスト名を調べる**: `tailscale status --json --peers=false | jq -r .Self.DNSName`
+3. **NEXTAUTH_URL を切り替え**: `cd nextjs-web && npm run env:tailscale`（未指定時は自動検出を試みる）
+4. **Discord Redirect を追加**: `https://<ホスト名>/api/auth/callback/discord`
+5. **Next.js を再起動**
 
 詳細は [ENV-AND-DEPLOYMENT-MODES.md](ENV-AND-DEPLOYMENT-MODES.md) を参照。
 
@@ -145,6 +188,9 @@ npm run test:e2e     # テスト実行
 
 | 症状 | 対処 |
 |------|------|
-| Discord ログイン後にエラー | [discord-auth-troubleshooting.md](discord-auth-troubleshooting.md) を参照 |
+| Discord ログイン後にエラー（Callback） | `npm run status` で PostgreSQL を確認。[discord-auth-troubleshooting.md](discord-auth-troubleshooting.md) も参照 |
 | PostgreSQL 接続エラー | `docker compose ps` で確認。`docker compose up -d postgres` で再起動 |
+| Docker に接続できない | Docker Desktop を起動。起動スクリプト経由なら自動起動を試みる |
+| MinIO 403 エラー | `.env.local` に `S3_PUBLIC_URL` が残っていないか確認（自動導出されるため不要） |
 | ポートが使われている | 3000, 5433, 5858 が他プロセスで使用されていないか確認 |
+| `.env.local` の変更が反映されない | Next.js を再起動（`Ctrl+C` → `npm run dev`）。ホットリロードでは反映されない |

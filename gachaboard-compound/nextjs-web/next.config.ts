@@ -32,6 +32,7 @@ const nextConfig: NextConfig = {
     // npm run dev 時は Next.js がホストで動くため localhost を使用。
     // Next.js を Docker 内で動かす場合は SYNC_SERVER_INTERNAL_URL=http://sync-server:5858 を設定
     const syncDest = process.env.SYNC_SERVER_INTERNAL_URL ?? "http://127.0.0.1:5858";
+    // /minio/* は src/app/minio/[...path]/route.ts が Host ヘッダ付きでプロキシする
     return [
       { source: "/ws/:path*", destination: `${syncDest}/:path*` },
     ];

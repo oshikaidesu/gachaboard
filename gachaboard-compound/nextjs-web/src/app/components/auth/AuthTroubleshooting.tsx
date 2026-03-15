@@ -1,7 +1,9 @@
 /**
  * Discord OAuth ログインエラー時のトラブルシューティング（サインイン・エラーページで共有）
  */
-export function AuthTroubleshooting() {
+type Props = { callbackUrl?: string };
+
+export function AuthTroubleshooting({ callbackUrl }: Props) {
   return (
     <>
       {/* トラブルシューティング: 最も多い原因（PostgreSQL） */}
@@ -15,9 +17,13 @@ export function AuthTroubleshooting() {
           が出ている場合は、Docker で PostgreSQL を起動してください。
         </p>
         <pre className="overflow-x-auto rounded bg-amber-100/80 p-3 text-xs dark:bg-amber-900/30 dark:text-amber-100">
-{`# 1. Docker Desktop を起動（macOS）
+{`# 0. 状態確認（PostgreSQL / MinIO / sync-server）
+cd gachaboard-compound/nextjs-web
+npm run status
+
+# 1. Docker Desktop を起動（macOS・未起動時）
 open -a Docker
-# 30秒ほど待つ
+# 最大5分待つ（起動スクリプト経由なら自動で待機）
 
 # 2. PostgreSQL を起動
 cd gachaboard-compound
@@ -42,9 +48,17 @@ npx prisma db push
             が設定されているか
           </li>
           <li>
-            Discord Developer Portal の Redirect に{" "}
-            <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800 dark:text-zinc-300">http://localhost:3000/api/auth/callback/discord</code>{" "}
-            が追加されているか
+            Discord Developer Portal の Redirect に、以下の URL が追加されているか
+            {callbackUrl ? (
+              <p className="mt-1 break-all rounded bg-zinc-100 p-2 text-xs dark:bg-zinc-800 dark:text-zinc-300">
+                <code>{callbackUrl}</code>
+              </p>
+            ) : (
+              <ul className="ml-4 mt-1 list-inside list-disc text-zinc-600 dark:text-zinc-500">
+                <li>ローカル: <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800 dark:text-zinc-300">http://localhost:3000/api/auth/callback/discord</code></li>
+                <li>Tailscale: <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800 dark:text-zinc-300">https://&lt;あなたのTailscaleホスト&gt;/api/auth/callback/discord</code></li>
+              </ul>
+            )}
           </li>
           <li>
             <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800 dark:text-zinc-300">DATABASE_URL</code> のポートが{" "}

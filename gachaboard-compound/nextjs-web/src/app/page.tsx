@@ -11,7 +11,9 @@ export default async function Home() {
     <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background px-4 py-8 sm:px-6">
       <div className="flex w-full max-w-md flex-col items-center gap-8 text-center">
         <header className="space-y-3">
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-100 sm:text-4xl">
+          <h1 className="flex items-center justify-center gap-3 text-3xl font-semibold text-zinc-900 dark:text-zinc-100 sm:text-4xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon.svg" alt="" width={48} height={48} className="shrink-0" />
             Gachaboard
           </h1>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">

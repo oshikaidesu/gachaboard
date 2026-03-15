@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { GachaboardLogo } from "@/app/components/ui/GachaboardLogo";
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
 import { AssetPreviewModal } from "./components/AssetPreviewModal";
 import { AssetFilters } from "./components/AssetFilters";
@@ -84,16 +85,19 @@ export default function AssetsPage() {
     <main className="flex min-h-screen flex-col bg-background bg-grid-subtle">
       <header className="border-b border-zinc-200 bg-white px-4 py-4 dark:border-zinc-700 dark:bg-[#25292e]">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-zinc-900 dark:text-white">
-              アセット管理
-            </h1>
-            <Link
-              href={`/workspace/${workspaceId}`}
-              className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline dark:text-slate-300 dark:hover:text-white"
-            >
-              ← ボード一覧に戻る
-            </Link>
+          <div className="flex items-center gap-3">
+            <GachaboardLogo size="md" href={`/workspace/${workspaceId}`} />
+            <div>
+              <h1 className="text-2xl font-semibold text-zinc-900 dark:text-white">
+                アセット管理
+              </h1>
+              <Link
+                href={`/workspace/${workspaceId}`}
+                className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline dark:text-slate-300 dark:hover:text-white"
+              >
+                ← ボード一覧に戻る
+              </Link>
+            </div>
           </div>
         </div>
         <div className="mx-auto mt-3 flex max-w-5xl gap-2 border-t border-zinc-200 pt-3 dark:border-slate-600/50">

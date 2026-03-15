@@ -70,6 +70,16 @@ export const env = createEnv({
   },
 });
 
+/** S3_PUBLIC_URL が未設定時、NEXTAUTH_URL から自動導出（env 切り替えを NEXTAUTH_URL だけにできる） */
+export function getS3PublicUrl(): string {
+  if (env.S3_PUBLIC_URL) return env.S3_PUBLIC_URL;
+  const u = new URL(env.NEXTAUTH_URL);
+  if (u.hostname === "localhost" || u.hostname === "127.0.0.1") {
+    return "http://localhost:9000";
+  }
+  return `${u.origin}/minio`;
+}
+
 // E2E テストモードは本番環境で使用禁止（認証バイパス等の重大な脆弱性）
 // サーバーでのみ実行: クライアントで env を import した際、E2E_TEST_MODE 等の
 // サーバー専用変数に触れないようにする（Next.js の client/server 分離）

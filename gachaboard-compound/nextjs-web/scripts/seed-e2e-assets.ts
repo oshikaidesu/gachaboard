@@ -7,6 +7,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { randomUUID } from "crypto";
+import type { Prisma, PrismaClient } from "../src/generated/prisma/client";
 
 const E2E_USER_ID = "__e2e_user__";
 const E2E_WORKSPACE_ID = "__e2e_workspace__";
@@ -42,10 +43,7 @@ export type SeedAsset = {
   tldrawAsset?: { id: string; w: number; h: number };
 };
 
-export async function seedE2EAssets(db: {
-  asset: { create: (args: { data: Record<string, unknown> }) => Promise<{ id: string }> };
-  board: { update: (args: { where: { id: string }; data: { snapshotData: unknown } }) => Promise<unknown> };
-}): Promise<SeedAsset[]> {
+export async function seedE2EAssets(db: PrismaClient): Promise<SeedAsset[]> {
   const { putObject, s3KeyAssets, isS3Enabled } = await import("../src/lib/storage/s3");
   if (!isS3Enabled()) {
     console.log("S3 未設定のためアセットのシードをスキップします");
@@ -244,7 +242,7 @@ export async function seedE2EAssets(db: {
         comments: {},
         reactionEmojiPreset: null,
         savedAt: new Date().toISOString(),
-      },
+      } as Prisma.InputJsonValue,
     },
   });
 

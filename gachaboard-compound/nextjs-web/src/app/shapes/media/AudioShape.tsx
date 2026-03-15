@@ -510,7 +510,7 @@ export class AudioShapeUtil extends BaseBoxShapeUtil<AudioShape> {
   }
 
   override onResize = (shape: AudioShape, info: Parameters<typeof resizeBox>[1]) => {
-    return resizeBox(shape, info, { minWidth: 280, minHeight: BASE_HEIGHT + MIN_COMMENT_LIST_H });
+    return resizeBox(shape, info, { minWidth: 560, minHeight: BASE_HEIGHT + MIN_COMMENT_LIST_H });
   };
 
   override hideSelectionBoundsBg = () => true;

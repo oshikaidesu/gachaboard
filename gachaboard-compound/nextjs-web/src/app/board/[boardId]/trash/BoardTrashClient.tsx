@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { GachaboardLogo } from "@/app/components/ui/GachaboardLogo";
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
 import { useRouter } from "next/navigation";
 import { formatFileSize } from "@shared/utils";
@@ -201,7 +202,10 @@ export default function BoardTrashClient({ boardId, boardName, workspaceId }: Pr
         {/* ヘッダー */}
         <header className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold dark:text-zinc-100">アセットのゴミ箱</h1>
+            <div className="flex items-center gap-3">
+              <GachaboardLogo size="md" href={`/board/${boardId}`} />
+              <h1 className="text-2xl font-semibold dark:text-zinc-100">アセットのゴミ箱</h1>
+            </div>
             <Link
               href={`/board/${boardId}`}
               className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"

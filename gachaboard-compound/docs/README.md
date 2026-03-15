@@ -1,5 +1,6 @@
 # 📚 ドキュメントセンター
 
+<img src="../nextjs-web/public/icon.svg" alt="" width="24" height="24" style="vertical-align: middle;" />
 Gachaboard の利用・運用・開発に関するすべてのドキュメントが集約されています。
 
 ---

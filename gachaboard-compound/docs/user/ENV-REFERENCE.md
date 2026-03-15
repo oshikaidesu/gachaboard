@@ -59,9 +59,12 @@
 
 | 変数 | local | tailscale | production |
 |------|-------|-----------|------------|
-| `NEXTAUTH_URL` | `http://localhost:3000` | `http://<自分のTailscaleホスト>:3000` | `https://...` または `http://<IP or ドメイン>:3000` |
+| `NEXTAUTH_URL` | `http://localhost:3000` | `https://<自分のTailscaleホスト>`（Caddy 前提） | `https://...` または `http://<IP or ドメイン>:3000` |
+| `S3_PUBLIC_URL` | `http://localhost:9000` | `https://<自分のTailscaleホスト>/minio` | 本番の MinIO/S3 公開 URL |
 | `DATABASE_URL` | `postgresql://gachaboard:gachaboard@localhost:5433/gachaboard` | 同上 | 本番 DB の接続文字列 |
-| `NEXT_PUBLIC_SYNC_WS_URL` | `ws://localhost:5858` | `ws://<ホスト>/ws`（Next.js 経由） | 同上 |
+| `NEXT_PUBLIC_SYNC_WS_URL` | `ws://localhost:5858` | （自動: 同一オリジン `/ws` を使用） | 同上 |
+
+`npm run env:local` / `npm run env:tailscale` で NEXTAUTH_URL と S3_PUBLIC_URL を一括切り替えできます。
 
 ---
 

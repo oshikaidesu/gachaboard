@@ -1,5 +1,6 @@
 # nextjs-web
 
+<img src="public/icon.svg" alt="" width="24" height="24" style="vertical-align: middle;" />
 Gachaboard のフロントエンド・API サーバー。
 
 - **プロジェクト全体**: [../README.md](../README.md)
@@ -51,7 +52,7 @@ nextjs-web/
 ├── next.config.ts            # Next.js 設定
 ├── scripts/
 │   └── switch-env.sh         # NEXTAUTH_URL を local/tailscale で切り替え
-├── Dockerfile                # Next.js コンテナ
+├── docker/                   # Next.js 用 Docker ファイル
 └── .env.local                # 環境変数（Git管理外）
 ```
 
@@ -87,6 +88,27 @@ nextjs-web/
 - **削除されたシェイプ**: store から消えるため、残りシェイプの rank は自動で更新される
 
 ---
+
+## ワンコマンド起動
+
+env の切り替え + Docker + Next.js をまとめて起動:
+
+```bash
+npm run start:tailscale   # Tailscale モード（デフォルト）
+npm run start:local      # ローカルモード
+npm run start:tailscale:reset   # リセット＆再起動
+npm run start:local:reset
+```
+
+## 起動確認（手軽）
+
+`docker compose up -d` と `npm run dev` のあと、DB 接続と各サービスをまとめて確認:
+
+```bash
+npm run status
+```
+
+PostgreSQL に繋がらない場合は終了コード 1 で終了します。
 
 ## ローカル開発（Docker なし）
 

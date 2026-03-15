@@ -711,10 +711,10 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<VideoShape & TLBaseBoxShape
   }
 
   override onResize = (shape: VideoShape & TLBaseBoxShape, info: Parameters<typeof resizeBox>[1]) => {
-    const p = shape.props as import("@shared/shapeDefs").VideoProps;
-    const ar = (shape.meta as { aspectRatio?: number } | undefined)?.aspectRatio ?? 16 / 9;
-    const minVideoH = Math.ceil(p.w / ar);
-    return resizeBox(shape, info, { minWidth: 240, minHeight: minVideoH + VIDEO_UI_OVERHEAD + MIN_COMMENT_LIST_H });
+    const defaultW = 480;
+    const defaultVideoAreaH = Math.round(defaultW / (16 / 9));
+    const defaultH = defaultVideoAreaH + VIDEO_UI_OVERHEAD + MIN_COMMENT_LIST_H;
+    return resizeBox(shape, info, { minWidth: defaultW, minHeight: defaultH });
   };
 
   override hideSelectionBoundsBg = () => true;

@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { AuthTroubleshooting } from "@/app/components/auth/AuthTroubleshooting";
+import { env } from "@/lib/env";
 
 type Props = { searchParams: Promise<{ error?: string }> };
 
 export default async function AuthErrorPage({ searchParams }: Props) {
   const { error } = await searchParams;
+  const callbackUrl = `${env.NEXTAUTH_URL.replace(/\/$/, "")}/api/auth/callback/discord`;
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background px-4 py-8 sm:px-6">
@@ -17,12 +19,12 @@ export default async function AuthErrorPage({ searchParams }: Props) {
         </p>
 
         <div className="w-full text-left">
-          <AuthTroubleshooting />
+          <AuthTroubleshooting callbackUrl={callbackUrl} />
         </div>
 
         {error && (
           <p className="w-full rounded-lg border border-red-200 bg-red-50 p-3 text-left text-sm text-red-800 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200">
-            エラー: {error}
+            エラー: {error === "Callback" ? "OAuth コールバック失敗（DB 接続・Redirect URL 等を確認）" : error}
           </p>
         )}
 

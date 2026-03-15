@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { GachaboardLogo } from "@/app/components/ui/GachaboardLogo";
 import type { ApiBoard } from "@shared/apiTypes";
 import { Identicon } from "@/app/components/ui/Identicon";
 import { RenameModal } from "@/app/components/ui/RenameModal";
@@ -101,6 +102,7 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId, e2eH
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3">
+                <GachaboardLogo size="md" href={e2eHeaders ? `/workspaces?testUserId=${encodeURIComponent(e2eHeaders.userId)}&testUserName=${encodeURIComponent(e2eHeaders.userName)}` : "/workspaces"} />
                 <Identicon value={workspaceId} size={40} />
                 <h1 className="text-2xl font-semibold text-zinc-900 dark:text-white">
                   {wsInfo ? wsInfo.name : "ボード一覧"}

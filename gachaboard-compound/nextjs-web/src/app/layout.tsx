@@ -22,6 +22,9 @@ export const metadata: Metadata = {
   title: "Gachaboard",
   description: "音楽・映像・デザインファイルを貼り付けて、みんなで一緒に使えるホワイトボード",
   metadataBase: new URL(siteUrl),
+  icons: {
+    icon: "/favicon.svg",
+  },
   openGraph: {
     title: "Gachaboard",
     description: "音楽・映像・デザインファイルを貼り付けて、みんなで一緒に使えるホワイトボード",

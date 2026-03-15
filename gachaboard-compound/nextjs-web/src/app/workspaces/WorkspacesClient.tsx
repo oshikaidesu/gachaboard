@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useLayoutEffect } from "react";
 import { useOnClickOutside } from "usehooks-ts";
 import Link from "next/link";
+import { GachaboardLogo } from "../components/ui/GachaboardLogo";
 import type { ApiWorkspace } from "@shared/apiTypes";
 import { Identicon, getMinidenticonColor } from "../components/ui/Identicon";
 import { InviteLinkInline } from "../components/ui/InviteLinkInline";
@@ -106,9 +107,12 @@ export default function WorkspacesClient({ currentUserId, e2eHeaders }: Props) {
       <header className="border-b border-zinc-200 bg-white px-4 py-4 dark:border-zinc-700 dark:bg-[#25292e]">
         <div className="mx-auto flex max-w-4xl flex-col gap-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-zinc-900 dark:text-white">ワークスペース</h1>
+            <div className="flex items-center gap-3">
+              <GachaboardLogo size="md" href="/" />
+              <div>
+                <h1 className="text-2xl font-semibold text-zinc-900 dark:text-white">ワークスペース</h1>
               <p className="text-sm text-zinc-500 dark:text-slate-300">共有ホワイトボードのプロジェクトグループ</p>
+              </div>
             </div>
             {tab === "active" && (
               <button
