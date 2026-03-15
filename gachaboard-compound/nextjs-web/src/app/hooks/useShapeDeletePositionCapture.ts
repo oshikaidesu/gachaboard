@@ -4,8 +4,8 @@ import { useCallback, useRef, useEffect } from "react";
 import { Editor, type TLRecord, type TLAsset, type TLAssetId } from "@cmpd/compound";
 import { createDelayedActionQueue } from "@/lib/delayedActionQueue";
 
-// テスト用: 1秒猶予。本番は 10 * 60 * 1000
-const TRASH_DELAY_MS = 1000; // 10 * 60 * 1000; // 10分（Undo の猶予）
+const TRASH_DELAY_MS = 10 * 60 * 1000; // 10分（Undo の猶予）
+const TRASH_STAGGER_MS = 50; // 一括実行時のリクエスト間隔（サーバー負荷分散）
 
 // ---------- 型ガード ----------------------------------------------------------
 
@@ -101,7 +101,8 @@ export function useShapeDeletePositionCapture() {
           body: JSON.stringify({ action: "trash", lastKnownX: x, lastKnownY: y }),
           keepalive: options?.keepalive,
         }).catch(() => {});
-      }
+      },
+      TRASH_STAGGER_MS
     );
 
     const handleBeforeUnload = () => queue.flushAll({ keepalive: true });

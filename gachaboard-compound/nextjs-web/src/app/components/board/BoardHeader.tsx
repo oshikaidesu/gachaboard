@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useDrag } from "@use-gesture/react";
 import { useCopyToClipboard } from "usehooks-ts";
 import Link from "next/link";
@@ -39,11 +40,17 @@ export function BoardHeader({
   onResumeUpload,
   onRefresh,
 }: Props) {
+  const router = useRouter();
   const headerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [, copyToClipboard] = useCopyToClipboard();
   const didDragRef = useRef(false);
   const scrollStartRef = useRef(0);
+
+  const workspaceHref = `/workspace/${workspaceId}`;
+  const prefetchWorkspace = useCallback(() => {
+    router.prefetch(workspaceHref);
+  }, [router, workspaceId]);
 
   const bindDrag = useDrag(
     ({ movement: [mx], first, last }) => {
@@ -88,7 +95,10 @@ export function BoardHeader({
       >
         <GachaboardLogo size="sm" href={`/workspace/${workspaceId}`} />
         <Link
-          href={`/workspace/${workspaceId}`}
+          href={workspaceHref}
+          prefetch={true}
+          onMouseEnter={prefetchWorkspace}
+          onFocus={prefetchWorkspace}
           className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline dark:text-slate-300 dark:hover:text-white"
         >
           ← 戻る

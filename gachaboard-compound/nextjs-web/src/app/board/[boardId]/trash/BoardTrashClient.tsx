@@ -220,6 +220,7 @@ export default function BoardTrashClient({ boardId, boardName, workspaceId }: Pr
             ボード:{" "}
             <span className="font-medium text-zinc-700 dark:text-zinc-300">{boardName}</span>
           </p>
+          </div>
         </header>
 
         {/* 統計バー */}

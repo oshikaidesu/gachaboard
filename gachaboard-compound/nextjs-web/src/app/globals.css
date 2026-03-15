@@ -173,6 +173,12 @@ button[data-testid="rich-text.link"] {
   background-size: contain !important;
 }
 
+/* ホワイトボード: 複数ページ未使用・既存UIとの混乱防止のためメニューゾーンのトリガーを非表示 */
+.tlui-page-menu__trigger,
+[data-testid="main.menu"] {
+  display: none !important;
+}
+
 /* 巻き戻し系（Undo/Redo/Trash等）を少し小さく */
 .tlui-toolbar__extras__controls .tlui-button__icon,
 .tlui-menu-zone .tlui-buttons__horizontal > .tlui-button__icon {
