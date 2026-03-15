@@ -1,6 +1,6 @@
 # 環境変数リファレンス
 
-> Gachaboard で使用する環境変数の一覧。**統合 .env**（推奨）: `cp .env.example .env` して先頭4つを編集 → `npm run setup:env`。ポート・DB・S3 等は自動設定。
+> Gachaboard で使用する環境変数の一覧です。**統合 .env**（推奨）: `cp .env.example .env` のうえ、先頭4項目を編集し、`npm run setup:env` を実行してください。ポート・DB・S3 等は自動設定されます。
 
 ---
 
@@ -69,12 +69,12 @@
 
 ## モード別推奨値
 
-運用モードの詳細は [ENV-AND-DEPLOYMENT-MODES.md](ENV-AND-DEPLOYMENT-MODES.md) を参照。
+運用モードの詳細は [ENV-AND-DEPLOYMENT-MODES.md](ENV-AND-DEPLOYMENT-MODES.md) を参照してください。
 
 | 変数 | local | tailscale | production |
 |------|-------|-----------|------------|
-| `NEXTAUTH_URL` | `http://localhost:3000` | `https://<自分のTailscaleホスト>`（Caddy 前提） | `https://...` または `http://<IP or ドメイン>:3000` |
-| `S3_PUBLIC_URL` | `http://localhost:9000` | `https://<自分のTailscaleホスト>/minio` | 本番の MinIO/S3 公開 URL |
+| `NEXTAUTH_URL` | `http://localhost:3000` | `https://<Tailscaleホスト名>`（Caddy 利用時） | `https://...` または `http://<IP または ドメイン>:3000` |
+| `S3_PUBLIC_URL` | `http://localhost:9000` | `https://<Tailscaleホスト名>/minio` | 本番の MinIO/S3 公開 URL |
 | `DATABASE_URL` | `postgresql://gachaboard:gachaboard@localhost:5433/gachaboard` | 同上 | 本番 DB の接続文字列 |
 | `NEXT_PUBLIC_SYNC_WS_URL` | `ws://localhost:5858` | （自動: 同一オリジン `/ws` を使用） | 同上 |
 
@@ -100,7 +100,7 @@ openssl rand -base64 32
 ### サーバーオーナーの Discord ID
 
 1. Discord で「開発者モード」を有効化（設定 → アプリの設定 → 詳細）
-2. 自分のプロフィールを右クリック → 「ID をコピー」
+2. プロフィール（ユーザーアイコン）を右クリック → 「ID をコピー」を選択
 
 ---
 

@@ -28,7 +28,7 @@ cd ..
 - `npm run build` で Next.js の本番ビルドが実行され、`.next/` が本番用に上書きされます。
 - 完了後、`start.command` をダブルクリックするか `npm start` で本番モードで起動できます。
 
-**初回や DB スキーマ変更後**は、ビルド前に Prisma の反映を推奨します。
+**初回および DB スキーマ変更後**は、ビルド前に Prisma の反映を推奨します。
 
 ```bash
 cd nextjs-web
@@ -42,7 +42,7 @@ cd ..
 
 ## GitHub Actions でビルド・配布する場合
 
-[README の「GitHub でビルドごと配布」](../../README.md#-github-でビルドごと配布) のとおり、タグを push するか Actions から手動実行すると、CI が本番ビルドを作成し `gachaboard-dist.zip` を Artifact / Release に出力します。ローカルで `npm run build` する必要はありません。
+[README の「GitHub でビルドごと配布」](../../README.md#-github-でビルドごと配布) のとおり、タグを push するか Actions から手動実行すると、CI が本番ビルドを作成し `gachaboard-dist.zip` を Artifact / Release に出力します。この場合、ローカルで `npm run build` を実行する必要はありません。
 
 ---
 

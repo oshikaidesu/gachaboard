@@ -1,6 +1,6 @@
 # Tailscale HTTPS セットアップガイド
 
-Tailscale の HTTPS 機能を使って、gachaboard を HTTPS で提供する手順。コード変更不要。
+Tailscale の HTTPS 機能を用いて、Gachaboard を HTTPS で提供する手順です。コードの変更は不要です。
 
 ---
 
@@ -13,7 +13,7 @@ Tailscale の HTTPS 機能を使って、gachaboard を HTTPS で提供する手
 
 ## 方法 A: 自動セットアップ（推奨）
 
-Caddy 2.5+ は `*.ts.net` ドメインで Tailscale から**自動証明書取得**します。`tailscale cert` の手動実行は不要です。
+Caddy 2.5 以降では、`*.ts.net` ドメインに対して Tailscale から**証明書が自動取得**されます。`tailscale cert` の手動実行は不要です。
 
 ```bash
 cd nextjs-web
@@ -151,5 +151,5 @@ sudo caddy run --config Caddyfile
 
 ## 関連ドキュメント
 
-- [運用モードと ENV 設定](./ENV-AND-DEPLOYMENT-MODES.md)
-- [ENV リファレンス](./ENV-REFERENCE.md)
+- [運用モードと環境変数](./ENV-AND-DEPLOYMENT-MODES.md)
+- [環境変数リファレンス](./ENV-REFERENCE.md)

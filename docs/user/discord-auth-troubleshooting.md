@@ -64,7 +64,7 @@ cd nextjs-web
 npx prisma db push
 ```
 
-`🚀 Your database is now in sync with your Prisma schema.` が出れば OK。
+`🚀 Your database is now in sync with your Prisma schema.` と表示されれば、スキーマの適用は成功しています。
 
 ### 3. Next.js を再起動（必要に応じて）
 
@@ -97,15 +97,15 @@ http://localhost:3000 を開き、Discord ログインを試す。
 
 ## Tailscale 経由でスマホからアクセスする場合
 
-Tailscale URL 経由でアクセスしているとき、Discord ログイン後にリダイレクト先が効かないことがある。
+Tailscale URL 経由でアクセスしている場合、Discord ログイン後にリダイレクトが正しく動作しないことがあります。
 
-**原因:** `NEXTAUTH_URL` が `localhost` のままだと、Discord のコールバック先も localhost になり、スマホ側の localhost（=スマホ自身）に飛んでしまうため。
+**原因:** `NEXTAUTH_URL` が `localhost` のままの場合、Discord のコールバック先も localhost となり、スマートフォン側では端末自身の localhost へリダイレクトされてしまうためです。
 
-**対処:** [ENV-AND-DEPLOYMENT-MODES.md](ENV-AND-DEPLOYMENT-MODES.md) の「tailscale モード」を参照。`npm run env:tailscale` で NEXTAUTH_URL を切り替え、Discord Redirect に `https://<Tailscaleホスト>/api/auth/callback/discord` を追加する。
+**対処:** [ENV-AND-DEPLOYMENT-MODES.md](ENV-AND-DEPLOYMENT-MODES.md) の「tailscale モード」を参照し、`npm run env:tailscale` で NEXTAUTH_URL を切り替え、Discord Redirect に `https://<Tailscaleホスト名>/api/auth/callback/discord` を追加してください。
 
 ### コンソールの Hydration 警告（data-kantu）
 
-「A tree hydrated but some attributes of the server rendered HTML didn't match」で `<html>` に `data-kantu="1"` の差分が出る場合、**Kantu などのブラウザ拡張**が HTML を書き換えていることが原因。認証や NEXTAUTH_URL とは無関係。拡張を無効にするか、シークレットウィンドウで開くと出なくなる。無視しても動作には影響しないことが多い。
+「A tree hydrated but some attributes of the server rendered HTML didn't match」と表示され、`<html>` に `data-kantu="1"` の差分が出る場合は、**Kantu などのブラウザ拡張**が HTML を書き換えていることが原因です。認証や NEXTAUTH_URL の設定とは無関係です。拡張を無効にするか、シークレットウィンドウで開くと解消されます。無視しても動作に影響しない場合がほとんどです。
 
 ---
 

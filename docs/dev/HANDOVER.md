@@ -8,7 +8,7 @@
 
 Gachaboard は**音楽・映像・デザインファイルを貼り付けて共有できるリアルタイム共同ホワイトボード**です。
 
-- **対象**: Discord コミュニティ内の身内
+- **対象**: Discord コミュニティなど、限定されたメンバー間での利用を想定
 - **運用**: ローカルサーバー 1 台で完結。クラウド依存を最小化
 - **認証**: Discord OAuth 必須
 
@@ -59,7 +59,7 @@ npm run dev
 ### 環境変数
 
 - 必須: `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `DATABASE_URL`
-- S3/MinIO: `env.local.template` にデフォルト値あり
+- S3/MinIO: `env.local.template` に既定値が含まれています
 - `SERVER_OWNER_DISCORD_ID`: オーナー限定運用時に設定。詳細は [ownership-design.md](../user/ownership-design.md)
 
 ### マイグレーション
