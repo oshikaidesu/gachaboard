@@ -1,4 +1,4 @@
-# Windows でダブルクリックして起動（Tailscale 開発モード）
+# Windows でダブルクリックして起動
 # 右クリック →「PowerShell で実行」またはエクスプローラーで .ps1 を実行
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
@@ -68,5 +68,38 @@ if (-not (Test-Path $envLocal)) {
   exit 1
 }
 
-# ── 起動 ──
-npm run dev
+# ── 起動モード選択 ──
+Write-Host ""
+Write-Host "  起動モードを選んでください（Enter で 1 を選択）:" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "    1) 本番モード（既存ビルドで起動・デフォルト）"
+Write-Host "    2) ビルドを再生成してから本番モードで起動"
+Write-Host "    3) 開発モードで起動（ホットリロード）"
+Write-Host ""
+$choice = Read-Host "  1 / 2 / 3 [1]"
+if ([string]::IsNullOrWhiteSpace($choice)) { $choice = "1" }
+
+switch ($choice) {
+  "2" {
+    Write-Host ""
+    Write-Host ">>> ビルドを再生成しています..." -ForegroundColor Cyan
+    Push-Location (Join-Path $PSScriptRoot "nextjs-web")
+    try {
+      npx prisma generate
+      npm run build
+    } catch {
+      Write-Host "ビルドに失敗しました" -ForegroundColor Red
+      Pop-Location
+      exit 1
+    }
+    Pop-Location
+    Write-Host ""
+    npm run start
+  }
+  "3" {
+    npm run dev
+  }
+  default {
+    npm run start
+  }
+}

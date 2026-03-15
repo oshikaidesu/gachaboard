@@ -55,13 +55,14 @@ npx prisma db push
             ) : (
               <ul className="ml-4 mt-1 list-inside list-disc text-zinc-600 dark:text-zinc-500">
                 <li>ローカル: <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800 dark:text-zinc-300">http://localhost:18580/api/auth/callback/discord</code></li>
-                <li>Tailscale: <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800 dark:text-zinc-300">https://&lt;あなたのTailscaleホスト&gt;/api/auth/callback/discord</code></li>
+                <li>Tailscale: <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800 dark:text-zinc-300">https://&lt;Tailscaleホスト名&gt;/api/auth/callback/discord</code></li>
               </ul>
             )}
           </li>
           <li>
             <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800 dark:text-zinc-300">DATABASE_URL</code> のポートが{" "}
-            <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800 dark:text-zinc-300">5433</code> になっているか
+            <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800 dark:text-zinc-300">.env</code> の{" "}
+            <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800 dark:text-zinc-300">POSTGRES_HOST_PORT</code>（デフォルト: 18581）と一致しているか
           </li>
         </ul>
       </section>

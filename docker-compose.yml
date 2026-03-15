@@ -58,6 +58,28 @@ services:
       exit 0;
       "
 
+  web:
+    profiles: ["app"]
+    container_name: compound-web
+    build:
+      context: ./nextjs-web
+      dockerfile: docker/Dockerfile.prod
+    ports:
+      - "127.0.0.1:${PORT:-18580}:3000"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://gachaboard:gachaboard@postgres:5432/gachaboard
+      S3_ENDPOINT: http://minio:9000
+      SYNC_SERVER_INTERNAL_URL: http://sync-server:5858
+    depends_on:
+      postgres:
+        condition: service_healthy
+      sync-server:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
 volumes:
   compound_postgres_data:
   compound_minio_data:

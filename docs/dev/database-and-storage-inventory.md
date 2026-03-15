@@ -9,10 +9,10 @@
 
 | サービス | ポート | 役割 |
 |----------|--------|------|
-| **Next.js** | 3000 | Web アプリ本体（認証・API・フロント） |
-| **PostgreSQL** | 5433 | ユーザー・ワークスペース・ボード・アセットのメタデータ |
-| **sync-server** | 5858 | Yjs WebSocket サーバー（リアルタイム共同編集） |
-| **MinIO** | 9000 | S3 互換ストレージ（ファイル本体） |
+| **Next.js** | 18580 | Web アプリ本体（認証・API・フロント） |
+| **PostgreSQL** | 18581 | ユーザー・ワークスペース・ボード・アセットのメタデータ |
+| **sync-server** | 18582 | Yjs WebSocket サーバー（リアルタイム共同編集） |
+| **MinIO** | 18583 | S3 互換ストレージ（ファイル本体） |
 
 最小構成（アプリ + DB）に、リアルタイム同期とファイルストレージを足した構成。`docker compose up -d` で postgres / sync-server / minio を起動。Next.js は `npm run dev` で別途起動。
 
@@ -47,7 +47,7 @@ flowchart TB
 
 ## 2. PostgreSQL（Prisma）
 
-**接続**: `DATABASE_URL`（Docker: `postgresql://gachaboard:gachaboard@localhost:5433/gachaboard`）
+**接続**: `DATABASE_URL`（Docker: `postgresql://gachaboard:gachaboard@localhost:18581/gachaboard`）
 
 ### 2.1 スキーマ一覧
 
@@ -86,7 +86,7 @@ flowchart TB
 ## 3. sync-server（Y.Doc）
 
 **プロセス**: `y-websocket-server`（y-websocket 同梱）  
-**ポート**: 5858（デフォルト）
+**ポート**: 18582（デフォルト）
 
 | 項目 | 内容 |
 |------|------|
@@ -112,7 +112,7 @@ flowchart TB
 
 ### 4.3 MinIO CORS
 
-MinIO を別オリジン（例: localhost:9000）で使う場合、バケットに CORS を設定する必要があります。`mc` または MinIO Console で、アプリのオリジン（例: `http://localhost:3000`）を許可してください。
+MinIO を別オリジン（例: localhost:18583）で使う場合、バケットに CORS を設定する必要があります。`mc` または MinIO Console で、アプリのオリジン（例: `http://localhost:18580`）を許可してください。
 
 ### 4.4 参照
 

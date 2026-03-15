@@ -40,12 +40,6 @@ cd ..
 
 ---
 
-## GitHub Actions でビルド・配布する場合
-
-[README の「GitHub でビルドごと配布」](../../README.md#-github-でビルドごと配布) のとおり、タグを push するか Actions から手動実行すると、CI が本番ビルドを作成し `gachaboard-dist.zip` を Artifact / Release に出力します。この場合、ローカルで `npm run build` を実行する必要はありません。
-
----
-
 ## 関連
 
 - [SETUP.md](SETUP.md) … 初回セットアップ

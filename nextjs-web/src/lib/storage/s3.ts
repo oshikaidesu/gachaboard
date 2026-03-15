@@ -29,8 +29,8 @@ function getClient(): S3Client {
 /**
  * Presigned URL のホスト部分を公開パスに書き換える。
  *
- * 署名は localhost:9000 で作成し、URL のホスト部分だけ /minio に置換する。
- * /minio/* は API route が受けて Host: localhost:9000 で MinIO に転送するため、
+ * 署名は S3_ENDPOINT（デフォルト: localhost:18583）で作成し、URL のホスト部分だけ /minio に置換する。
+ * /minio/* は API route が受けて Host ヘッダを S3_ENDPOINT に設定して MinIO に転送するため、
  * 署名が一致する。
  */
 function rewritePresignedUrl(url: string): string {

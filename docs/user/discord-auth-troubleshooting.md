@@ -77,7 +77,7 @@ npm run dev
 
 ### 4. ブラウザで再試行
 
-http://localhost:3000 を開き、Discord ログインを試す。
+http://localhost:18580 を開き、Discord ログインを試す。
 
 ---
 
@@ -90,8 +90,8 @@ http://localhost:3000 を開き、Discord ログインを試す。
 | DB スキーマが適用されているか | `npx prisma db push` を実行 |
 | `.env.local` に `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` があるか | ファイルを確認 |
 | `.env.local` に `NEXTAUTH_SECRET` があるか | ファイルを確認 |
-| `.env.local` の `DATABASE_URL` のポートが `5433` か | `postgresql://...@localhost:5433/...` |
-| Discord Developer Portal の Redirect URL | `http://localhost:3000/api/auth/callback/discord` |
+| `.env.local` の `DATABASE_URL` のポートが `18581` か | `postgresql://...@localhost:18581/...` |
+| Discord Developer Portal の Redirect URL | `http://localhost:18580/api/auth/callback/discord` |
 
 ---
 
@@ -121,13 +121,13 @@ docker compose up -d postgres
 
 # 3. sync-server を起動（別ターミナル）
 cd nextjs-web/sync-server
-PORT=5858 npm run start
+PORT=18582 npm run start
 
 # 4. Next.js を起動（別ターミナル）
 cd nextjs-web
 npm run dev
 
-# → http://localhost:3000 でアクセス
+# → http://localhost:18580 でアクセス
 ```
 
 ---

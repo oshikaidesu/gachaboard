@@ -41,15 +41,21 @@ if [[ "$DO_RESET" == true ]]; then
 fi
 if ! run_docker_compose_up; then
   echo ""
-  echo "❌ Docker に接続できません。Docker Desktop を起動してから再試行してください。"
-  echo "   macOS: open -a Docker"
+  echo "❌ Docker サービスの起動に失敗しました。上記のエラーを確認してください。"
   exit 1
 fi
 
+if [[ "$DO_DEV" != true ]] && [[ ! -f "nextjs-web/.next/BUILD_ID" ]]; then
+  echo ">>> 本番ビルドが見つかりません。ビルドを実行します..."
+  cd nextjs-web
+  npx prisma generate
+  npm run build
+  cd "$ROOT_DIR"
+fi
 if [[ "$DO_DEV" == true ]]; then
   echo ">>> 4. アプリ起動（開発モード）"
 else
-  echo ">>> 4. アプリ起動（既存ビルド）"
+  echo ">>> 4. アプリ起動（本番モード）"
 fi
 if [[ -f .env ]]; then
   port_val=$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2- | tr -d '"\r')

@@ -26,7 +26,7 @@ cd gachaboard
 
 1. [Discord Developer Portal](https://discord.com/developers/applications) にログイン
 2. 「New Application」でアプリを作成
-3. OAuth2 → Redirects に `http://localhost:3000/api/auth/callback/discord` を追加
+3. OAuth2 → Redirects に `http://localhost:18580/api/auth/callback/discord` を追加
 4. OAuth2 → General で **Client ID** と **Client Secret** をコピー
 
 ---
@@ -45,8 +45,8 @@ cp env.local.template .env.local
 | `DISCORD_CLIENT_ID` | ステップ 2 | `1234567890123456789` |
 | `DISCORD_CLIENT_SECRET` | 同上 | `abcdef123456...` |
 | `NEXTAUTH_SECRET` | `openssl rand -base64 32` で生成 | - |
-| `NEXTAUTH_URL` | そのまま | `http://localhost:3000` |
-| `DATABASE_URL` | そのまま（Docker 用） | `postgresql://gachaboard:gachaboard@localhost:5433/gachaboard` |
+| `NEXTAUTH_URL` | そのまま | `http://localhost:18580` |
+| `DATABASE_URL` | そのまま（Docker 用） | `postgresql://gachaboard:gachaboard@localhost:18581/gachaboard` |
 | `SERVER_OWNER_DISCORD_ID` | 任意。管理者の Discord ID を設定するとサーバーオーナー権限を付与 | 未設定でも可 |
 
 **S3/MinIO**: `env.local.template` に既定値が含まれています。そのままで問題ありません。MinIO はステップ 4 で Docker により起動されます。
@@ -97,7 +97,7 @@ npm run start:local:reset
 |----------|------|
 | 1. env 切り替え | `.env.local` の `NEXTAUTH_URL` を自動設定（Tailscale モードは Tailscale CLI からホスト名を自動取得して `https://<ホスト>` に設定） |
 | 2. Docker 起動 | `docker compose up -d` を実行。失敗時は Docker Desktop の状態を判定し、自動で起動・再起動を試みる（macOS のみ、最大 5 分待機） |
-| 3. Next.js 起動 | ポート 3000 を解放（既存プロセスの停止）→ `npm run dev` を実行 |
+| 3. Next.js 起動 | ポート 18580 を解放（既存プロセスの停止）→ `npm run dev` を実行 |
 | 4. 起動確認 | Next.js が応答するまで最大 60 秒待機 |
 | 5. ブラウザを開く | 起動成功時のみ、ブラウザでアプリ URL を開く（macOS: 前面のブラウザに新タブで追加） |
 
@@ -120,7 +120,7 @@ npm run env:local   # または npm run env:tailscale
 npm run dev
 ```
 
-ブラウザで http://localhost:3000（ローカル）または Tailscale URL（Tailscale モード）を開き、Discord でログイン後、ワークスペース作成 → ボード作成 → 編集を開始してください。
+ブラウザで http://localhost:18580（ローカル）または Tailscale URL（Tailscale モード）を開き、Discord でログイン後、ワークスペース作成 → ボード作成 → 編集を開始してください。
 
 ---
 
@@ -155,10 +155,10 @@ PC 以外から Tailscale 経由でアクセスする場合:
 
 | サービス | ポート | 用途 |
 |----------|--------|------|
-| Next.js | 3000 | Web アプリ |
-| PostgreSQL | 5433 | DB（ホスト側） |
-| sync-server | 5858 | Yjs WebSocket |
-| MinIO | 9000, 9001 | S3 互換ストレージ |
+| Next.js | 18580 | Web アプリ |
+| PostgreSQL | 18581 | DB（ホスト側） |
+| sync-server | 18582 | Yjs WebSocket |
+| MinIO | 18583, 18584 | S3 互換ストレージ |
 
 ### ffmpeg
 
@@ -171,7 +171,7 @@ Docker を使わない場合:
 ```bash
 cd nextjs-web/sync-server
 npm install
-PORT=5858 HOST=0.0.0.0 npm start
+PORT=18582 HOST=0.0.0.0 npm start
 ```
 
 ### E2E テスト
@@ -192,5 +192,5 @@ npm run test:e2e     # テスト実行
 | PostgreSQL 接続エラー | `docker compose ps` で状態を確認し、`docker compose up -d postgres` で再起動してください。 |
 | Docker に接続できない | Docker Desktop を起動してください。起動スクリプト経由の場合は自動起動を試みます。 |
 | MinIO 403 エラー | `.env.local` に `S3_PUBLIC_URL` が残っていないか確認してください（自動導出されるため手動設定は不要です）。 |
-| ポートが使用中 | 3000, 5433, 5858 が他プロセスで使用されていないか確認してください。 |
+| ポートが使用中 | 18580, 18581, 18582 が他プロセスで使用されていないか確認してください。 |
 | `.env.local` の変更が反映されない | Next.js を再起動してください（`Ctrl+C` → `npm run dev`）。ホットリロードでは環境変数は反映されません。 |

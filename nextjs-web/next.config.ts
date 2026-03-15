@@ -4,6 +4,7 @@ import path from "path";
 import "./src/lib/env";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   // マルチ lockfile 環境でのパス解決を安定させる
   outputFileTracingRoot: path.resolve(process.cwd()),
   // 開発時のターミナル出力を抑える

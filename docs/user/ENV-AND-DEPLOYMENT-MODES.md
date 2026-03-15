@@ -8,7 +8,7 @@
 
 | モード | 用途 | NEXTAUTH_URL | 主な想定 |
 |--------|------|--------------|----------|
-| **local** | 単一マシンの localhost のみ | `http://localhost:3000` | 開発・単一環境での利用 |
+| **local** | 単一マシンの localhost のみ | `http://localhost:18580` | 開発・単一環境での利用 |
 | **tailscale** | スマートフォン・他端末から Tailscale 経由でアクセス | `https://<Tailscaleホスト名>`（Caddy 利用時） | 限定メンバーとの共有・リモートアクセス |
 | **production** | Linux 本番サーバー | `https://...` または `http://<IP または ドメイン>:3000` | サーバー運用 |
 
@@ -18,9 +18,9 @@
 
 ### local（ローカルのみ）
 
-1. `NEXTAUTH_URL=http://localhost:3000` を `.env.local` に設定
-2. Discord OAuth の Redirect に `http://localhost:3000/api/auth/callback/discord` を追加
-3. `npm run dev` で起動 → http://localhost:3000 でアクセス
+1. `NEXTAUTH_URL=http://localhost:18580` を `.env.local` に設定
+2. Discord OAuth の Redirect に `http://localhost:18580/api/auth/callback/discord` を追加
+3. `npm run dev` で起動 → http://localhost:18580 でアクセス
 
 ### tailscale（スマホ・他端末から・HTTPS）
 
@@ -112,7 +112,7 @@ TAILSCALE_HOST=your-machine.tail12345.ts.net npm run env:tailscale
 
 | NEXTAUTH_URL | S3_PUBLIC_URL（自動） | 経路 |
 |---|---|---|
-| `http://localhost:3000` | `http://localhost:9000` | ブラウザ → MinIO に直接接続 |
+| `http://localhost:18580` | `http://localhost:18583` | ブラウザ → MinIO に直接接続 |
 | `https://<Tailscaleホスト>` | `https://<Tailscaleホスト>/minio` | ブラウザ → Next.js API route → MinIO |
 
 **注意:** 環境変数を切り替えたあとは、Next.js を再起動（`Ctrl+C` → `npm run dev`）してください。`.env.local` はホットリロードの対象外です。
@@ -138,9 +138,9 @@ TAILSCALE_HOST=your-machine.tail12345.ts.net npm run env:tailscale
 Tailscale モードでは、MinIO へのアクセスは Next.js の API route (`/minio/*`) が自動でプロキシします。Caddy や Tailscale Serve の設定は不要です。
 
 **仕組み:**
-1. Presigned URL を `http://localhost:9000` で署名
+1. Presigned URL を `http://localhost:18583` で署名
 2. URL のホスト部分を `/minio` パスに書き換えてブラウザに返す
-3. ブラウザが `/minio/*` にリクエスト → Next.js API route が `Host: localhost:9000` を設定して MinIO に転送
+3. ブラウザが `/minio/*` にリクエスト → Next.js API route が `Host: localhost:18583` を設定して MinIO に転送
 4. MinIO は署名と Host が一致するため認証 OK
 
 これにより HTTPS ページから MinIO に安全にアクセスでき、Mixed Content エラーも発生しません。

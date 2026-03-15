@@ -1,7 +1,7 @@
 /**
  * MinIO プロキシ API route
- * /minio/* へのリクエストを localhost:9000 に転送する。
- * Host ヘッダを localhost:9000 に設定するため、presigned URL の署名が一致する。
+ * /minio/* へのリクエストを S3_ENDPOINT（デフォルト: localhost:18583）に転送する。
+ * Host ヘッダを S3_ENDPOINT のホストに設定し、presigned URL の署名と一致させる。
  */
 import { NextRequest, NextResponse } from "next/server";
 

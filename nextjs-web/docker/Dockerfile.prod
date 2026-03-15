@@ -1,5 +1,5 @@
-# 本番ビルド用 Dockerfile
-# next build を実行し、next start で起動する
+# 本番ビルド用 Dockerfile（standalone 出力対応）
+# next build で standalone を生成し、node server.js で起動する
 
 FROM node:20-bookworm AS builder
 
@@ -11,12 +11,11 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
-# prisma generate は DB に接続しないのでダミー URL で可
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN npx prisma generate && npm run build
 
 # -----------------------------------------------------------------------------
-# runner: 本番実行用
+# runner: standalone 出力ベースの本番実行用
 # -----------------------------------------------------------------------------
 FROM node:20-bookworm AS runner
 
@@ -27,17 +26,18 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# 本番に必要なファイルのみコピー
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/next.config.ts ./
+# standalone 出力をコピー
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
+
+# Prisma: db push 用に schema と CLI をコピー
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./
-COPY --from=builder /app/src/generated ./src/generated
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
 EXPOSE 3000
 
-# 起動時に DB スキーマを適用してから Next.js を起動
-CMD ["sh", "-c", "npx prisma db push --url \"$DATABASE_URL\" --skip-generate 2>/dev/null || true && exec npm run start -- --hostname 0.0.0.0 --port 3000"]
+# 起動時に DB スキーマを適用してから Next.js を起動（standalone はデフォルトで 0.0.0.0 にバインド）
+ENV PORT=3000
+CMD ["sh", "-c", "npx prisma generate 2>/dev/null || true && npx prisma db push --url \"$DATABASE_URL\" --skip-generate 2>/dev/null || true && exec node server.js"]

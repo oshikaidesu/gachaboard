@@ -2,6 +2,8 @@
   "name": "gachaboard",
   "private": true,
   "scripts": {
+    "up": "docker compose --profile app up -d",
+    "down": "docker compose --profile app down",
     "start": "bash scripts/start/tailscale.sh",
     "start:tailscale": "bash scripts/start/tailscale.sh",
     "start:tailscale:reset": "bash scripts/start/tailscale.sh --reset",

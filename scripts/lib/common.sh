@@ -120,9 +120,9 @@ check_env_exists() {
   return 0
 }
 
-# Docker Engine が応答するか（ソケット経由で _ping）
+# Docker Engine が応答するか（docker info で CLI 経由の接続を確認）
 _docker_engine_alive() {
-  curl -sf --unix-socket "$HOME/.docker/run/docker.sock" http://localhost/_ping >/dev/null 2>&1
+  docker info >/dev/null 2>&1
 }
 
 # macOS: Docker Desktop を完全終了→再起動→Engine 準備完了まで待つ
@@ -147,53 +147,80 @@ _restart_docker_desktop() {
 
 # docker compose up -d を実行。失敗時は Docker Desktop の起動・再起動を試みる
 run_docker_compose_up() {
-  # 1. まず普通に試す
-  local err
-  if err=$(docker compose up -d 2>&1); then
-    echo "$err"
-    return 0
-  fi
+  local max_compose_retries=3
+  local compose_retry_interval=5
 
-  # Docker 接続エラー以外ならそのまま失敗
-  if [[ "$err" != *"Cannot connect to the Docker daemon"* ]] && [[ "$err" != *"docker daemon running"* ]]; then
-    echo "$err"
-    return 1
-  fi
-
-  # macOS 以外は案内のみ
-  if [[ "$(uname)" != "Darwin" ]] || [[ ! -d "/Applications/Docker.app" ]]; then
-    echo "$err"
-    return 1
-  fi
-
-  # 2. Docker Desktop の GUI が動いているか確認
-  if pgrep -f "Docker Desktop" >/dev/null 2>&1; then
-    # GUI はあるが Engine が死んでいる → 再起動
-    echo ""
-    echo ">>> Docker Desktop は起動していますが、Engine が応答しません。再起動します..."
-    if ! _restart_docker_desktop; then
+  # 1. 事前チェック: Engine が応答しない場合は compose 前に Docker を起動/待機
+  if ! _docker_engine_alive; then
+    if [[ "$(uname)" == "Darwin" ]] && [[ -d "/Applications/Docker.app" ]]; then
+      if pgrep -f "Docker Desktop" >/dev/null 2>&1; then
+        echo ""
+        echo ">>> Docker Desktop は起動していますが、Engine が応答しません。再起動します..."
+        if ! _restart_docker_desktop; then
+          return 1
+        fi
+      else
+        echo ""
+        echo ">>> Docker Desktop が未起動のため、起動します..."
+        open -a Docker
+        echo "    Engine の起動を待機中（最大5分）..."
+        for i in $(seq 1 300); do
+          if _docker_engine_alive; then
+            echo "    ✓ Docker Engine 起動完了 (${i}秒)"
+            break
+          fi
+          sleep 1
+          if [[ $i -eq 300 ]]; then
+            return 1
+          fi
+        done
+      fi
+    else
+      echo ""
+      echo "❌ Docker に接続できません。Docker Desktop を起動してから再試行してください。"
+      echo "   macOS: open -a Docker"
       return 1
     fi
-  else
-    # Docker Desktop 自体が未起動 → 起動
-    echo ""
-    echo ">>> Docker Desktop が未起動のため、起動します..."
-    open -a Docker
-    echo "    Engine の起動を待機中（最大5分）..."
-    for i in $(seq 1 300); do
-      if _docker_engine_alive; then
-        echo "    ✓ Docker Engine 起動完了 (${i}秒)"
-        break
-      fi
-      sleep 1
-      if [[ $i -eq 300 ]]; then
-        return 1
-      fi
-    done
   fi
 
-  # 3. Engine が起動したので docker compose をリトライ
-  docker compose up -d
+  # 2. 古いコンテナを掃除してから docker compose up -d を実行（最大3回リトライ、5秒間隔）
+  docker compose down --remove-orphans 2>/dev/null || true
+
+  local attempt=1
+  local err
+  while true; do
+    if err=$(docker compose up -d --remove-orphans 2>&1); then
+      echo "$err"
+      return 0
+    fi
+
+    echo ""
+    echo ">>> docker compose up -d が失敗しました (試行 ${attempt}/${max_compose_retries}):"
+    echo "$err"
+
+    if [[ $attempt -ge $max_compose_retries ]]; then
+      return 1
+    fi
+
+    # Engine 接続系のエラーかどうか判定（Engine 以外の問題なら再起動しても無駄）
+    if ! _docker_engine_alive; then
+      if [[ "$(uname)" == "Darwin" ]] && [[ -d "/Applications/Docker.app" ]]; then
+        echo ""
+        echo ">>> Docker Engine が応答しません。Docker Desktop を再起動します..."
+        if ! _restart_docker_desktop; then
+          return 1
+        fi
+      else
+        echo ""
+        echo "❌ Docker Engine に接続できません。Docker を起動してから再試行してください。"
+        return 1
+      fi
+    fi
+
+    attempt=$((attempt + 1))
+    echo "    ${compose_retry_interval}秒後にリトライ (${attempt}/${max_compose_retries})..."
+    sleep "$compose_retry_interval"
+  done
 }
 
 # 指定ポートを解放（既存の Next.js を停止）
