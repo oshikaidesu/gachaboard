@@ -1,0 +1,20 @@
+{
+  "name": "gachaboard",
+  "private": true,
+  "scripts": {
+    "start": "bash scripts/start/tailscale.sh",
+    "start:tailscale": "bash scripts/start/tailscale.sh",
+    "start:tailscale:reset": "bash scripts/start/tailscale.sh --reset",
+    "start:local": "bash scripts/start/local.sh",
+    "start:local:reset": "bash scripts/start/local.sh --reset",
+    "start:production": "bash scripts/start/production.sh",
+    "dev": "bash scripts/start/tailscale.sh --dev",
+    "dev:tailscale": "bash scripts/start/tailscale.sh --dev",
+    "dev:tailscale:reset": "bash scripts/start/tailscale.sh --dev --reset",
+    "dev:local": "bash scripts/start/local.sh --dev",
+    "dev:local:reset": "bash scripts/start/local.sh --dev --reset",
+    "setup:env": "node scripts/setup/run-env-setup.mjs",
+    "env:sync": "bash scripts/lib/sync-env-ports.sh",
+    "setup:tailscale-https": "bash scripts/setup/tailscale-https.sh"
+  }
+}

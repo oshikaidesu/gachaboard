@@ -1,0 +1,53 @@
+# リリース時にビルドして GitHub Releases に配布
+# 使い方: タグを push するか、Actions から手動実行
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: nextjs-web/package-lock.json
+
+      - name: Install & Build
+        working-directory: nextjs-web
+        run: |
+          npm ci --legacy-peer-deps
+          npx prisma generate
+          npm run build
+
+      - name: Create dist zip
+        run: |
+          # 配布用: ビルド済み .next を含む（node_modules は除く）
+          zip -r gachaboard-dist.zip . \
+            -x "node_modules/*" \
+            -x "nextjs-web/node_modules/*" \
+            -x ".env" \
+            -x ".git/*" \
+            -x "*.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gachaboard-dist
+          path: gachaboard-dist.zip
+
+      - name: Create Release (tag 時のみ)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: gachaboard-dist.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
