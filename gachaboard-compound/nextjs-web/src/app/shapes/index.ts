@@ -28,6 +28,7 @@ import {
 } from "./NativeShapeWrappers";
 import {
   SHAPE_TYPE,
+  MEDIA_ICON_KINDS,
   resolveShapeType,
   type FileIconShape,
   type AudioShape,
@@ -116,13 +117,12 @@ async function createShapeForResolved(
       props: textProps,
     });
   } else if (type === SHAPE_TYPE.AUDIO) {
-    const bp = baseProps as Record<string, unknown>;
+    const defaultProps = new AudioShapeUtil().getDefaultProps();
     const audioProps: AudioShape["props"] = {
+      ...defaultProps,
       assetId: String(assetData.assetId ?? ""),
       fileName: String(assetData.fileName ?? ""),
       mimeType: String(assetData.mimeType ?? ""),
-      w: Number(bp.w ?? 96) || 96,
-      h: Number(bp.h ?? 96) || 96,
     };
     editor.createShape<AudioShape>({
       id,
@@ -154,11 +154,17 @@ export async function placeFile(
   data: ApiAsset,
   position: { x: number; y: number },
   createdBy = "Unknown",
-  existingShapeId?: ReturnType<typeof createShapeId>
+  existingShapeId?: ReturnType<typeof createShapeId>,
+  createdByAvatarUrl?: string | null
 ): Promise<void> {
   const mime = file.type || "application/octet-stream";
   const { x, y } = position;
-  const meta = { createdBy, sizeBytes: data.sizeBytes, createdAt: Date.now() };
+  const meta: Record<string, unknown> = {
+    createdBy,
+    sizeBytes: data.sizeBytes,
+    createdAt: Date.now(),
+    ...(createdByAvatarUrl && { createdByAvatarUrl }),
+  };
 
   if (mime.startsWith("image/")) {
     const { w, h } = await getImageDisplaySize(file);
@@ -212,11 +218,17 @@ export async function placeAsset(
   data: ApiAsset,
   position: { x: number; y: number },
   createdBy = "Unknown",
-  existingShapeId?: ReturnType<typeof createShapeId>
+  existingShapeId?: ReturnType<typeof createShapeId>,
+  createdByAvatarUrl?: string | null
 ): Promise<void> {
   const mime = data.mimeType || "application/octet-stream";
   const { x, y } = position;
-  const meta = { createdBy, sizeBytes: data.sizeBytes, createdAt: Date.now() };
+  const meta: Record<string, unknown> = {
+    createdBy,
+    sizeBytes: data.sizeBytes,
+    createdAt: Date.now(),
+    ...(createdByAvatarUrl && { createdByAvatarUrl }),
+  };
 
   if (mime.startsWith("image/")) {
     const fileUrl = `/api/assets/${data.id}/file`;
@@ -262,11 +274,17 @@ export async function placeholderShape(
   editor: Editor,
   file: File,
   position: { x: number; y: number },
-  createdBy = "Unknown"
+  createdBy = "Unknown",
+  createdByAvatarUrl?: string | null
 ): Promise<ReturnType<typeof createShapeId> | null> {
   const mime = file.type || "application/octet-stream";
   const { x, y } = position;
-  const progressMeta = { createdBy, uploadProgress: 0, createdAt: Date.now() };
+  const progressMeta: Record<string, unknown> = {
+    createdBy,
+    uploadProgress: 0,
+    createdAt: Date.now(),
+    ...(createdByAvatarUrl && { createdByAvatarUrl }),
+  };
   const id = createShapeId();
 
   if (mime.startsWith("image/") || mime.startsWith("video/")) {
@@ -299,6 +317,106 @@ export async function placeholderShape(
     { shapeId: id, content: resolved.type === SHAPE_TYPE.TEXT_FILE ? "" : undefined },
   );
   return id;
+}
+
+// ---- オーディオ・映像 ⇔ アイコン変換 -----------------------------------------
+
+const FILE_ICON_SIZE = 96;
+
+/**
+ * audio-player / video-player を file-icon（アイコン表示）に変換する。
+ * tldraw は updateShape で type を変更できないため、削除→作成で実現する。
+ */
+export function convertToFileIcon(editor: Editor, shapeId: string): boolean {
+  const shape = editor.getShape(shapeId as import("@cmpd/tlschema").TLShapeId);
+  if (!shape) return false;
+  if (shape.type !== SHAPE_TYPE.AUDIO && shape.type !== SHAPE_TYPE.VIDEO) return false;
+
+  const p = shape.props as { assetId?: string; fileName?: string; mimeType?: string };
+  const assetId = p.assetId ?? "";
+  const fileName = p.fileName ?? "";
+  const mimeType = p.mimeType ?? "";
+  const kind = shape.type === SHAPE_TYPE.AUDIO ? "audio" : "video";
+  const { x, y } = shape;
+  const meta = shape.meta ?? {};
+
+  editor.batch(() => {
+    editor.deleteShapes([shapeId as import("@cmpd/tlschema").TLShapeId]);
+    editor.createShape({
+      id: shapeId as import("@cmpd/tlschema").TLShapeId,
+      type: SHAPE_TYPE.FILE_ICON,
+      x,
+      y,
+      meta,
+      props: {
+        assetId,
+        fileName,
+        mimeType,
+        kind,
+        w: FILE_ICON_SIZE,
+        h: FILE_ICON_SIZE,
+      } as FileIconShape["props"],
+    });
+  });
+  return true;
+}
+
+/**
+ * file-icon（kind: audio / video）を audio-player / video-player に変換する。
+ * tldraw は updateShape で type を変更できないため、削除→作成で実現する。
+ */
+export function convertToMediaPlayer(editor: Editor, shapeId: string): boolean {
+  const shape = editor.getShape(shapeId as import("@cmpd/tlschema").TLShapeId);
+  if (!shape || shape.type !== SHAPE_TYPE.FILE_ICON) return false;
+
+  const p = shape.props as FileIconShape["props"];
+  const kind = p.kind;
+  if (!(MEDIA_ICON_KINDS as readonly string[]).includes(kind)) return false;
+
+  const assetId = p.assetId ?? "";
+  const fileName = p.fileName ?? "";
+  const mimeType = p.mimeType ?? "";
+  const { x, y } = shape;
+  const meta = shape.meta ?? {};
+
+  if (kind === "audio") {
+    const defaultProps = new AudioShapeUtil().getDefaultProps();
+    editor.batch(() => {
+      editor.deleteShapes([shapeId as import("@cmpd/tlschema").TLShapeId]);
+      editor.createShape({
+        id: shapeId as import("@cmpd/tlschema").TLShapeId,
+        type: SHAPE_TYPE.AUDIO,
+        x,
+        y,
+        meta,
+        props: {
+          ...defaultProps,
+          assetId,
+          fileName,
+          mimeType,
+        } as AudioShape["props"],
+      });
+    });
+  } else {
+    const defaultProps = new VideoShapeUtil().getDefaultProps();
+    editor.batch(() => {
+      editor.deleteShapes([shapeId as import("@cmpd/tlschema").TLShapeId]);
+      editor.createShape({
+        id: shapeId as import("@cmpd/tlschema").TLShapeId,
+        type: SHAPE_TYPE.VIDEO,
+        x,
+        y,
+        meta,
+        props: {
+          ...defaultProps,
+          assetId,
+          fileName,
+          mimeType,
+        } as VideoShape["props"],
+      });
+    });
+  }
+  return true;
 }
 
 export { FileIconShapeUtil, getFileEmoji } from "./file/FileIconShape";

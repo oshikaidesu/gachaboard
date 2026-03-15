@@ -1,4 +1,5 @@
-export { CreatorLabel, getCreatedBy, getCreationRank } from "./CreatorLabel";
+export { CreatorLabel, LABEL_TOP, LABEL_LEFT, getCreatedBy, getCreatedByAvatarUrl, getCreationRank } from "./CreatorLabel";
+export { UserAvatarLabel } from "./UserAvatarLabel";
 export { getColorForShape, getStrokeHexForColorStyle } from "./ShapeFrameColor";
 export { DownloadButton, FileSizeLabel } from "./DownloadButton";
 export { AssetLoader } from "./AssetLoader";

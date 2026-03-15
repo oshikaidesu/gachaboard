@@ -84,7 +84,7 @@ export function BoardHeader({
         onWheel={handleHeaderWheel}
         onClickCapture={handleHeaderClickCapture}
         style={{ touchAction: "pan-y" }}
-        className="flex touch-pan-x flex-nowrap select-none items-center gap-3 overflow-x-auto border-b border-zinc-200 bg-white px-4 py-2 z-10 whitespace-nowrap [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [-webkit-overflow-scrolling:touch] dark:border-zinc-700 dark:bg-[#25292e]"
+        className="flex touch-pan-x flex-nowrap select-none items-center gap-3 overflow-x-auto border-b border-zinc-200 bg-white px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] z-10 whitespace-nowrap [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [-webkit-overflow-scrolling:touch] dark:border-zinc-700 dark:bg-[#25292e]"
       >
         <GachaboardLogo size="sm" href={`/workspace/${workspaceId}`} />
         <Link

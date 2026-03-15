@@ -5,7 +5,10 @@ import type { Editor } from "@cmpd/editor";
 import { placeAsset } from "@/app/shapes";
 import type { ApiAsset } from "@shared/apiTypes";
 
-export function useRestoreAsset(userName: string) {
+export function useRestoreAsset(
+  userName: string,
+  avatarUrl?: string | null
+) {
   return useCallback(
     async (editor: Editor) => {
       if (typeof window === "undefined") return;
@@ -53,7 +56,7 @@ export function useRestoreAsset(userName: string) {
             y: asset.lastKnownY ?? viewport.y - 120,
           };
 
-          await placeAsset(editor, asset, position, userName);
+          await placeAsset(editor, asset, position, userName, undefined, avatarUrl ?? null);
           lastPosition = position;
         } catch {
           // 復元失敗はサイレントに無視
@@ -64,6 +67,6 @@ export function useRestoreAsset(userName: string) {
         editor.centerOnPoint({ x: lastPosition.x, y: lastPosition.y });
       }
     },
-    [userName]
+    [userName, avatarUrl]
   );
 }

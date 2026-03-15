@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { GachaboardLogo } from "@/app/components/ui/GachaboardLogo";
+import { ThemeToggle } from "@/app/components/theme/ThemeToggle";
 import type { ApiBoard } from "@shared/apiTypes";
 import { Identicon } from "@/app/components/ui/Identicon";
 import { RenameModal } from "@/app/components/ui/RenameModal";
@@ -128,12 +129,16 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId, e2eH
                 )}
               </div>
             </div>
-            <WorkspaceMembersPopover
-              members={members}
-              canKick={canKick}
-              workspaceId={workspaceId}
-              onKickSuccess={load}
-            />
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <WorkspaceMembersPopover
+                members={members}
+                canKick={canKick}
+                workspaceId={workspaceId}
+                currentUserId={currentUserId}
+                onKickSuccess={load}
+              />
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 border-t border-zinc-200 pt-3 dark:border-slate-600/50">
             <button

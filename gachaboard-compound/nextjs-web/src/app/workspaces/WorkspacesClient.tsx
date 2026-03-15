@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useLayoutEffect } from "react";
 import { useOnClickOutside } from "usehooks-ts";
 import Link from "next/link";
 import { GachaboardLogo } from "../components/ui/GachaboardLogo";
+import { ThemeToggle } from "../components/theme/ThemeToggle";
 import type { ApiWorkspace } from "@shared/apiTypes";
 import { Identicon, getMinidenticonColor } from "../components/ui/Identicon";
 import { InviteLinkInline } from "../components/ui/InviteLinkInline";
@@ -114,16 +115,9 @@ export default function WorkspacesClient({ currentUserId, e2eHeaders }: Props) {
               <p className="text-sm text-zinc-500 dark:text-slate-300">共有ホワイトボードのプロジェクトグループ</p>
               </div>
             </div>
-            {tab === "active" && (
-              <button
-                onClick={() => setShowForm(true)}
-                className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-white/20 dark:text-white dark:hover:bg-white/30"
-              >
-                + 新規作成
-              </button>
-            )}
+            <ThemeToggle />
           </div>
-          <div className="flex gap-2 border-t border-zinc-200 pt-3 dark:border-slate-600/50">
+          <div className="flex flex-wrap items-center gap-2 border-t border-zinc-200 pt-3 dark:border-slate-600/50">
             <button
               onClick={() => setTab("active")}
               className={`px-4 py-2 text-sm font-medium ${tab === "active" ? "border-b-2 border-zinc-900 text-zinc-900 dark:border-white dark:text-white" : "text-zinc-500 hover:text-zinc-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
@@ -136,6 +130,14 @@ export default function WorkspacesClient({ currentUserId, e2eHeaders }: Props) {
             >
               ゴミ箱 ({trashed.length})
             </button>
+            {tab === "active" && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="ml-auto rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-white/20 dark:text-white dark:hover:bg-white/30"
+              >
+                + 新規作成
+              </button>
+            )}
           </div>
         </div>
       </header>

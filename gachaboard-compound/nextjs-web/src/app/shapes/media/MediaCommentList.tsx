@@ -2,6 +2,7 @@
 
 import { formatTime } from "@/lib/formatTime";
 import { useTheme } from "@/app/components/theme/ThemeProvider";
+import { UserAvatarLabel } from "@/app/shapes/common";
 import type { ApiComment } from "@shared/apiTypes";
 
 type Props = {
@@ -71,12 +72,12 @@ export function MediaCommentList({
           }}
           style={{
             display: "flex",
-            alignItems: "center",
+            alignItems: "flex-start",
             gap: 6,
             padding: "2px 4px",
             borderRadius: 4,
             cursor: "pointer",
-            height: commentRowHeight,
+            minHeight: commentRowHeight,
             flexShrink: 0,
           }}
           onMouseEnter={(e) => {
@@ -93,6 +94,8 @@ export function MediaCommentList({
               fontVariantNumeric: "tabular-nums",
               flexShrink: 0,
               fontWeight: 600,
+              lineHeight: 1.4,
+              paddingTop: 1,
             }}
           >
             {formatTime(c.timeSec)}
@@ -102,16 +105,22 @@ export function MediaCommentList({
               fontSize: 14,
               color: bodyColor,
               flex: 1,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              minWidth: 0,
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              overflowWrap: "break-word",
+              lineHeight: 1.4,
             }}
           >
             {c.body}
           </span>
-          <span style={{ fontSize: 12, color: metaColor, flexShrink: 0 }}>
-            {c.author.discordName}
-          </span>
+          <UserAvatarLabel
+            name={c.author.discordName}
+            avatarUrl={c.author.avatarUrl}
+            size="xs"
+            maxWidth={100}
+            style={{ color: metaColor, flexShrink: 0, paddingTop: 1 }}
+          />
           <button
             onClick={(e) => {
               e.stopPropagation();

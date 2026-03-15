@@ -68,7 +68,7 @@ export default function CompoundBoard({
   const syncWsUrl = getSyncWsUrl();
   const useSync = isSyncWsUrlValid(syncWsUrl);
   const fetchSnapshotWhenEmpty = useBoardSnapshotFetch(workspaceId, boardId);
-  const handleRestoreAsset = useRestoreAsset(userName);
+  const handleRestoreAsset = useRestoreAsset(userName, avatarUrl ?? null);
 
   const yjsStore = useYjsStore({
     roomId: boardId,
@@ -96,7 +96,7 @@ export default function CompoundBoard({
     openAllFilesPickerAndUpload,
     resumeUpload,
     isFileSystemAccessSupported,
-  } = useFileDropHandler(boardId, userName);
+  } = useFileDropHandler(boardId, userName, avatarUrl ?? null);
 
   const boardOverrides = useMemo(
     () => createBoardOverrides({ onFileUploadAll: openAllFilesPickerAndUpload }),
@@ -108,7 +108,7 @@ export default function CompoundBoard({
     []
   );
   const { registerListener: registerArrowDeleteListener } = useArrowCascadeDelete();
-  const { registerListener: registerCreatedByListener } = useAutoCreatedBy(userName);
+  const { registerListener: registerCreatedByListener } = useAutoCreatedBy(userName, avatarUrl ?? null);
   const { registerHandler: registerDoubleClickHandler } = useDoubleClickPreview(setPreview);
   const { registerListener: registerUrlPreviewAttacher } = useUrlPreviewAttacher();
   const { registerListener: registerPositionCapture } = useShapeDeletePositionCapture();
@@ -166,7 +166,7 @@ export default function CompoundBoard({
     <BoardContext.Provider value={boardContextValue}>
       <BoardReactionProvider provider={useSync ? yjsStore.provider : undefined}>
         <BoardCommentProvider provider={useSync ? yjsStore.provider : undefined}>
-        <div className="flex h-screen flex-col">
+        <div className="flex h-[100dvh] min-h-[100dvh] flex-col">
           <BoardHeader
             workspaceId={workspaceId}
             boardId={boardId}

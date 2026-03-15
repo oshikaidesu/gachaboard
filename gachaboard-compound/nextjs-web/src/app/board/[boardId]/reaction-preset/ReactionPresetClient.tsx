@@ -10,6 +10,7 @@ import {
   DEFAULT_REACTION_EMOJI_LIST,
   FIXED_EMOJI_LIST,
 } from "@shared/constants";
+import { ThemeToggle } from "@/app/components/theme/ThemeToggle";
 import { getSyncWsUrl } from "@/lib/syncWsUrl";
 import { useCopyToClipboard } from "usehooks-ts";
 
@@ -117,12 +118,15 @@ export default function ReactionPresetClient({
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 bg-background p-8">
       <header className="flex flex-col gap-2">
-        <Link
-          href={`/workspace/${workspaceId}`}
-          className="text-xs text-zinc-400 hover:underline dark:text-zinc-500 dark:hover:text-zinc-400"
-        >
-          ← ワークスペースに戻る
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link
+            href={`/workspace/${workspaceId}`}
+            className="text-xs text-zinc-400 hover:underline dark:text-zinc-500 dark:hover:text-zinc-400"
+          >
+            ← ワークスペースに戻る
+          </Link>
+          <ThemeToggle />
+        </div>
         <h1 className="text-xl font-semibold dark:text-zinc-100">
           リアクション絵文字のカスタマイズ
         </h1>

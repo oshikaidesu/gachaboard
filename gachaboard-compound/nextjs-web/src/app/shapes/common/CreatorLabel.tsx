@@ -1,6 +1,7 @@
 "use client";
 
 import type { Editor } from "@cmpd/compound";
+import { UserAvatarLabel } from "./UserAvatarLabel";
 
 /**
  * shape.meta.createdBy から作成者名を取り出すヘルパー。
@@ -9,6 +10,14 @@ import type { Editor } from "@cmpd/compound";
 export function getCreatedBy(shape: { meta?: unknown }): string {
   const name = ((shape.meta as Record<string, unknown>)?.createdBy as string | undefined) ?? "";
   return name.trim() || "Unknown";
+}
+
+/**
+ * shape.meta.createdByAvatarUrl から作成者の Discord アバター URL を取り出すヘルパー。
+ */
+export function getCreatedByAvatarUrl(shape: { meta?: unknown }): string | null {
+  const url = ((shape.meta as Record<string, unknown>)?.createdByAvatarUrl as string | undefined | null) ?? null;
+  return url && typeof url === "string" ? url : null;
 }
 
 const RANK_FULLY_GREY = 10;
@@ -52,15 +61,61 @@ export function getCreationRank(
  * HTMLContainer の中（シェイプ座標系）に置くことで
  * 移動・ズーム・回転に自動追従する。
  * rank を渡すと、新しいシェイプほど緑、古いほどグレーの背景になる。
- * ※左上コーナーハンドル(RESIZE_HANDLE_SIZE/2 + scale*6 ≒ 30px)と重ならないよう left を確保
+ * ※左上コーナーハンドルと重ならないよう left を確保
  */
-const LABEL_TOP = -20;
-const LABEL_LEFT = 28;
+export const LABEL_TOP = -20;
+export const LABEL_LEFT = 20;
 
-export function CreatorLabel({ name, rank }: { name: string; rank?: number }) {
-  if (!name) return null;
+export function CreatorLabel({
+  name,
+  avatarUrl,
+  rank,
+  rightSlot,
+}: {
+  name: string;
+  avatarUrl?: string | null;
+  rank?: number;
+  /** ラベルの右隣に表示する要素（例: アイコン切替ボタン）。pointerEvents: "all" でクリック可能にすること */
+  rightSlot?: React.ReactNode;
+}) {
+  if (!name && !rightSlot) return null;
   const background =
     rank !== undefined ? getBackgroundForRank(rank) : `rgba(${GREY.r},${GREY.g},${GREY.b},${GREY.a})`;
+  const labelContent = name ? (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        background,
+        color: "#fff",
+        fontFamily: "system-ui, sans-serif",
+        fontWeight: 500,
+        padding: "2px 6px",
+        borderRadius: 3,
+        lineHeight: "16px",
+      }}
+    >
+      <UserAvatarLabel
+        name={name}
+        avatarUrl={avatarUrl}
+        size="sm"
+        minWidth={56}
+        maxWidth={140}
+        style={{ color: "#fff" }}
+      />
+    </span>
+  ) : null;
+
+  const content = rightSlot ? (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      {labelContent}
+      <span style={{ pointerEvents: "all", display: "inline-flex" }}>{rightSlot}</span>
+    </div>
+  ) : (
+    labelContent
+  );
+
   return (
     <div
       style={{
@@ -73,21 +128,7 @@ export function CreatorLabel({ name, rank }: { name: string; rank?: number }) {
         zIndex: 1,
       }}
     >
-      <span
-        style={{
-          display: "inline-block",
-          background,
-          color: "#fff",
-          fontSize: 10,
-          fontFamily: "system-ui, sans-serif",
-          fontWeight: 500,
-          padding: "1px 5px",
-          borderRadius: 3,
-          lineHeight: "16px",
-        }}
-      >
-        {name}
-      </span>
+      {content}
     </div>
   );
 }

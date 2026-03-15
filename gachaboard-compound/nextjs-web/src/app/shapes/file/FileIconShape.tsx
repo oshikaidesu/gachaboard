@@ -12,6 +12,7 @@ import {
   FileSizeLabel,
   CreatorLabel,
   getCreatedBy,
+  getCreatedByAvatarUrl,
   getCreationRank,
   ShapeReactionPanel,
   ShapeConnectHandles,
@@ -19,7 +20,8 @@ import {
   getColorForShape,
   getStrokeHexForColorStyle,
 } from "../common";
-import { SHAPE_TYPE, type FileIconShape } from "@shared/shapeDefs";
+import { SHAPE_TYPE, MEDIA_ICON_KINDS, type FileIconShape } from "@shared/shapeDefs";
+import { convertToMediaPlayer } from "@/app/shapes";
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
 import { useTheme } from "@/app/components/theme/ThemeProvider";
 import { getSafeAssetId } from "@/lib/safeUrl";
@@ -217,7 +219,42 @@ function FileIconShapeInner({ shape }: { shape: FileIconShape }) {
         boxSizing: "border-box",
       }}
     >
-        <CreatorLabel name={getCreatedBy(shape)} rank={getCreationRank(editor, shape)} />
+        <CreatorLabel
+          name={getCreatedBy(shape)}
+          avatarUrl={getCreatedByAvatarUrl(shape)}
+          rank={getCreationRank(editor, shape)}
+          rightSlot={
+            (MEDIA_ICON_KINDS as readonly string[]).includes(shape.props.kind) ? (
+              <button
+                type="button"
+                title="プレイヤーで表示"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  convertToMediaPlayer(editor, shape.id);
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                style={{
+                  width: 20,
+                  height: 20,
+                  padding: 0,
+                  border: "none",
+                  borderRadius: 3,
+                  background: "rgba(0,0,0,0.35)",
+                  color: "#fff",
+                  fontSize: 12,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  lineHeight: 1,
+                }}
+              >
+                ▶
+              </button>
+            ) : undefined
+          }
+        />
         {isUploading ? (
           <UploadProgressDisplay
             fileName={shape.props.fileName}

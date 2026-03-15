@@ -36,6 +36,9 @@ export const SHAPE_TYPE = {
   VIDEO: "video-player" as const,
 };
 
+/** file-icon から audio-player / video-player へ変換可能な kind */
+export const MEDIA_ICON_KINDS = ["audio", "video"] as const;
+
 // ---------- declare module（compound 用） ----------
 // カスタムシェイプの props を compound に登録
 
@@ -120,7 +123,7 @@ export const SHAPE_DEFS: Record<string, ShapeDef> = {
       fileName: "audio.mp3",
       mimeType: "audio/mpeg",
       w: 560,
-      h: 250,
+      h: 252, // BASE_HEIGHT(190) + MIN_COMMENT_LIST_H(62)。placeFile 時は createShapeForResolved が AudioShapeUtil.getDefaultProps() を参照するため実質未使用
     } satisfies AudioProps,
     matchMime: (mime) => isPlayableAudio(mime),
     priority: 30,

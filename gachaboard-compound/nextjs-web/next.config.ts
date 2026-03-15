@@ -6,6 +6,11 @@ import "./src/lib/env";
 const nextConfig: NextConfig = {
   // マルチ lockfile 環境でのパス解決を安定させる
   outputFileTracingRoot: path.resolve(process.cwd()),
+  // 開発時のターミナル出力を抑える
+  logging: {
+    incomingRequests: false,
+    fetches: { fullUrl: false },
+  },
   async headers() {
     return [
       {

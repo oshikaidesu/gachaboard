@@ -1,6 +1,7 @@
 /**
  * VideoShape / AudioShape で共有する色・寸法定数
  */
+import { MIN_COMMENT_LIST_H } from "@/app/hooks/media/useMediaPlayerComments";
 export const BLUE = "#3b82f6";
 export const ORANGE = "#ff5500";
 
@@ -44,3 +45,7 @@ export const WAVEFORM_HIT_HEIGHT = 56;
 export const WAVEFORM_VIEW_WIDTH = 360;
 export const BAR_GAP = 1;
 export const BASE_HEIGHT = 190;
+
+/** 音声シェイプのデフォルト寸法（AudioShapeUtil.getDefaultProps と createShapeForResolved で共通利用） */
+export const AUDIO_DEFAULT_W = 460;
+export const AUDIO_DEFAULT_H = BASE_HEIGHT + MIN_COMMENT_LIST_H;

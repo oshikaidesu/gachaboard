@@ -19,6 +19,7 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "seed:e2e": "npx tsx scripts/check-servers.ts seed && npx tsx scripts/seed-e2e.ts",
     "status": "npx tsx scripts/status.ts",
+    "infra:check": "npx tsx scripts/infra-check.ts",
     "start:tailscale": "cd .. && bash scripts/start-tailscale.sh",
     "start:tailscale:reset": "cd .. && bash scripts/start-tailscale.sh --reset",
     "start:local": "cd .. && bash scripts/start-local.sh",

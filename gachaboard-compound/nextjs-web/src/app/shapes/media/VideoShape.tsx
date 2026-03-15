@@ -12,6 +12,7 @@ import { useEditor } from "@cmpd/compound";
 import {
   CreatorLabel,
   getCreatedBy,
+  getCreatedByAvatarUrl,
   getCreationRank,
   ShapeReactionPanel,
   ShapeConnectHandles,
@@ -23,6 +24,7 @@ import {
   getStrokeHexForColorStyle,
 } from "../common";
 import { SHAPE_TYPE, type VideoShape } from "@shared/shapeDefs";
+import { convertToFileIcon } from "@/app/shapes";
 import { useBoardContext } from "@/app/components/board/BoardContext";
 import { useVisibility } from "@/app/hooks/useVisibility";
 import { useMediaPlayerComments, MIN_COMMENT_LIST_H } from "@/app/hooks/media/useMediaPlayerComments";
@@ -412,23 +414,24 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
         }}
         onMouseDown={(e) => {
           const t = e.target as HTMLElement;
-          if (t.tagName === "BUTTON" || t.tagName === "VIDEO") e.stopPropagation();
+          if (t.tagName === "BUTTON" || t.tagName === "VIDEO" || playing) e.stopPropagation();
         }}
         onPointerDown={(e) => {
           const t = e.target as HTMLElement;
-          if (t.tagName === "BUTTON" || t.tagName === "VIDEO") e.stopPropagation();
+          if (t.tagName === "BUTTON" || t.tagName === "VIDEO" || playing) e.stopPropagation();
         }}
         onTouchStart={(e) => {
           const t = e.target as HTMLElement;
-          if (t.tagName === "BUTTON" || t.tagName === "VIDEO") e.stopPropagation();
+          if (t.tagName === "BUTTON" || t.tagName === "VIDEO" || playing) e.stopPropagation();
         }}
         onClick={(e) => {
-          const t = e.target as HTMLElement;
-          if ((t.tagName === "BUTTON" || t.tagName === "VIDEO") && playing) togglePlay();
+          if (playing) {
+            e.stopPropagation();
+            togglePlay();
+          }
         }}
         onTouchEnd={(e) => {
-          const t = e.target as HTMLElement;
-          if ((t.tagName === "BUTTON" || t.tagName === "VIDEO") && playing) {
+          if (playing) {
             e.stopPropagation();
             e.preventDefault();
             togglePlay();
@@ -700,7 +703,40 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<VideoShape & TLBaseBoxShape
           e.stopPropagation();
         }}
       >
-        <CreatorLabel name={getCreatedBy(shape)} rank={getCreationRank(editor, shape)} />
+        <CreatorLabel
+          name={getCreatedBy(shape)}
+          avatarUrl={getCreatedByAvatarUrl(shape)}
+          rank={getCreationRank(editor, shape)}
+          rightSlot={
+            <button
+              type="button"
+              title="アイコンで表示"
+              onClick={(e) => {
+                e.stopPropagation();
+                convertToFileIcon(editor, shape.id);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              style={{
+                width: 20,
+                height: 20,
+                padding: 0,
+                border: "none",
+                borderRadius: 3,
+                background: "rgba(0,0,0,0.35)",
+                color: "#fff",
+                fontSize: 12,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                lineHeight: 1,
+              }}
+            >
+              ▢
+            </button>
+          }
+        />
         <AssetLoader assetId={p.assetId} fileName={p.fileName}>
           <VideoPlayer shape={shape} />
         </AssetLoader>

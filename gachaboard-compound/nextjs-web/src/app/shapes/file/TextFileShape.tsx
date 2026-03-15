@@ -11,6 +11,7 @@ import {
   FileSizeLabel,
   CreatorLabel,
   getCreatedBy,
+  getCreatedByAvatarUrl,
   getCreationRank,
   ShapeReactionPanel,
   ShapeConnectHandles,
@@ -81,7 +82,11 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
           boxSizing: "border-box",
         }}
       >
-        <CreatorLabel name={getCreatedBy(shape)} rank={getCreationRank(editor, shape)} />
+        <CreatorLabel
+          name={getCreatedBy(shape)}
+          avatarUrl={getCreatedByAvatarUrl(shape)}
+          rank={getCreationRank(editor, shape)}
+        />
         <AssetLoader assetId={shape.props.assetId} fileName={shape.props.fileName}>
         <WheelGuard
           shapeId={shape.id}

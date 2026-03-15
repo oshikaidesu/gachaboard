@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { GachaboardLogo } from "@/app/components/ui/GachaboardLogo";
+import { ThemeToggle } from "@/app/components/theme/ThemeToggle";
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
 import { AssetPreviewModal } from "./components/AssetPreviewModal";
 import { AssetFilters } from "./components/AssetFilters";
@@ -99,6 +100,7 @@ export default function AssetsPage() {
               </Link>
             </div>
           </div>
+          <ThemeToggle />
         </div>
         <div className="mx-auto mt-3 flex max-w-5xl gap-2 border-t border-zinc-200 pt-3 dark:border-slate-600/50">
           {(["active", "trash"] as const).map((t) => (

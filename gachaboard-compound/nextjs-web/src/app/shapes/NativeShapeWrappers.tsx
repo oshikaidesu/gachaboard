@@ -26,6 +26,7 @@ import {
 import {
   CreatorLabel,
   getCreatedBy,
+  getCreatedByAvatarUrl,
   getCreationRank,
   ShapeReactionPanel,
   ShapeConnectHandles,
@@ -63,7 +64,11 @@ function wrapWithExtras(Base: new (...args: unknown[]) => ShapeUtil<any>): new (
             id={shape.id}
             style={{ width: w, height: h, position: "relative", overflow: "visible" }}
           >
-            <CreatorLabel name={getCreatedBy(shape)} rank={getCreationRank(editor, shape)} />
+            <CreatorLabel
+              name={getCreatedBy(shape)}
+              avatarUrl={getCreatedByAvatarUrl(shape)}
+              rank={getCreationRank(editor, shape)}
+            />
             {base}
             <div
               style={{
@@ -262,7 +267,11 @@ export class WrappedGeoShapeUtil extends GeoShapeUtil {
         id={shape.id}
         style={{ width: w, height: h, position: "relative", overflow: "visible" }}
       >
-        <CreatorLabel name={createdBy} rank={getCreationRank(editor, shape)} />
+        <CreatorLabel
+          name={createdBy}
+          avatarUrl={getCreatedByAvatarUrl(shape)}
+          rank={getCreationRank(editor, shape)}
+        />
         <div className="geo-svg-only" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 0, pointerEvents: "none" }}>
           {greyFill}
         </div>

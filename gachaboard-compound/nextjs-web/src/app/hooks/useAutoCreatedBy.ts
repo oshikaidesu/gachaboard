@@ -4,10 +4,13 @@ import { useCallback } from "react";
 import { Editor, type TLRecord } from "@cmpd/compound";
 
 /**
- * 新規シェイプ（矢印以外）に createdBy を自動付与するフック。
- * placeFile() 経由以外（付箋・長方形など）でも名前ラベルが出るようにする。
+ * 新規シェイプ（矢印以外）に createdBy / createdByAvatarUrl を自動付与するフック。
+ * placeFile() 経由以外（付箋・長方形など）でも名前ラベル・Discord アイコンが出るようにする。
  */
-export function useAutoCreatedBy(userName: string) {
+export function useAutoCreatedBy(
+  userName: string,
+  avatarUrl?: string | null
+) {
   const registerListener = useCallback(
     (editor: Editor) => {
       editor.store.listen(
@@ -18,11 +21,16 @@ export function useAutoCreatedBy(userName: string) {
           );
           if (addedShapes.length === 0) return;
 
+          const metaBase: Record<string, unknown> = {
+            createdBy: userName,
+            createdAt: Date.now(),
+            ...(avatarUrl && { createdByAvatarUrl: avatarUrl }),
+          };
           const updates = addedShapes
             .filter((s) => !s.meta?.createdBy)
             .map((s) => ({
               ...s,
-              meta: { ...s.meta, createdBy: userName, createdAt: Date.now() },
+              meta: { ...s.meta, ...metaBase },
             }));
 
           if (updates.length > 0) {
@@ -32,7 +40,7 @@ export function useAutoCreatedBy(userName: string) {
         { source: "user", scope: "document" }
       );
     },
-    [userName]
+    [userName, avatarUrl]
   );
 
   return { registerListener };

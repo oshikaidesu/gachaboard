@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { formatTime } from "@/lib/formatTime";
 import { ORANGE, WAVEFORM_HEIGHT, WAVEFORM_VIEW_WIDTH, BAR_GAP } from "./mediaConstants";
 import type { ApiComment } from "@shared/apiTypes";
 
@@ -12,9 +10,6 @@ export function WaveformCanvas({
   comments,
   onSeek,
   unplayedBarColor,
-  tooltipBg,
-  tooltipColor,
-  tooltipBorder,
 }: {
   peaks: number[];
   currentTime: number;
@@ -22,12 +17,7 @@ export function WaveformCanvas({
   comments: ApiComment[];
   onSeek: (sec: number) => void;
   unplayedBarColor: string;
-  tooltipBg: string;
-  tooltipColor: string;
-  tooltipBorder: string;
 }) {
-  const [tooltip, setTooltip] = useState<{ x: number; text: string } | null>(null);
-
   const barWidth = peaks.length > 0
     ? (WAVEFORM_VIEW_WIDTH - BAR_GAP * (peaks.length - 1)) / peaks.length
     : 0;
@@ -52,28 +42,6 @@ export function WaveformCanvas({
     onSeek(ratio * duration);
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (duration <= 0 || comments.length === 0) {
-      setTooltip(null);
-      return;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const width = rect.width;
-
-    const hit = comments.find((c) => {
-      const pinX = (c.timeSec / duration) * width;
-      return Math.abs(mouseX - pinX) < 16;
-    });
-
-    if (hit) {
-      const pinX = (hit.timeSec / duration) * width;
-      setTooltip({ x: pinX, text: `${formatTime(hit.timeSec)} ${hit.author.discordName}: ${hit.body}` });
-    } else {
-      setTooltip(null);
-    }
-  };
-
   return (
     <div
       style={{
@@ -87,8 +55,6 @@ export function WaveformCanvas({
       }}
       onClick={handleClick}
       onTouchEnd={handleTouchEnd}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={() => setTooltip(null)}
       onTouchStart={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
@@ -148,32 +114,6 @@ export function WaveformCanvas({
           />
         </div>
       ))}
-
-      {tooltip && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: "100%",
-            left: tooltip.x,
-            transform: "translateX(-50%)",
-            background: tooltipBg,
-            color: tooltipColor,
-            fontSize: 10,
-            padding: "3px 8px",
-            borderRadius: 4,
-            whiteSpace: "nowrap",
-            pointerEvents: "none",
-            zIndex: 10,
-            maxWidth: 200,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            border: `1px solid ${tooltipBorder}`,
-            boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
-          }}
-        >
-          {tooltip.text}
-        </div>
-      )}
     </div>
   );
 }

@@ -1,15 +1,17 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useTransform } from "@cmpd/editor";
 import classNames from "classnames";
-import { getSafeHref } from "@/lib/safeUrl";
+import { UserAvatarLabel } from "@/app/shapes/common/UserAvatarLabel";
+
+const IDLE_HIDE_MS = 5000;
 
 /**
  * Discord アバター付きコラボレーターカーソル。
  * LiveCollaborators から point, color, zoom, name, meta を受け取り、
- * meta.avatarUrl（Discord アバター）を名前タグ横に表示する。
- * avatarUrl は Yjs Awareness 由来のため getSafeHref で検証する。
+ * UserAvatarLabel で名前タグを表示する。
+ * 5秒間操作がないと非表示になる。
  */
 export function CollaboratorCursorWithName(props: {
   className?: string;
@@ -22,17 +24,47 @@ export function CollaboratorCursorWithName(props: {
 }) {
   const { point, color, zoom, name, chatMessage, meta, className } = props;
   const rCursor = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(true);
+  const lastPointRef = useRef<string | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!point) return;
+    const pointKey = `${point.x},${point.y}`;
+    const isNewPosition = pointKey !== lastPointRef.current;
+    lastPointRef.current = pointKey;
+
+    if (isNewPosition) {
+      setVisible(true);
+    }
+
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      setVisible(false);
+      timeoutRef.current = null;
+    }, IDLE_HIDE_MS);
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, [point?.x, point?.y]);
 
   if (!point) return null;
 
   useTransform(rCursor, point.x, point.y, 1 / zoom);
 
-  const avatarUrl = getSafeHref(meta?.avatarUrl ?? null);
-
   return (
     <div
       ref={rCursor}
       className={classNames("tl-overlays__item", className)}
+      style={{
+        opacity: visible ? 1 : 0,
+        transition: "opacity 0.3s ease-out",
+        pointerEvents: visible ? undefined : "none",
+      }}
     >
       <svg className="tl-cursor" aria-hidden="true">
         <use href="#cursor" color={color} />
@@ -46,8 +78,6 @@ export function CollaboratorCursorWithName(props: {
             left: 8,
             background: color ?? "#1d1d1d",
             color: "#fff",
-            fontSize: 12,
-            lineHeight: 1,
             padding: "3px 6px",
             borderRadius: 4,
             whiteSpace: "nowrap",
@@ -63,27 +93,16 @@ export function CollaboratorCursorWithName(props: {
             transformOrigin: "top left",
           }}
         >
-          {avatarUrl && (
-            <img
-              src={avatarUrl}
-              alt=""
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: "50%",
-                objectFit: "cover",
-                flexShrink: 0,
-                display: "block",
-              }}
+          {name && (
+            <UserAvatarLabel
+              name={name}
+              avatarUrl={meta?.avatarUrl ?? null}
+              size="md"
+              style={{ color: "#fff" }}
             />
           )}
-          {chatMessage ? (
-            <>
-              {name && <span>{name}</span>}
-              <span className="opacity-80">{chatMessage}</span>
-            </>
-          ) : (
-            name
+          {chatMessage && (
+            <span className="opacity-80">{chatMessage}</span>
           )}
         </div>
       )}

@@ -10,6 +10,7 @@ type Props = {
   members: ApiWorkspaceMember[];
   canKick: boolean;
   workspaceId: string;
+  currentUserId: string;
   onKickSuccess?: () => void;
 };
 
@@ -17,6 +18,7 @@ export function WorkspaceMembersPopover({
   members,
   canKick,
   workspaceId,
+  currentUserId,
   onKickSuccess,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -28,7 +30,11 @@ export function WorkspaceMembersPopover({
   });
 
   const kickMember = async (userId: string, discordName: string) => {
-    if (!confirm(`${discordName} をワークスペースから削除しますか？\n招待リンクもリセットされます。`)) return;
+    const isSelf = userId === currentUserId;
+    const msg = isSelf
+      ? "ワークスペースを退出しますか？\n招待リンクもリセットされます。"
+      : `${discordName} をワークスペースから削除しますか？\n招待リンクもリセットされます。`;
+    if (!confirm(msg)) return;
     setKickingUserId(userId);
     try {
       const res = await fetch(`/api/workspaces/${workspaceId}/members`, {
@@ -127,7 +133,13 @@ export function WorkspaceMembersPopover({
                   disabled={kickingUserId === m.userId}
                   className="shrink-0 rounded px-2 py-1 text-xs text-red-500 hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-950/50 dark:text-red-400"
                 >
-                  {kickingUserId === m.userId ? "削除中..." : "キック"}
+                  {kickingUserId === m.userId
+                    ? m.userId === currentUserId
+                      ? "退出中..."
+                      : "削除中..."
+                    : m.userId === currentUserId
+                      ? "（退出）"
+                      : "キック"}
                 </button>
               )}
               </div>

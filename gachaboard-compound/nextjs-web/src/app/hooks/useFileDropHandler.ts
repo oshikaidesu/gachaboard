@@ -21,7 +21,11 @@ const MAX_CONCURRENT = 4;
  * ファイルドロップ → アップロード → キャンバス配置 のフック。
  * S3 アップロードロジックは lib/s3Upload に分離。
  */
-export function useFileDropHandler(boardId: string, userName: string) {
+export function useFileDropHandler(
+  boardId: string,
+  userName: string,
+  avatarUrl?: string | null
+) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [resumableUploads, setResumableUploads] = useState<StoredSession[]>([]);
   const editorRef = useRef<Editor | null>(null);
@@ -51,7 +55,13 @@ export function useFileDropHandler(boardId: string, userName: string) {
       handle: FileSystemFileHandle | null,
       onError: (msg: string) => void,
     ): Promise<void> => {
-      const placeholderId = await placeholderShape(editor, file, position, userName);
+      const placeholderId = await placeholderShape(
+        editor,
+        file,
+        position,
+        userName,
+        avatarUrl ?? null
+      );
       const updateProgress = (pct: number) => {
         if (placeholderId) {
           const existing = editor.getShape(placeholderId as TLShapeId);
@@ -75,9 +85,17 @@ export function useFileDropHandler(boardId: string, userName: string) {
         return;
       }
 
-      await placeFile(editor, file, data, position, userName, placeholderId ?? undefined);
+      await placeFile(
+        editor,
+        file,
+        data,
+        position,
+        userName,
+        placeholderId ?? undefined,
+        avatarUrl ?? null
+      );
     },
-    [boardId, userName],
+    [boardId, userName, avatarUrl],
   );
 
   const showError = useCallback((msg: string) => {
@@ -155,7 +173,13 @@ export function useFileDropHandler(boardId: string, userName: string) {
       }
       const file = await session.handle.getFile();
       const position = getViewportPageCenter(editor);
-      const placeholderId = await placeholderShape(editor, file, position, userName);
+      const placeholderId = await placeholderShape(
+        editor,
+        file,
+        position,
+        userName,
+        avatarUrl ?? null
+      );
 
       const updateProgress = (pct: number) => {
         if (placeholderId) {
@@ -172,7 +196,15 @@ export function useFileDropHandler(boardId: string, userName: string) {
 
       try {
         const data = await uploadFileViaS3Resume(session, file, updateProgress);
-        await placeFile(editor, file, data, position, userName, placeholderId ?? undefined);
+        await placeFile(
+          editor,
+          file,
+          data,
+          position,
+          userName,
+          placeholderId ?? undefined,
+          avatarUrl ?? null
+        );
         setResumableUploads((prev) => prev.filter((s) => s.uploadId !== session.uploadId));
       } catch (e) {
         const msg = e instanceof Error ? e.message : "再開に失敗しました";
@@ -181,7 +213,7 @@ export function useFileDropHandler(boardId: string, userName: string) {
       }
       refreshResumable();
     },
-    [userName, getViewportPageCenter, showError, refreshResumable],
+    [userName, avatarUrl, getViewportPageCenter, showError, refreshResumable],
   );
 
   return {

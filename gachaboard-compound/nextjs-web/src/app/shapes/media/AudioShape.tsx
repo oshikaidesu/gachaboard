@@ -11,6 +11,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import {
   CreatorLabel,
   getCreatedBy,
+  getCreatedByAvatarUrl,
   getCreationRank,
   ShapeReactionPanel,
   ShapeConnectHandles,
@@ -22,9 +23,10 @@ import {
   getStrokeHexForColorStyle,
 } from "../common";
 import { SHAPE_TYPE, type AudioShape } from "@shared/shapeDefs";
+import { convertToFileIcon } from "@/app/shapes";
 import { useWaveform } from "@/app/hooks/media/useWaveform";
 import { useVisibility } from "@/app/hooks/useVisibility";
-import { useMediaPlayerComments, MIN_COMMENT_LIST_H } from "@/app/hooks/media/useMediaPlayerComments";
+import { useMediaPlayerComments } from "@/app/hooks/media/useMediaPlayerComments";
 import { formatTime } from "@/lib/formatTime";
 import { useTheme } from "@/app/components/theme/ThemeProvider";
 import { getSafeAssetId } from "@/lib/safeUrl";
@@ -47,6 +49,8 @@ import {
   SKELETON_DARK,
   WAVEFORM_HIT_HEIGHT,
   BASE_HEIGHT,
+  AUDIO_DEFAULT_W,
+  AUDIO_DEFAULT_H,
 } from "./mediaConstants";
 
 export type { AudioShape } from "@shared/shapeDefs";
@@ -170,9 +174,6 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
   const border = isDarkMode ? BORDER_DARK : BORDER_LIGHT;
   const trackBg = isDarkMode ? GRAY_DARK : GRAY_LIGHT;
   const skeletonBg = isDarkMode ? SKELETON_DARK : SKELETON_LIGHT;
-  const tooltipBg = isDarkMode ? "#1e293b" : "#fff";
-  const tooltipColor = isDarkMode ? "#f1f5f9" : "#111827";
-  const tooltipBorder = isDarkMode ? "#334155" : "#e5e7eb";
   const errorColor = isDarkMode ? "#94a3b8" : "#9ca3af";
   const btnBg = isDarkMode ? "#334155" : "#f3f4f6";
   const btnBorder = isDarkMode ? "#475569" : "#e5e7eb";
@@ -341,9 +342,6 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
           comments={comments}
           onSeek={seekTo}
           unplayedBarColor={trackBg}
-          tooltipBg={tooltipBg}
-          tooltipColor={tooltipColor}
-          tooltipBorder={tooltipBorder}
         />
       )}
       {waveStatus === "error" && (
@@ -456,8 +454,8 @@ export class AudioShapeUtil extends BaseBoxShapeUtil<AudioShape> {
       assetId: "",
       fileName: "audio.mp3",
       mimeType: "audio/mpeg",
-      w: 560,
-      h: BASE_HEIGHT + MIN_COMMENT_LIST_H,
+      w: AUDIO_DEFAULT_W,
+      h: AUDIO_DEFAULT_H,
     };
   }
 
@@ -499,7 +497,40 @@ export class AudioShapeUtil extends BaseBoxShapeUtil<AudioShape> {
           e.stopPropagation();
         }}
       >
-        <CreatorLabel name={getCreatedBy(shape)} rank={getCreationRank(editor, shape)} />
+        <CreatorLabel
+          name={getCreatedBy(shape)}
+          avatarUrl={getCreatedByAvatarUrl(shape)}
+          rank={getCreationRank(editor, shape)}
+          rightSlot={
+            <button
+              type="button"
+              title="アイコンで表示"
+              onClick={(e) => {
+                e.stopPropagation();
+                convertToFileIcon(editor, shape.id);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              style={{
+                width: 20,
+                height: 20,
+                padding: 0,
+                border: "none",
+                borderRadius: 3,
+                background: "rgba(0,0,0,0.35)",
+                color: "#fff",
+                fontSize: 12,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                lineHeight: 1,
+              }}
+            >
+              ▢
+            </button>
+          }
+        />
         <AssetLoader assetId={shape.props.assetId} converted={isWav} fileName={shape.props.fileName}>
           <AudioPlayer shape={shape} />
         </AssetLoader>
@@ -510,7 +541,7 @@ export class AudioShapeUtil extends BaseBoxShapeUtil<AudioShape> {
   }
 
   override onResize = (shape: AudioShape, info: Parameters<typeof resizeBox>[1]) => {
-    return resizeBox(shape, info, { minWidth: 560, minHeight: BASE_HEIGHT + MIN_COMMENT_LIST_H });
+    return resizeBox(shape, info, { minWidth: AUDIO_DEFAULT_W, minHeight: AUDIO_DEFAULT_H });
   };
 
   override hideSelectionBoundsBg = () => true;
