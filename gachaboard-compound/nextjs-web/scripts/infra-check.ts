@@ -179,7 +179,7 @@ function checkEnvVars(): CheckResult[] {
 
   const nextHttps = nextAuthUrl?.includes("https");
   const wsSecure = syncWsUrl?.startsWith("wss");
-  const protoMatch = !nextHttps || wsSecure || syncWsUrl?.includes("localhost");
+  const protoMatch = !nextHttps || wsSecure || (syncWsUrl?.includes("localhost") ?? false);
   results.push({
     ok: protoMatch,
     detail: protoMatch ? "プロトコル整合" : "本番でHTTPS運用時はWSS必須",

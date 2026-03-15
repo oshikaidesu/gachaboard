@@ -427,7 +427,8 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         deleting={deleting}
       />
 
-      {/* hidden audio element */}
+      {/* hidden audio element - src が空のときは要素を出さず NotSupportedError を防ぐ */}
+      {src && (
       <audio
         ref={audioRef}
         src={src}
@@ -440,6 +441,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         onEnded={() => setPlaying(false)}
         style={{ display: "none" }}
       />
+      )}
     </WheelGuard>
   );
 }

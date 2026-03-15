@@ -44,7 +44,6 @@
     "node_modules",
     "src/app/shapes/media/AudioShape.tsx",
     "src/app/shapes/media/VideoShape.tsx",
-    "src/app/shapes/file/TextFileShape.tsx",
-    "src/app/shapes/NativeShapeWrappers.tsx"
+    "src/app/shapes/file/TextFileShape.tsx"
   ]
 }

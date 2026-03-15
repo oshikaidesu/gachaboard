@@ -16,7 +16,7 @@ export function useAutoCreatedBy(
       editor.store.listen(
         (entry) => {
           const addedShapes = Object.values(entry.changes.added).filter(
-            (r): r is TLRecord & { typeName: "shape"; type: string; meta: Record<string, unknown> } =>
+            (r): r is TLRecord & { typeName: "shape"; type: string; meta?: Record<string, unknown> } =>
               r.typeName === "shape" && r.type !== "arrow" && r.type !== "draw"
           );
           if (addedShapes.length === 0) return;
@@ -30,11 +30,11 @@ export function useAutoCreatedBy(
             .filter((s) => !s.meta?.createdBy)
             .map((s) => ({
               ...s,
-              meta: { ...s.meta, ...metaBase },
+              meta: { ...s.meta, ...metaBase } as Record<string, unknown>,
             }));
 
           if (updates.length > 0) {
-            editor.store.put(updates);
+            editor.store.put(updates as TLRecord[]);
           }
         },
         { source: "user", scope: "document" }

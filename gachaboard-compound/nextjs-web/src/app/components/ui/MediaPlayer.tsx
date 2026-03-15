@@ -26,7 +26,7 @@ export default function MediaPlayer({ assetId, mimeType, fileName, workspaceId, 
 
   const isAudio = mimeType.startsWith("audio/") || !!isConverted;
   const isVideo = mimeType.startsWith("video/");
-  const srcUrl = `/api/assets/${assetId}/file${isConverted ? "?converted=1" : ""}`;
+  const srcUrl = assetId ? `/api/assets/${assetId}/file${isConverted ? "?converted=1" : ""}` : "";
 
   const handleTimeUpdate = () => {
     if (mediaRef.current) setCurrentTime(mediaRef.current.currentTime);
@@ -57,7 +57,7 @@ export default function MediaPlayer({ assetId, mimeType, fileName, workspaceId, 
     <div className="flex flex-col gap-3">
       <p className="text-sm font-medium text-zinc-700 truncate">{fileName}</p>
 
-      {isVideo ? (
+      {isVideo && srcUrl ? (
         <video
           ref={mediaRef as React.RefObject<HTMLVideoElement>}
           src={srcUrl}
@@ -66,7 +66,7 @@ export default function MediaPlayer({ assetId, mimeType, fileName, workspaceId, 
           onLoadedMetadata={handleLoadedMetadata}
           className="w-full rounded-lg bg-black"
         />
-      ) : (isAudio || isConverted) ? (
+      ) : (isAudio || isConverted) && srcUrl ? (
         <audio
           ref={mediaRef as React.RefObject<HTMLAudioElement>}
           src={srcUrl}

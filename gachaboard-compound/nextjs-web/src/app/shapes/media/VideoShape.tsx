@@ -202,7 +202,9 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
   const checker = isDarkMode ? CHECKER_DARK : CHECKER_LIGHT;
   const checkerBg = isDarkMode ? CHECKER_BG_DARK : CHECKER_BG_LIGHT;
   const srcRef = useRef<{ assetId: string; src: string } | null>(null);
-  if (safeAssetId && (!srcRef.current || srcRef.current.assetId !== safeAssetId)) {
+  if (!safeAssetId) {
+    srcRef.current = null;
+  } else if (!srcRef.current || srcRef.current.assetId !== safeAssetId) {
     srcRef.current = { assetId: safeAssetId, src: `/api/assets/${safeAssetId}/file?v=${Date.now()}` };
   }
   const stableSrc = srcRef.current?.src ?? "";
@@ -470,6 +472,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
             ▶
           </button>
         )}
+        {stableSrc && (
         <video
           ref={videoRef}
           src={stableSrc}
@@ -510,6 +513,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
           onPause={() => setPlaying(false)}
           onEnded={() => setPlaying(false)}
         />
+        )}
       </div>
 
       {/* コントロールエリア */}

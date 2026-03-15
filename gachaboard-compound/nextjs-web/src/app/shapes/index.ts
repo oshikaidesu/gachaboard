@@ -19,6 +19,7 @@ import { FileIconShapeUtil } from "./file/FileIconShape";
 import { TextFileShapeUtil } from "./file/TextFileShape";
 import { AudioShapeUtil } from "./media/AudioShape";
 import { VideoShapeUtil, VIDEO_UI_OVERHEAD, MIN_COMMENT_LIST_H } from "./media/VideoShape";
+import { AUDIO_DEFAULT_W, AUDIO_DEFAULT_H } from "./media/mediaConstants";
 import {
   WrappedImageShapeUtil,
   WrappedNoteShapeUtil,
@@ -117,12 +118,12 @@ async function createShapeForResolved(
       props: textProps,
     });
   } else if (type === SHAPE_TYPE.AUDIO) {
-    const defaultProps = new AudioShapeUtil().getDefaultProps();
     const audioProps: AudioShape["props"] = {
-      ...defaultProps,
       assetId: String(assetData.assetId ?? ""),
       fileName: String(assetData.fileName ?? ""),
       mimeType: String(assetData.mimeType ?? ""),
+      w: AUDIO_DEFAULT_W,
+      h: AUDIO_DEFAULT_H,
     };
     editor.createShape<AudioShape>({
       id,
@@ -183,7 +184,7 @@ export async function placeFile(
       meta: {},
     };
     editor.createAssets([imageAsset]);
-    editor.createShape({ type: "image", x, y, meta, props: { assetId, w, h } });
+    editor.createShape({ type: "image", x, y, meta: meta as object, props: { assetId, w, h } });
     if (existingShapeId) editor.deleteShapes([existingShapeId]);
     return;
   }
@@ -192,7 +193,7 @@ export async function placeFile(
     const fileUrl = `/api/assets/${data.id}/file`;
     const { w, h: videoH } = await getVideoDisplaySizeFromUrl(fileUrl);
     editor.createShape<VideoShape>({
-      id: createShapeId(), type: SHAPE_TYPE.VIDEO, x, y, meta,
+      id: createShapeId(), type: SHAPE_TYPE.VIDEO, x, y, meta: meta as object,
       props: { assetId: data.id, fileName: data.fileName, mimeType: mime, w, h: videoH + VIDEO_UI_OVERHEAD + MIN_COMMENT_LIST_H } as VideoShape["props"],
     });
     if (existingShapeId) editor.deleteShapes([existingShapeId]);
@@ -240,7 +241,7 @@ export async function placeAsset(
       meta: {},
     };
     editor.createAssets([imageAsset]);
-    editor.createShape({ type: "image", x, y, meta, props: { assetId, w, h } });
+    editor.createShape({ type: "image", x, y, meta: meta as object, props: { assetId, w, h } });
     if (existingShapeId) editor.deleteShapes([existingShapeId]);
     return;
   }
@@ -249,7 +250,7 @@ export async function placeAsset(
     const fileUrl = `/api/assets/${data.id}/file`;
     const { w, h: videoH } = await getVideoDisplaySizeFromUrl(fileUrl);
     editor.createShape<VideoShape>({
-      id: createShapeId(), type: SHAPE_TYPE.VIDEO, x, y, meta,
+      id: createShapeId(), type: SHAPE_TYPE.VIDEO, x, y, meta: meta as object,
       props: { assetId: data.id, fileName: data.fileName, mimeType: mime, w, h: videoH + VIDEO_UI_OVERHEAD + MIN_COMMENT_LIST_H } as VideoShape["props"],
     });
     if (existingShapeId) editor.deleteShapes([existingShapeId]);
@@ -289,7 +290,7 @@ export async function placeholderShape(
 
   if (mime.startsWith("image/") || mime.startsWith("video/")) {
     editor.createShape<FileIconShape>({
-      id, type: SHAPE_TYPE.FILE_ICON, x, y, meta: progressMeta,
+      id, type: SHAPE_TYPE.FILE_ICON, x, y, meta: progressMeta as object,
       props: { assetId: "", fileName: file.name, mimeType: mime, kind: mime.startsWith("image/") ? "image" : "video", w: 96, h: 96 },
     });
     return id;
@@ -380,7 +381,6 @@ export function convertToMediaPlayer(editor: Editor, shapeId: string): boolean {
   const meta = shape.meta ?? {};
 
   if (kind === "audio") {
-    const defaultProps = new AudioShapeUtil().getDefaultProps();
     editor.batch(() => {
       editor.deleteShapes([shapeId as import("@cmpd/tlschema").TLShapeId]);
       editor.createShape({
@@ -388,17 +388,20 @@ export function convertToMediaPlayer(editor: Editor, shapeId: string): boolean {
         type: SHAPE_TYPE.AUDIO,
         x,
         y,
-        meta,
+        meta: meta as object,
         props: {
-          ...defaultProps,
           assetId,
           fileName,
           mimeType,
+          w: AUDIO_DEFAULT_W,
+          h: AUDIO_DEFAULT_H,
         } as AudioShape["props"],
       });
     });
   } else {
-    const defaultProps = new VideoShapeUtil().getDefaultProps();
+    const w = 480;
+    const videoAreaH = Math.round(w / (16 / 9));
+    const defaultH = videoAreaH + VIDEO_UI_OVERHEAD + MIN_COMMENT_LIST_H;
     editor.batch(() => {
       editor.deleteShapes([shapeId as import("@cmpd/tlschema").TLShapeId]);
       editor.createShape({
@@ -406,12 +409,13 @@ export function convertToMediaPlayer(editor: Editor, shapeId: string): boolean {
         type: SHAPE_TYPE.VIDEO,
         x,
         y,
-        meta,
+        meta: meta as object,
         props: {
-          ...defaultProps,
           assetId,
           fileName,
           mimeType,
+          w,
+          h: defaultH,
         } as VideoShape["props"],
       });
     });

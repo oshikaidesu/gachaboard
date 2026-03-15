@@ -1,11 +1,10 @@
 "use client";
 
 /**
- * tldraw 組み込みシェイプ（image / video / note / text）に
+ * tldraw 組み込みシェイプ（image / note / text / geo / arrow）に
  * CreatorLabel と ShapeReactionPanel を追加するための薄いラッパー。
  *
- * 単純なラッパー（Image/Video/Note/Text）は wrapWithExtras() ファクトリで生成。
- * 独自ロジックがある Geo と Arrow は個別クラスとして残す。
+ * 型で区分けして個別クラス化。共通のラップ処理は renderWithExtras に集約。
  */
 
 import {
@@ -20,7 +19,6 @@ import {
   TLArrowShape,
   TLDefaultColorStyle,
   type TLShape,
-  ShapeUtil,
   useEditor,
 } from "@cmpd/compound";
 import {
@@ -37,93 +35,85 @@ import {
 } from "./common";
 import { getSafeAssetId } from "@/lib/safeUrl";
 
-// ---------- ファクトリ関数 ---------------------------------------------------
+// ---------- 共通ラップヘルパー ---------------------------------------------------
+
+type ShapeWithOptionalSize = TLShape & { props: { w?: number; h?: number } };
 
 /**
- * 任意の ShapeUtil を継承し、component() に CreatorLabel と ShapeReactionPanel を
- * 追加したサブクラスを返す汎用ファクトリ。
- * Geo/Arrow のように独自ロジックが必要なものはこのファクトリを使わず個別実装する。
+ * CreatorLabel + baseContent + ShapeReactionPanel + ShapeConnectHandles の共通レイアウト。
+ * Note / Text の単純ラッパーで使用。
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function wrapWithExtras(Base: new (...args: unknown[]) => ShapeUtil<any>): new (...args: unknown[]) => ShapeUtil<any> {
-  // Base は ShapeUtil の具象クラスで getDefaultProps/getGeometry/indicator を実装済み。
-  // 継承により Wrapped も持つが、型上は継承情報が失われるため any で継承する。
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  class Wrapped extends (Base as any) {
-    component(shape: TLShape & { props: { w?: number; h?: number } }) {
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      const editor = useEditor();
-      const base = super.component(shape);
-      const w = shape.props.w;
-      const h = shape.props.h;
-      const hasSize = w !== undefined && h !== undefined;
+function renderWithExtras(
+  shape: ShapeWithOptionalSize,
+  baseContent: React.ReactNode,
+  editor: Editor
+): React.ReactElement {
+  const w = shape.props.w;
+  const h = shape.props.h;
+  const hasSize = w !== undefined && h !== undefined;
 
-      if (hasSize) {
-        return (
-          <HTMLContainer
-            id={shape.id}
-            style={{ width: w, height: h, position: "relative", overflow: "visible" }}
-          >
-            <CreatorLabel
-              name={getCreatedBy(shape)}
-              avatarUrl={getCreatedByAvatarUrl(shape)}
-              rank={getCreationRank(editor, shape)}
-            />
-            {base}
-            <div
-              style={{
-                position: "absolute",
-                top: h,
-                left: 0,
-                width: w,
-                pointerEvents: "none",
-              }}
-            >
-              <ShapeReactionPanel
-                shapeId={shape.id}
-                containerStyle={{
-                  position: "static",
-                  marginTop: 4,
-                  pointerEvents: "all",
-                }}
-              />
-            </div>
-            <ShapeConnectHandles shapeId={shape.id} w={w} h={h} />
-          </HTMLContainer>
-        );
-      }
-
-      // w/h なし（テキストシェイプの autoSize モード等）
-      return (
-        <div style={{ position: "relative", overflow: "visible", width: "100%", height: "100%" }}>
-          <CreatorLabel name={getCreatedBy(shape)} rank={getCreationRank(editor, shape)} />
-          {base}
-          <div
-            style={{
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              width: "100%",
-              pointerEvents: "none",
+  if (hasSize) {
+    return (
+      <HTMLContainer
+        id={shape.id}
+        style={{ width: w, height: h, position: "relative", overflow: "visible" }}
+      >
+        <CreatorLabel
+          name={getCreatedBy(shape)}
+          avatarUrl={getCreatedByAvatarUrl(shape)}
+          rank={getCreationRank(editor, shape)}
+        />
+        {baseContent}
+        <div
+          style={{
+            position: "absolute",
+            top: h,
+            left: 0,
+            width: w,
+            pointerEvents: "none",
+          }}
+        >
+          <ShapeReactionPanel
+            shapeId={shape.id}
+            containerStyle={{
+              position: "static",
+              marginTop: 4,
+              pointerEvents: "all",
             }}
-          >
-            <ShapeReactionPanel
-              shapeId={shape.id}
-              containerStyle={{
-                position: "static",
-                marginTop: 4,
-                pointerEvents: "all",
-              }}
-            />
-          </div>
+          />
         </div>
-      );
-    }
+        <ShapeConnectHandles shapeId={shape.id} w={w} h={h} />
+      </HTMLContainer>
+    );
   }
-  return Wrapped as new (...args: unknown[]) => ShapeUtil<any>;
+
+  return (
+    <div style={{ position: "relative", overflow: "visible", width: "100%", height: "100%" }}>
+      <CreatorLabel name={getCreatedBy(shape)} rank={getCreationRank(editor, shape)} />
+      {baseContent}
+      <div
+        style={{
+          position: "absolute",
+          top: "100%",
+          left: 0,
+          width: "100%",
+          pointerEvents: "none",
+        }}
+      >
+        <ShapeReactionPanel
+          shapeId={shape.id}
+          containerStyle={{
+            position: "static",
+            marginTop: 4,
+            pointerEvents: "all",
+          }}
+        />
+      </div>
+    </div>
+  );
 }
 
-// ---------- ファクトリ生成（単純ラッパー） -----------------------------------
+// ---------- 個別クラス（Image / Note / Text） -----------------------------------
 
 const CHECKER_STYLE: React.CSSProperties = {
   backgroundImage:
@@ -133,9 +123,7 @@ const CHECKER_STYLE: React.CSSProperties = {
   backgroundColor: "#c0c0c0",
 };
 
-export class WrappedImageShapeUtil extends (wrapWithExtras(
-  ImageShapeUtil as new (...args: unknown[]) => ShapeUtil<any>
-) as unknown as typeof ImageShapeUtil) {
+export class WrappedImageShapeUtil extends ImageShapeUtil {
   override isAspectRatioLocked = () => true;
 
   override component(shape: Parameters<ImageShapeUtil["component"]>[0]) {
@@ -200,15 +188,25 @@ export class WrappedImageShapeUtil extends (wrapWithExtras(
   }
 }
 
-export const WrappedNoteShapeUtil = wrapWithExtras(
-  NoteShapeUtil as new (...args: unknown[]) => ShapeUtil<any>
-) as unknown as typeof NoteShapeUtil;
+export class WrappedNoteShapeUtil extends NoteShapeUtil {
+  override component(shape: Parameters<NoteShapeUtil["component"]>[0]) {
+    const editor = useEditor();
+    const base = super.component(shape);
+    return renderWithExtras(shape, base, editor);
+  }
+}
 
-export class WrappedTextShapeUtil extends (wrapWithExtras(
-  TextShapeUtil as new (...args: unknown[]) => ShapeUtil<any>
-) as unknown as typeof TextShapeUtil) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  override onBeforeCreate = (shape: any) => ({ ...shape, props: { ...shape.props, font: "mono" } });
+export class WrappedTextShapeUtil extends TextShapeUtil {
+  override onBeforeCreate = (shape: Parameters<TextShapeUtil["onBeforeCreate"]>[0]) => ({
+    ...shape,
+    props: { ...shape.props, font: "mono" as const },
+  });
+
+  override component(shape: Parameters<TextShapeUtil["component"]>[0]) {
+    const editor = useEditor();
+    const base = super.component(shape);
+    return renderWithExtras(shape, base, editor);
+  }
 }
 
 // ---------- 個別実装（独自ロジックあり） ------------------------------------
