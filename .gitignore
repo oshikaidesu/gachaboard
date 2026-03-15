@@ -1,27 +1,8 @@
-# Dependencies
-node_modules/
+# 自動生成（setup-tailscale-https.sh で上書き）
+Caddyfile
 
-# Build outputs
-.next/
-out/
-dist/
-build/
+# 起動ロック（二重起動防止）
+.gachaboard-start.lock
 
-# Environment
+# 環境変数（シークレット含む）
 .env
-.env.local
-.env.*.local
-
-# IDE / OS
-.DS_Store
-*.swp
-*.swo
-
-# Logs
-*.log
-npm-debug.log*
-
-# Temp
-_weavejs-frontend-temp/
-*.tmp
-.txt

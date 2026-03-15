@@ -1,8 +1,0 @@
-# 自動生成（setup-tailscale-https.sh で上書き）
-Caddyfile
-
-# 起動ロック（二重起動防止）
-.gachaboard-start.lock
-
-# 環境変数（シークレット含む）
-.env
