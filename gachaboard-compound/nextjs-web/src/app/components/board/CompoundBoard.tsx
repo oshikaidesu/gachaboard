@@ -53,7 +53,13 @@ export default function CompoundBoard({
 }: Props) {
   const [preview, setPreview] = useState<ApiAsset | null>(null);
   const [headerActionsEl, setHeaderActionsEl] = useState<HTMLDivElement | null>(null);
+  const [editorReady, setEditorReady] = useState(false);
   const router = useRouter();
+
+  // Layout のレンダー中に Compound がマウントされると setState-in-render エラーが出るため遅延
+  useEffect(() => {
+    setEditorReady(true);
+  }, []);
 
   // 戻る遷移を高速化するため、ワークスペースをプリフェッチ
   useEffect(() => {
@@ -183,7 +189,9 @@ export default function CompoundBoard({
           />
 
           <div className="flex-1 relative">
-            {useSync && isLoading ? (
+            {!editorReady ? (
+              <div className="flex h-full items-center justify-center text-sm text-zinc-400">ボードを読み込み中...</div>
+            ) : useSync && isLoading ? (
               <div className="flex h-full items-center justify-center text-zinc-500">接続中...</div>
             ) : useSync && isSyncError ? (
               <div className="flex h-full flex-col items-center justify-center gap-4 px-4">

@@ -11,11 +11,16 @@ export async function runVideoConversion(storageKey: string): Promise<void> {
     tmpSrc = await ensureLocalFromS3(storageKey);
     const base = storageKey.replace(/\.[^.]+$/, "");
     const tmpDest = path.join(tmpDir, `conv_${base}.mp4`);
-    await transcodeVideoToLightWithPath(tmpSrc, tmpDest);
-    await uploadToS3(s3KeyConverted(storageKey, ".mp4"), tmpDest, "video/mp4");
     const tmpThumb = path.join(tmpDir, `thumb_${base}.jpg`);
-    await generateThumbnailWithPath(tmpSrc, tmpThumb);
-    await uploadToS3(s3KeyThumbnail(storageKey), tmpThumb, "image/jpeg");
+    // サムネイルとトランスコードを並列。サムネイルは軽いので先に完了→即S3へ
+    const [, convPath] = await Promise.all([
+      (async () => {
+        await generateThumbnailWithPath(tmpSrc!, tmpThumb);
+        await uploadToS3(s3KeyThumbnail(storageKey), tmpThumb, "image/jpeg");
+      })(),
+      transcodeVideoToLightWithPath(tmpSrc!, tmpDest).then(() => tmpDest),
+    ]);
+    await uploadToS3(s3KeyConverted(storageKey, ".mp4"), convPath, "video/mp4");
   } finally {
     if (tmpSrc) await fs.unlink(tmpSrc).catch(() => {});
   }
@@ -29,7 +34,7 @@ export async function transcodeVideoToLightWithPath(srcPath: string, destPath: s
       .videoCodec("libx264")
       .audioCodec("aac")
       .format("mp4")
-      .outputOptions(["-vf", "scale=-2:min(ih\\,720)", "-crf", "28", "-preset", "fast", "-movflags", "+faststart"])
+      .outputOptions(["-vf", "scale=-2:min(ih\\,720)", "-crf", "30", "-preset", "veryfast", "-movflags", "+faststart"])
       .output(tmp)
       .on("end", () => resolve())
       .on("error", (err) => reject(err))
