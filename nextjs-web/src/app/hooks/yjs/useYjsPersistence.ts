@@ -30,7 +30,10 @@ type UseYjsPersistenceOptions = {
 
 /**
  * IndexedDB 永続化と、空の場合の DB スナップショット復元。
- * ydoc を作成し、persistence をセットアップする。
+ * 公式パターン（https://docs.yjs.dev/ecosystem/database-provider/y-indexeddb）:
+ * - ydoc を作成
+ * - IndexeddbPersistence(docName, ydoc) で同一 docName を Hocuspocus の name と統一
+ * - persistence.on('synced') で DB ロード完了を検知
  */
 export function useYjsPersistence({
   roomId,
@@ -51,6 +54,7 @@ export function useYjsPersistence({
     const yMap = yd.getMap<string>("tldraw");
 
     let cancelled = false;
+    // docName は HocuspocusProvider の name と統一（公式: 同一識別子を使用）
     const persistence = new IndexeddbPersistence(roomId, yd);
     persistence.on("synced", () => {
       const hasData = yMap.size > 0;

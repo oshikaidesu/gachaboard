@@ -43,10 +43,12 @@ if ! run_docker_compose_up; then
   exit 1
 fi
 
+wait_for_postgres || exit 1
+apply_prisma_schema "$ROOT_DIR"
+
 if [[ "$DO_DEV" != true ]] && [[ ! -f "nextjs-web/.next/BUILD_ID" ]]; then
   echo ">>> 本番ビルドが見つかりません。ビルドを実行します..."
   cd nextjs-web
-  npx prisma generate
   npm run build
   cd "$ROOT_DIR"
 fi

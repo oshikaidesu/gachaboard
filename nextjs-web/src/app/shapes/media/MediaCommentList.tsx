@@ -131,7 +131,6 @@ export function MediaCommentList({
             onTouchStart={(e) => e.stopPropagation()}
             onTouchEnd={(e) => {
               e.stopPropagation();
-              e.preventDefault();
               onDelete(c.id);
             }}
             disabled={deleting === c.id}

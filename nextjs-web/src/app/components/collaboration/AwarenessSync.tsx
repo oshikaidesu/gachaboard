@@ -10,11 +10,11 @@ import { useEditor } from "@cmpd/editor";
 import { InstancePresenceRecordType } from "@cmpd/tlschema";
 import rafThrottle from "raf-throttle";
 import { useCallback, useEffect, useRef } from "react";
-import type { WebsocketProvider } from "y-websocket";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { getSafeColor, getSafeHref } from "@/lib/safeUrl";
 
 type AwarenessSyncProps = {
-  provider: WebsocketProvider;
+  provider: HocuspocusProvider;
   localUserId: string;
 };
 
@@ -25,8 +25,9 @@ export function AwarenessSync({ provider, localUserId }: AwarenessSyncProps) {
 
   // リモート awareness → store の instance_presence に同期（raf-throttle で 1 フレームに 1 回）
   useEffect(() => {
+    if (!awareness) return;
     const store = editor.store;
-    const localClientId = provider.doc.clientID;
+    const localClientId = provider.document.clientID;
 
     const syncRemoteToStore = () => {
       const states = awareness.getStates();
@@ -41,7 +42,7 @@ export function AwarenessSync({ provider, localUserId }: AwarenessSyncProps) {
 
       // 同一 userId の複数タブを統合して、1ユーザー＝1 presence にする
       const byUserId = new Map<string, Record<string, unknown>>();
-      states.forEach((state, clientId) => {
+      states.forEach((state: Record<string, unknown>, clientId: number) => {
         if (clientId === localClientId) return;
         const user = state?.user as { id?: string; name?: string; color?: string } | undefined;
         const userId = user?.id ?? `yjs-${clientId}`;
@@ -116,11 +117,12 @@ export function AwarenessSync({ provider, localUserId }: AwarenessSyncProps) {
       throttledSync.cancel();
       awareness.off("change", throttledSync);
     };
-  }, [editor, awareness, provider.doc.clientID]);
+  }, [editor, awareness, provider.document.clientID]);
 
   // ローカル cursor を awareness に送信
   const updateLocalCursor = useCallback(
     (pageX: number, pageY: number) => {
+      if (!awareness) return;
       awareness.setLocalStateField("cursor", {
         x: pageX,
         y: pageY,
@@ -133,6 +135,7 @@ export function AwarenessSync({ provider, localUserId }: AwarenessSyncProps) {
   );
 
   const clearLocalCursor = useCallback(() => {
+    if (!awareness) return;
     awareness.setLocalStateField("cursor", null);
   }, [awareness]);
 

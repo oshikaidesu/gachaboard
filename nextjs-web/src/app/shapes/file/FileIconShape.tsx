@@ -243,7 +243,6 @@ function FileIconShapeInner({ shape }: { shape: FileIconShape }) {
                 onTouchStart={(e) => e.stopPropagation()}
                 onTouchEnd={(e) => {
                   e.stopPropagation();
-                  e.preventDefault();
                   convertToMediaPlayer(editor, shape.id);
                   lastTouchEndByShapeId.set(shape.id, Date.now());
                 }}

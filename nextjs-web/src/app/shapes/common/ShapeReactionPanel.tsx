@@ -61,7 +61,7 @@ export function ShapeReactionPanel({ shapeId, containerStyle }: Props) {
 
   const stopAll = (e: React.SyntheticEvent) => {
     e.stopPropagation();
-    e.preventDefault();
+    // preventDefault は passive な touch でエラーになるため呼ばない
   };
 
   const active = reactions.filter((r) => !r.deletedAt);

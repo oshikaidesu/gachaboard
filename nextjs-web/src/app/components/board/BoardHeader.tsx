@@ -9,7 +9,7 @@ import { GachaboardLogo } from "@/app/components/ui/GachaboardLogo";
 import { Identicon } from "@/app/components/ui/Identicon";
 import { UserSharePanel } from "@/app/components/collaboration/UserSharePanel";
 import type { StoredSession } from "@/lib/s3UploadSessionStore";
-import type { WebsocketProvider } from "y-websocket";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 
 type Props = {
   workspaceId: string;
@@ -18,7 +18,7 @@ type Props = {
   syncStatus: string | null;
   isSyncError: boolean;
   useSync: boolean;
-  provider?: WebsocketProvider;
+  provider?: HocuspocusProvider;
   currentUserId: string;
   onHeaderActionsMount: (el: HTMLDivElement | null) => void;
   resumableUploads: StoredSession[];

@@ -12,6 +12,27 @@ export function isS3Enabled(): boolean {
   return !!(env.S3_BUCKET && env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY);
 }
 
+/**
+ * S3/MinIO のストレージ満杯エラーかどうかを判定し、ユーザー向けメッセージと HTTP ステータスを返す。
+ * 満杯でない場合は null。
+ */
+export function getS3StorageFullError(err: unknown): { status: 507; message: string } | null {
+  const msg = err instanceof Error ? err.message : String(err);
+  const code =
+    err && typeof err === "object" && "name" in err ? String((err as { name?: string }).name) : "";
+  if (
+    /insufficient|disk full|no space|quota|ENOSPC|storage full|not enough space/i.test(msg) ||
+    /InsufficientStorage|InternalError/i.test(code)
+  ) {
+    return {
+      status: 507,
+      message:
+        "ストレージが満杯です。管理者に連絡するか、不要なファイルを削除してください。",
+    };
+  }
+  return null;
+}
+
 let _s3Client: S3Client | null = null;
 
 function getClient(): S3Client {

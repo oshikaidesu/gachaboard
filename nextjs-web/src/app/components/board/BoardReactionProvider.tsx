@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useCallback } from "react";
 import { useBoardContext } from "./BoardContext";
-import type { WebsocketProvider } from "y-websocket";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { useYMapSync } from "@/app/hooks/yjs/useYMapSync";
 
 type Reaction = {
@@ -71,7 +71,7 @@ export function BoardReactionProvider({
   provider,
 }: {
   children: React.ReactNode;
-  provider?: WebsocketProvider;
+  provider?: HocuspocusProvider;
 }) {
   const { currentUserId, userName, avatarUrl } = useBoardContext();
   const byShape = useYMapSync(provider, REACTIONS_MAP_KEY, parseReaction, reactionsToMap);
@@ -88,7 +88,7 @@ export function BoardReactionProvider({
         deletedAt: null,
         user: { id: currentUserId, discordName: userName, avatarUrl: avatarUrl ?? null },
       };
-      const ydoc = provider.doc;
+      const ydoc = provider.document;
       const yMap = ydoc.getMap<string>(REACTIONS_MAP_KEY);
       yMap.set(id, JSON.stringify(reaction));
     },
@@ -98,7 +98,7 @@ export function BoardReactionProvider({
   const removeReaction = useCallback(
     (reactionId: string) => {
       if (!provider) return;
-      const ydoc = provider.doc;
+      const ydoc = provider.document;
       const yMap = ydoc.getMap<string>(REACTIONS_MAP_KEY);
       const raw = yMap.get(reactionId);
       if (!raw) return;

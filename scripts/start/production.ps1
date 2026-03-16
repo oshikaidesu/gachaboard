@@ -75,7 +75,7 @@ if (-not (Test-Path $envLocal)) {
 
 # ── 起動 ──
 Write-Host ">>> 1. 依存サービス起動 (PostgreSQL, MinIO, Sync Server)" -ForegroundColor Yellow
-docker compose up -d
+docker compose up -d --build
 
 Write-Host ">>> 2. パッケージ・DB セットアップ" -ForegroundColor Yellow
 Set-Location nextjs-web

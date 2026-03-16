@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireLogin } from "@/lib/authz";
 import { env } from "@/lib/env";
 import { db } from "@/lib/db";
-import { isS3Enabled, createMultipartUpload, getPresignedPutUrl, s3KeyAssets } from "@/lib/s3";
+import {
+    isS3Enabled,
+    createMultipartUpload,
+    getPresignedPutUrl,
+    s3KeyAssets,
+    getS3StorageFullError,
+  } from "@/lib/s3";
 import { uploadInitSchema } from "@/lib/apiSchemas";
 import { formatZodError, parseJsonBody } from "@/lib/parseJsonBody";
 import { ZodError } from "zod";
@@ -78,10 +84,19 @@ export async function POST(req: NextRequest) {
       presignedUrls,
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
     console.error("[S3 init]", err);
+    const storageFull = getS3StorageFullError(err);
+    if (storageFull) {
+      return NextResponse.json({ error: storageFull.message }, { status: storageFull.status });
+    }
+    const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { error: msg.includes("ECONNREFUSED") || msg.includes("connect") ? "MinIO に接続できません。docker compose up -d で MinIO を起動してください。" : msg },
+      {
+        error:
+          msg.includes("ECONNREFUSED") || msg.includes("connect")
+            ? "MinIO に接続できません。docker compose up -d で MinIO を起動してください。"
+            : msg,
+      },
       { status: 503 }
     );
   }

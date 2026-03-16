@@ -84,6 +84,25 @@ index 46ae2f7..4846e7a 100644
                break;
              }
              case "key_repeat": {
+diff --git a/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useCanvasEvents.js b/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useCanvasEvents.js
+index 0e30da6..6d6ffe6 100644
+--- a/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useCanvasEvents.js
++++ b/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useCanvasEvents.js
+@@ -108,14 +108,10 @@ function useCanvasEvents() {
+         ;
+         e.isKilled = true;
+         document.body.click();
+-        (0, import_dom.preventDefault)(e);
+       }
+       function onTouchEnd(e) {
+         ;
+         e.isKilled = true;
+-        if (e.target.tagName !== "A" && e.target.tagName !== "TEXTAREA") {
+-          (0, import_dom.preventDefault)(e);
+-        }
+       }
+       function onDragOver(e) {
+         (0, import_dom.preventDefault)(e);
 diff --git a/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useGestureEvents.js b/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useGestureEvents.js
 index 393e273..8b358a9 100644
 --- a/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useGestureEvents.js
@@ -232,6 +251,25 @@ index beccefa..f2674b7 100644
                break;
              }
              case "key_repeat": {
+diff --git a/node_modules/@cmpd/editor/dist-esm/lib/hooks/useCanvasEvents.mjs b/node_modules/@cmpd/editor/dist-esm/lib/hooks/useCanvasEvents.mjs
+index 61e1939..6c189e0 100644
+--- a/node_modules/@cmpd/editor/dist-esm/lib/hooks/useCanvasEvents.mjs
++++ b/node_modules/@cmpd/editor/dist-esm/lib/hooks/useCanvasEvents.mjs
+@@ -90,14 +90,10 @@ function useCanvasEvents() {
+         ;
+         e.isKilled = true;
+         document.body.click();
+-        preventDefault(e);
+       }
+       function onTouchEnd(e) {
+         ;
+         e.isKilled = true;
+-        if (e.target.tagName !== "A" && e.target.tagName !== "TEXTAREA") {
+-          preventDefault(e);
+-        }
+       }
+       function onDragOver(e) {
+         preventDefault(e);
 diff --git a/node_modules/@cmpd/editor/dist-esm/lib/hooks/useGestureEvents.mjs b/node_modules/@cmpd/editor/dist-esm/lib/hooks/useGestureEvents.mjs
 index e6a1429..6fd6cd4 100644
 --- a/node_modules/@cmpd/editor/dist-esm/lib/hooks/useGestureEvents.mjs
@@ -346,3 +384,25 @@ index 390a3a4..7e7d0f5 100644
  							break
  						}
  						case 'key_repeat': {
+diff --git a/node_modules/@cmpd/editor/src/lib/hooks/useCanvasEvents.ts b/node_modules/@cmpd/editor/src/lib/hooks/useCanvasEvents.ts
+index 1633708..2f6648f 100644
+--- a/node_modules/@cmpd/editor/src/lib/hooks/useCanvasEvents.ts
++++ b/node_modules/@cmpd/editor/src/lib/hooks/useCanvasEvents.ts
+@@ -100,17 +100,10 @@ export function useCanvasEvents() {
+ 				// todo: investigate whether this effects keyboard shortcuts
+ 				// god damn it, but necessary for long presses to open the context menu
+ 				document.body.click()
+-				preventDefault(e)
+ 			}
+ 
+ 			function onTouchEnd(e: React.TouchEvent) {
+ 				;(e as any).isKilled = true
+-				if (
+-					(e.target as HTMLElement).tagName !== 'A' &&
+-					(e.target as HTMLElement).tagName !== 'TEXTAREA'
+-				) {
+-					preventDefault(e)
+-				}
+ 			}
+ 
+ 			function onDragOver(e: React.DragEvent<Element>) {

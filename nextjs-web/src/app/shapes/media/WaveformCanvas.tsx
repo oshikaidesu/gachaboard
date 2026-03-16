@@ -34,7 +34,6 @@ export function WaveformCanvas({
   const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
     if (duration <= 0) return;
     e.stopPropagation();
-    e.preventDefault();
     const touch = e.changedTouches[0];
     if (!touch) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -90,7 +89,7 @@ export function WaveformCanvas({
           onClick={() => onSeek(c.timeSec)}
           onMouseDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
-          onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); onSeek(c.timeSec); }}
+          onTouchEnd={(e) => { e.stopPropagation(); onSeek(c.timeSec); }}
           style={{
             position: "absolute",
             bottom: "50%",

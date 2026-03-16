@@ -5,11 +5,11 @@
  * avatarUrl / color は他クライアント由来のため検証してから使用する。
  */
 import { useEffect, useState } from "react";
-import type { WebsocketProvider } from "y-websocket";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { getSafeColor, getSafeHref } from "@/lib/safeUrl";
 
 type UserSharePanelProps = {
-  provider: WebsocketProvider;
+  provider: HocuspocusProvider;
   localUserId?: string;
 };
 
@@ -17,11 +17,13 @@ const FALLBACK_COLOR = "#888888";
 
 type User = { id: string; name: string; color: string; avatarUrl?: string | null };
 
-function getUsers(provider: WebsocketProvider): User[] {
-  const states = provider.awareness.getStates();
+function getUsers(provider: HocuspocusProvider): User[] {
+  const awareness = provider.awareness;
+  if (!awareness) return [];
+  const states = awareness.getStates();
   const seen = new Set<string>();
   const users: User[] = [];
-  states.forEach((state) => {
+  states.forEach((state: Record<string, unknown>) => {
     const user = state?.user as { id?: string; name?: string; color?: string; avatarUrl?: string | null } | undefined;
     if (user?.name && user.id && !seen.has(user.id)) {
       seen.add(user.id);
@@ -42,10 +44,12 @@ export function UserSharePanel({ provider, localUserId }: UserSharePanelProps) {
   const [users, setUsers] = useState<User[]>(() => getUsers(provider));
 
   useEffect(() => {
+    const awareness = provider.awareness;
+    if (!awareness) return;
     const update = () => setUsers(getUsers(provider));
     update(); // 初回
-    provider.awareness.on("change", update);
-    return () => provider.awareness.off("change", update);
+    awareness.on("change", update);
+    return () => awareness.off("change", update);
   }, [provider]);
 
   // 部屋にいる全員を表示（自分含む）

@@ -16,6 +16,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const GATE_PORT = parseInt(process.env.PORT || "5858", 10);
 const BACKEND_PORT = parseInt(process.env.SYNC_BACKEND_PORT || "5859", 10);
 const SECRET = process.env.NEXTAUTH_SECRET?.trim();
+/** 1ボードあたりの最大同時接続数（1ボード約30人想定）。環境変数 SYNC_MAX_CLIENTS_PER_ROOM で上書き可 */
+const MAX_CLIENTS_PER_ROOM = parseInt(process.env.SYNC_MAX_CLIENTS_PER_ROOM || "30", 10);
 
 function base64UrlEncode(buf) {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -71,6 +73,8 @@ function runGate() {
     res.end();
   });
   const wss = new WebSocketServer({ noServer: true });
+  /** ルームIDごとの現在の接続数 */
+  const roomCounts = new Map();
 
   server.on("upgrade", (req, socket, head) => {
     const url = new URL(req.url ?? "", `http://${req.headers.host}`);
@@ -84,6 +88,13 @@ function runGate() {
     }
     if (!verifyToken(token, roomId)) {
       socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+      socket.destroy();
+      return;
+    }
+
+    const current = roomCounts.get(roomId) || 0;
+    if (current >= MAX_CLIENTS_PER_ROOM) {
+      socket.write("HTTP/1.1 503 Service Unavailable\r\n\r\n");
       socket.destroy();
       return;
     }
@@ -114,12 +125,30 @@ function runGate() {
       backendWs.on("open", () => {
         opened = true;
         clearTimeout(timeout);
+        roomCounts.set(roomId, (roomCounts.get(roomId) || 0) + 1);
+        const decrementRoom = () => {
+          const n = roomCounts.get(roomId) ?? 0;
+          if (n <= 1) roomCounts.delete(roomId);
+          else roomCounts.set(roomId, n - 1);
+        };
         clientWs.on("message", (data) => backendWs.send(data));
         backendWs.on("message", (data) => clientWs.send(data));
-        clientWs.on("close", () => backendWs.close());
-        backendWs.on("close", () => clientWs.close());
-        clientWs.on("error", () => backendWs.close());
-        backendWs.on("error", () => clientWs.close());
+        clientWs.on("close", () => {
+          decrementRoom();
+          backendWs.close();
+        });
+        backendWs.on("close", () => {
+          decrementRoom();
+          clientWs.close();
+        });
+        clientWs.on("error", () => {
+          decrementRoom();
+          backendWs.close();
+        });
+        backendWs.on("error", () => {
+          decrementRoom();
+          clientWs.close();
+        });
       });
 
       backendWs.on("close", () => {

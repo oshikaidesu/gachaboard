@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { DEFAULT_REACTION_EMOJI_LIST } from "@shared/constants";
-import type { WebsocketProvider } from "y-websocket";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 
 const REACTION_EMOJI_PRESET_MAP_KEY = "reactionEmojiPreset";
 const REACTION_EMOJI_PRESET_EMOJIS_KEY = "emojis";
 
-function parseEmojisFromYMap(provider: WebsocketProvider): string[] | null {
-  const yMap = provider.doc.getMap<string>(REACTION_EMOJI_PRESET_MAP_KEY);
+function parseEmojisFromYMap(provider: HocuspocusProvider): string[] | null {
+  const yMap = provider.document.getMap<string>(REACTION_EMOJI_PRESET_MAP_KEY);
   const raw = yMap.get(REACTION_EMOJI_PRESET_EMOJIS_KEY);
   if (!raw) return null;
   try {
@@ -23,7 +23,7 @@ function parseEmojisFromYMap(provider: WebsocketProvider): string[] | null {
 export type UseReactionPresetOptions = {
   boardId: string;
   workspaceId: string;
-  provider?: WebsocketProvider | null;
+  provider?: HocuspocusProvider | null;
 };
 
 /**
@@ -56,7 +56,7 @@ export function useReactionPreset({
 
   useEffect(() => {
     if (provider) {
-      const yMap = provider.doc.getMap<string>(REACTION_EMOJI_PRESET_MAP_KEY);
+      const yMap = provider.document.getMap<string>(REACTION_EMOJI_PRESET_MAP_KEY);
 
       const apply = () => {
         const parsed = parseEmojisFromYMap(provider);

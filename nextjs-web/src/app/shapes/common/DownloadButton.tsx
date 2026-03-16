@@ -68,7 +68,7 @@ export function DownloadButton({ assetId, fileName, style }: Props) {
 
   const stopAll = (e: React.SyntheticEvent) => {
     e.stopPropagation();
-    e.preventDefault();
+    // preventDefault は passive な touch でエラーになるため呼ばない
   };
 
   return (

@@ -2,10 +2,15 @@ import path from "path";
 import fs from "fs/promises";
 import { ensureLocalFromS3, uploadToS3 } from "@/lib/storage";
 import { s3KeyConverted, s3KeyWaveform } from "@/lib/s3";
+import { runWithFfmpegLimit } from "./concurrency";
 
 const BAR_COUNT = 200;
 
 export async function runWavToMp3(storageKey: string): Promise<void> {
+  return runWithFfmpegLimit(() => runWavToMp3Impl(storageKey));
+}
+
+async function runWavToMp3Impl(storageKey: string): Promise<void> {
   const { default: ffmpeg } = await import("fluent-ffmpeg");
   let tmpSrc: string | null = null;
   const tmpDir = path.join(process.cwd(), "uploads", "tmp");
@@ -29,6 +34,10 @@ export async function runWavToMp3(storageKey: string): Promise<void> {
 }
 
 export async function runWaveform(storageKey: string): Promise<void> {
+  return runWithFfmpegLimit(() => runWaveformImpl(storageKey));
+}
+
+async function runWaveformImpl(storageKey: string): Promise<void> {
   const { default: ffmpeg } = await import("fluent-ffmpeg");
   const { writeFile } = await import("fs/promises");
   let tmpSrc: string | null = null;

@@ -4,8 +4,21 @@
  */
 
 const WINDOW_MS = 60 * 1000; // 1分
+const SWEEP_INTERVAL_MS = 5 * 60 * 1000; // 5分ごとに期限切れエントリを削除
 
 const store = new Map<string, { count: number; resetAt: number }>();
+
+/** 期限切れ（resetAt を過ぎた）エントリを削除し、Map の肥大化を防ぐ */
+function sweepExpiredEntries(): void {
+  const now = Date.now();
+  for (const [key, entry] of store.entries()) {
+    if (now >= entry.resetAt) store.delete(key);
+  }
+}
+
+if (typeof setInterval !== "undefined") {
+  setInterval(sweepExpiredEntries, SWEEP_INTERVAL_MS);
+}
 
 function getClientKey(req: Request): string {
   const forwarded = req.headers.get("x-forwarded-for");

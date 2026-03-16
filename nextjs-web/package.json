@@ -41,6 +41,7 @@
     "@cmpd/tlschema": "^2.0.0-alpha.21",
     "@cmpd/utils": "^2.0.0-alpha.21",
     "@cmpd/validate": "^2.0.0-alpha.21",
+    "@hocuspocus/provider": "^3.4.4",
     "@prisma/adapter-pg": "^7.4.1",
     "@prisma/client": "7.4.1",
     "@t3-oss/env-nextjs": "^0.13.10",
@@ -72,7 +73,6 @@
     "url-sanitizer": "^2.0.11",
     "usehooks-ts": "^3.1.1",
     "y-indexeddb": "^9.0.12",
-    "y-websocket": "^2.1.0",
     "yjs": "^13.6.0",
     "zod": "^4.3.6"
   },
@@ -98,5 +98,8 @@
     "tailwindcss": "^4",
     "typescript": "5.9.3",
     "video-media-samples": "^1.0.0"
+  },
+  "overrides": {
+    "yjs": "$yjs"
   }
 }

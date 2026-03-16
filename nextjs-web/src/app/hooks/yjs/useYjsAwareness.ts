@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import type { WebsocketProvider } from "y-websocket";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { getUserColor } from "@/lib/yjsSyncHelpers";
 
 type UseYjsAwarenessOptions = {
-  provider: WebsocketProvider | undefined;
+  provider: HocuspocusProvider | undefined;
   userId: string;
   defaultName: string;
   avatarUrl?: string | null;
@@ -22,7 +22,7 @@ export function useYjsAwareness({
   avatarUrl,
 }: UseYjsAwarenessOptions): void {
   useEffect(() => {
-    if (!provider || !userId || !defaultName) return;
+    if (!provider?.awareness || !userId || !defaultName) return;
     const color = getUserColor(userId);
     provider.awareness.setLocalStateField("user", {
       id: userId,

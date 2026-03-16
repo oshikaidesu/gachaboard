@@ -25,6 +25,7 @@
     "dev:local:reset": "bash scripts/start/local.sh --dev --reset",
     "setup:env": "node scripts/setup/run-env-setup.mjs",
     "env:sync": "bash scripts/lib/sync-env-ports.sh",
-    "setup:tailscale-https": "bash scripts/setup/tailscale-https.sh"
+    "setup:tailscale-https": "bash scripts/setup/tailscale-https.sh",
+    "reset:all": "bash scripts/reset-all.sh"
   }
 }

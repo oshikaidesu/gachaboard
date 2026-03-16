@@ -152,6 +152,31 @@ _docker_engine_alive() {
   docker info >/dev/null 2>&1
 }
 
+# PostgreSQL が接続を受け付けるまで待つ（最大60秒）
+# docker compose up -d 直後は DB がまだ立ち上がっていないため、Next 起動前に必須
+# 使用: wait_for_postgres || exit 1
+wait_for_postgres() {
+  local max=60
+  echo "    PostgreSQL の起動を待機中..."
+  for i in $(seq 1 "$max"); do
+    if docker exec compound-postgres pg_isready -U gachaboard -q 2>/dev/null; then
+      echo "    ✓ PostgreSQL 準備完了 (${i}秒)"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "    ⚠ PostgreSQL の起動が ${max}秒 以内に完了しませんでした"
+  return 1
+}
+
+# nextjs-web で Prisma スキーマを適用（generate + db push）
+# 使用: apply_prisma_schema "$ROOT_DIR"
+apply_prisma_schema() {
+  local root_dir="${1:-.}"
+  echo ">>> スキーマ適用 (prisma generate / db push)"
+  (cd "${root_dir}/nextjs-web" && npx prisma generate && npx prisma db push)
+}
+
 # macOS: Docker Desktop を完全終了→再起動→Engine 準備完了まで待つ
 _restart_docker_desktop() {
   echo ">>> Docker Desktop を再起動します..."
@@ -211,19 +236,20 @@ run_docker_compose_up() {
     fi
   fi
 
-  # 2. 古いコンテナを掃除してから docker compose up -d を実行（最大3回リトライ、5秒間隔）
+  # 2. 古いコンテナを掃除してから docker compose up -d --build を実行（最大3回リトライ、5秒間隔）
+  # --build: sync-server 等のイメージを必要に応じてリビルド（コード変更後も古いイメージのまま起動しない）
   docker compose down --remove-orphans 2>/dev/null || true
 
   local attempt=1
   local err
   while true; do
-    if err=$(docker compose up -d --remove-orphans 2>&1); then
+    if err=$(docker compose up -d --build --remove-orphans 2>&1); then
       echo "$err"
       return 0
     fi
 
     echo ""
-    echo ">>> docker compose up -d が失敗しました (試行 ${attempt}/${max_compose_retries}):"
+    echo ">>> docker compose up -d --build が失敗しました (試行 ${attempt}/${max_compose_retries}):"
     echo "$err"
 
     if [[ $attempt -ge $max_compose_retries ]]; then
@@ -276,6 +302,13 @@ kill_port_3000() {
 reset_docker() {
   echo ">>> リセット: Docker コンテナを停止"
   docker compose down 2>/dev/null || true
+  sleep 2
+}
+
+# 全データリセット: Docker コンテナとボリュームを削除（PostgreSQL / MinIO / sync-server のデータが消える）
+reset_docker_volumes() {
+  echo ">>> 全データリセット: Docker コンテナ・ボリュームを削除"
+  docker compose down -v 2>/dev/null || true
   sleep 2
 }
 

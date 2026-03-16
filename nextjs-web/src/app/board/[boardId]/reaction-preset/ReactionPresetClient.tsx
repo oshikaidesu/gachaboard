@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import emojiRegex from "emoji-regex";
 import * as Y from "yjs";
-import { WebsocketProvider } from "y-websocket";
+import { HocuspocusProvider } from "@hocuspocus/provider";
 import { IndexeddbPersistence } from "y-indexeddb";
 import {
   DEFAULT_REACTION_EMOJI_LIST,
@@ -53,7 +53,7 @@ export default function ReactionPresetClient({
   const [, copyToClipboard] = useCopyToClipboard();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const providerRef = useRef<WebsocketProvider | null>(null);
+  const providerRef = useRef<HocuspocusProvider | null>(null);
   const ydocRef = useRef<Y.Doc | null>(null);
 
   const wsUrl = getSyncWsUrl();
@@ -65,9 +65,12 @@ export default function ReactionPresetClient({
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
     const persistence = new IndexeddbPersistence(boardId, ydoc);
-    const opts = typeof syncToken === "string" ? { connect: false, params: { token: syncToken } } : { connect: false };
-    const provider = new WebsocketProvider(wsUrl, boardId, ydoc, opts);
-    provider.connect();
+    const provider = new HocuspocusProvider({
+      url: wsUrl,
+      name: boardId,
+      document: ydoc,
+      token: typeof syncToken === "string" ? syncToken : "",
+    });
     providerRef.current = provider;
     return () => {
       provider.disconnect();
@@ -100,7 +103,7 @@ export default function ReactionPresetClient({
     setSaved(false);
 
     if (providerRef.current) {
-      const yMap = providerRef.current.doc.getMap<string>(REACTION_EMOJI_PRESET_MAP_KEY);
+      const yMap = providerRef.current.document.getMap<string>(REACTION_EMOJI_PRESET_MAP_KEY);
       yMap.set(REACTION_EMOJI_PRESET_EMOJIS_KEY, JSON.stringify(fullEmojis));
     }
 

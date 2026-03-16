@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useCallback } from "react";
 import { useBoardContext } from "./BoardContext";
-import type { WebsocketProvider } from "y-websocket";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { useYMapSync } from "@/app/hooks/yjs/useYMapSync";
 
 /** Y.Doc に保存するコメント形式。author は非正規化で埋め込む */
@@ -93,7 +93,7 @@ export function BoardCommentProvider({
   provider,
 }: {
   children: React.ReactNode;
-  provider?: WebsocketProvider;
+  provider?: HocuspocusProvider;
 }) {
   const { currentUserId, userName, avatarUrl } = useBoardContext();
   const byAsset = useYMapSync(provider, COMMENTS_MAP_KEY, parseComment, commentsByAsset);
@@ -112,7 +112,7 @@ export function BoardCommentProvider({
         authorAvatarUrl: avatarUrl ?? null,
         createdAt: new Date().toISOString(),
       };
-      const ydoc = provider.doc;
+      const ydoc = provider.document;
       const yMap = ydoc.getMap<string>(COMMENTS_MAP_KEY);
       yMap.set(id, JSON.stringify(comment));
     },
@@ -122,7 +122,7 @@ export function BoardCommentProvider({
   const deleteComment = useCallback(
     (commentId: string) => {
       if (!provider) return;
-      const ydoc = provider.doc;
+      const ydoc = provider.document;
       const yMap = ydoc.getMap<string>(COMMENTS_MAP_KEY);
       const raw = yMap.get(commentId);
       if (!raw) return;

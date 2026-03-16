@@ -12,6 +12,13 @@ export function AuthTroubleshooting({ callbackUrl }: Props) {
           よくある原因: PostgreSQL が起動していない
         </h2>
         <p className="mb-2 text-xs text-amber-900 dark:text-amber-100">
+          <strong>プロジェクトルートで</strong>{" "}
+          <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/50 dark:text-amber-200">npm run start</code> や{" "}
+          <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/50 dark:text-amber-200">npm run start:local</code> /{" "}
+          <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/50 dark:text-amber-200">npm run start:tailscale</code>{" "}
+          を使うと、PostgreSQL の起動待ちとスキーマ適用（prisma db push）が<strong>自動</strong>で行われます。手動で Next だけ起動している場合は以下を確認してください。
+        </p>
+        <p className="mb-2 text-xs text-amber-900 dark:text-amber-100">
           Next.js のターミナルに{" "}
           <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/50 dark:text-amber-200">ECONNREFUSED</code>{" "}
           が出ている場合は、Docker で PostgreSQL を起動してください。
@@ -69,7 +76,7 @@ npx prisma db push
 
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
         詳細は{" "}
-        <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800 dark:text-zinc-300">docs/discord-auth-troubleshooting.md</code>{" "}
+        <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800 dark:text-zinc-300">docs/user/discord-auth-troubleshooting.md</code>{" "}
         を参照してください。
       </p>
     </>

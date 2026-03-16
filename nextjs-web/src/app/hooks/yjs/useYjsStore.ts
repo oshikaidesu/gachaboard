@@ -7,8 +7,9 @@ import {
 } from "@cmpd/editor";
 import { defaultShapeUtils } from "@cmpd/compound";
 import type { TLRecord } from "@cmpd/tlschema";
+import type { RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { WebsocketProvider } from "y-websocket";
+import { HocuspocusProvider } from "@hocuspocus/provider";
 import { useYjsPersistence } from "./useYjsPersistence";
 import { useYjsSync, type StoreLike } from "./useYjsSync";
 import { useYjsAwareness } from "./useYjsAwareness";
@@ -32,7 +33,11 @@ type UseYjsStoreOptions = {
 
 /**
  * compound TLStore と Yjs Y.Doc を双方向バインドするフック。
- * useYjsPersistence / useYjsSync / useYjsAwareness を構成。
+ * 公式パターン（https://tiptap.dev/docs/hocuspocus/guides/collaborative-editing）:
+ * 1. ydoc 作成
+ * 2. IndexeddbPersistence(roomId, ydoc) - オフライン永続化
+ * 3. HocuspocusProvider({ url, name: roomId, document: ydoc }) - WebSocket 同期
+ * docName を統一し、同一 ydoc を両 provider で共有。
  */
 export function useYjsStore({
   roomId,
@@ -43,14 +48,14 @@ export function useYjsStore({
   avatarUrl,
   fetchSnapshotWhenEmpty,
   syncToken,
-}: UseYjsStoreOptions): TLStoreWithStatus & { provider?: WebsocketProvider } {
+}: UseYjsStoreOptions): TLStoreWithStatus & { provider?: HocuspocusProvider } {
   const [status, setStatusRaw] = useState<
     TLStoreWithStatus["status"] extends infer S ? S : never
   >("loading");
   const [connectionStatus, setConnectionStatus] = useState<
     "online" | "offline"
   >("offline");
-  const [error] = useState<Error | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const storeRef = useRef<ReturnType<typeof createTLStore> | null>(null);
   const isLocalUpdateRef = useRef(false);
   const offlineDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -98,6 +103,16 @@ export function useYjsStore({
     return storeRef.current;
   }, [shapeUtils, defaultName]);
 
+  const getStoreRef = useRef(getStore);
+  const setConnectionStatusRef = useRef(setConnectionStatusDebounced);
+  const setStatusRef = useRef(setStatus);
+  const setErrorRef = useRef(setError);
+  getStoreRef.current = getStore;
+  setConnectionStatusRef.current = setConnectionStatusDebounced;
+  setStatusRef.current = setStatus;
+  setErrorRef.current = setError;
+
+  // 1. ydoc 作成 + IndexeddbPersistence(roomId, ydoc)
   const ydoc = useYjsPersistence({
     roomId,
     wsUrl,
@@ -107,13 +122,22 @@ export function useYjsStore({
     isLocalUpdateRef,
   });
 
+  // 2. store を事前作成（useYjsSync 実行時に確実に存在させる）
+  useEffect(() => {
+    if (ydoc && syncToken !== undefined) {
+      getStore();
+    }
+  }, [ydoc, syncToken, getStore]);
+
+  // 3. HocuspocusProvider({ url, name: roomId, document: ydoc })
   const provider = useYjsSync({
     roomId,
     wsUrl,
     ydoc,
-    getStore: getStore as unknown as () => StoreLike,
-    setConnectionStatus: setConnectionStatusDebounced,
-    setStatus,
+    getStoreRef: getStoreRef as RefObject<() => StoreLike>,
+    setConnectionStatusRef,
+    setStatusRef,
+    setErrorRef,
     isLocalUpdateRef,
     syncToken,
   });

@@ -1,15 +1,17 @@
 "use client";
 
 import type { TLRecord } from "@cmpd/tlschema";
-import { useEffect, useRef, useState } from "react";
+import type { MutableRefObject, RefObject } from "react";
+import { useEffect, useState } from "react";
 import * as Y from "yjs";
-import { WebsocketProvider } from "y-websocket";
+import { HocuspocusProvider } from "@hocuspocus/provider";
 import {
   saveCameraToLS,
   restoreCameraFromLS,
   isPositionOnlyUpdate,
   persistRecordsDiffToY,
   parseYMapValue,
+  recordsFromYMap,
   type RecordsDiffLike,
 } from "@/lib/yjsSyncHelpers";
 
@@ -26,41 +28,68 @@ type UseYjsSyncOptions = {
   roomId: string;
   wsUrl: string;
   ydoc: Y.Doc | null;
-  getStore: () => StoreLike;
-  setConnectionStatus: (s: "online" | "offline") => void;
-  setStatus: (s: "loading" | "synced-remote") => void;
-  isLocalUpdateRef: React.MutableRefObject<boolean>;
-  /** sync-server ゲート用。undefined=取得中でまだ接続しない, string=接続許可, null=トークンなしで接続（ゲート未使用時） */
+  getStoreRef: RefObject<() => StoreLike>;
+  setConnectionStatusRef: RefObject<(s: "online" | "offline") => void>;
+  setStatusRef: RefObject<(s: "loading" | "synced-remote") => void>;
+  setErrorRef: RefObject<(err: Error | null) => void>;
+  isLocalUpdateRef: MutableRefObject<boolean>;
   syncToken?: string | null;
 };
 
 /**
- * WebSocket 接続と Store⇔Y.Doc 双方向同期。
+ * WebSocket 接続と Store⇔Y.Doc 双方向同期（Hocuspocus 使用）。
+ * 公式パターン（https://tiptap.dev/docs/hocuspocus/provider/install）:
+ * - HocuspocusProvider({ url, name: roomId, document: ydoc })
+ * - name は IndexeddbPersistence の docName と統一
+ * - tldraw は Yjs バインディングがないため、TLStore ⇔ Y.Map を手動で双方向バインド
  */
 export function useYjsSync({
   roomId,
   wsUrl,
   ydoc,
-  getStore,
-  setConnectionStatus,
-  setStatus,
+  getStoreRef,
+  setConnectionStatusRef,
+  setStatusRef,
+  setErrorRef,
   isLocalUpdateRef,
   syncToken,
-}: UseYjsSyncOptions): WebsocketProvider | undefined {
-  const [provider, setProvider] = useState<WebsocketProvider | null>(null);
+}: UseYjsSyncOptions): HocuspocusProvider | undefined {
+  const [provider, setProvider] = useState<HocuspocusProvider | null>(null);
 
   useEffect(() => {
     if (!ydoc || !wsUrl || syncToken === undefined) return;
 
     const yMap = ydoc.getMap<string>("tldraw");
-    const wsOpts: { connect: boolean; params?: Record<string, string> } = { connect: false };
-    if (typeof syncToken === "string") wsOpts.params = { token: syncToken };
-    const prov = new WebsocketProvider(wsUrl, roomId, ydoc, wsOpts);
+    let hasConnectedOnce = false;
+    // name は IndexeddbPersistence の docName と統一（公式パターン）
+    const prov = new HocuspocusProvider({
+      url: wsUrl,
+      name: roomId,
+      document: ydoc,
+      token: typeof syncToken === "string" ? syncToken : "",
+      onStatus: ({ status }) => {
+        if (status === "connected") {
+          hasConnectedOnce = true;
+          setErrorRef.current?.(null);
+          setConnectionStatusRef.current?.("online");
+          setStatusRef.current?.("synced-remote");
+        } else if (status === "disconnected" || status === "connecting") {
+          setConnectionStatusRef.current?.("offline");
+          setStatusRef.current?.(hasConnectedOnce ? "synced-remote" : "loading");
+        }
+      },
+      onAuthenticationFailed: ({ reason }) => {
+        setErrorRef.current?.(new Error(reason || "認証に失敗しました"));
+      },
+    });
     setProvider(prov);
 
-    const connectTimer = setTimeout(() => prov.connect(), 50);
-
-    const store = getStore();
+    const store = getStoreRef.current?.();
+    if (!store) {
+      prov.destroy();
+      setProvider(null);
+      return;
+    }
 
     let hasRestoredCamera = false;
     let syncRafScheduled = false;
@@ -100,14 +129,23 @@ export function useYjsSync({
     };
 
     yMap.observe(handleYUpdate);
-    // 初回の Y.Map → ストア反映は useYjsPersistence の "synced" で行う（一箇所責務）
+
+    // 接続時に yMap に既存データがある場合の初期同期（observe は変更時のみ発火するため）
+    const initialRecords = recordsFromYMap(yMap);
+    if (initialRecords.length > 0) {
+      store.mergeRemoteChanges(() => store.put(initialRecords));
+      if (!hasRestoredCamera) {
+        restoreCameraFromLS(store, roomId);
+        hasRestoredCamera = true;
+      }
+    }
 
     let rafScheduled = false;
     let pendingChanges: RecordsDiffLike | null = null;
     let cameraSaveTimer: ReturnType<typeof setTimeout> | null = null;
     const flushToY = () => {
       if (!pendingChanges) return;
-      prov.awareness.setLocalStateField("dragging", null);
+      prov.awareness?.setLocalStateField("dragging", null);
       const changes = pendingChanges;
       pendingChanges = null;
       persistRecordsDiffToY(yMap, changes, isLocalUpdateRef, ydoc);
@@ -140,15 +178,14 @@ export function useYjsSync({
         if (updated.length === 1) {
           const [, to] = updated[0];
           const shape = to as { id: string; x: number; y: number };
-          prov.awareness.setLocalStateField("dragging", {
+          prov.awareness?.setLocalStateField("dragging", {
             shapeId: shape.id,
             x: shape.x,
             y: shape.y,
           });
         }
-        // ドラッグ中は Y.Doc に送らない。ゴーストは awareness で表示。pointerup でフラッシュ。
       } else {
-        prov.awareness.setLocalStateField("dragging", null);
+        prov.awareness?.setLocalStateField("dragging", null);
         scheduleFlush();
       }
     };
@@ -169,33 +206,15 @@ export function useYjsSync({
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
 
-    let hasConnectedOnce = false;
-    const handleStatus = (event: { status: string }) => {
-      if (event.status === "connected") {
-        hasConnectedOnce = true;
-        setConnectionStatus("online");
-        setStatus("synced-remote");
-      } else if (event.status === "disconnected") {
-        setConnectionStatus("offline");
-        setStatus(hasConnectedOnce ? "synced-remote" : "loading");
-      } else if (event.status === "connecting") {
-        setConnectionStatus("offline");
-        setStatus(hasConnectedOnce ? "synced-remote" : "loading");
-      }
-    };
-    prov.on("status", handleStatus);
-
-    setConnectionStatus("offline");
-    setStatus(prov.wsconnected ? "synced-remote" : "loading");
+    setConnectionStatusRef.current?.("offline");
+    setStatusRef.current?.("loading");
 
     return () => {
-      clearTimeout(connectTimer);
       if (cameraSaveTimer) clearTimeout(cameraSaveTimer);
       document.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("beforeunload", handleBeforeUnload);
       unsubStore();
       yMap.unobserve(handleYUpdate);
-      prov.off("status", handleStatus);
       setProvider(null);
       const runHeavyCleanup = () => {
         saveCameraToLS(store, roomId);
@@ -207,7 +226,7 @@ export function useYjsSync({
         setTimeout(runHeavyCleanup, 0);
       }
     };
-  }, [roomId, wsUrl, ydoc, getStore, setConnectionStatus, setStatus, isLocalUpdateRef, syncToken]);
+  }, [roomId, wsUrl, ydoc, syncToken]);
 
   return provider ?? undefined;
 }

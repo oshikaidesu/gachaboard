@@ -88,7 +88,6 @@ function VolumeSlider({
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.stopPropagation();
-    e.preventDefault();
     setDragging(true);
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
     onChange(calcValue(e.clientX));
@@ -360,7 +359,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
           onMouseDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
-          onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); togglePlay(); }}
+          onTouchEnd={(e) => { e.stopPropagation(); togglePlay(); }}
           style={{
             width: 28,
             height: 28,
@@ -522,7 +521,6 @@ export class AudioShapeUtil extends BaseBoxShapeUtil<AudioShape> {
               onTouchStart={(e) => e.stopPropagation()}
               onTouchEnd={(e) => {
                 e.stopPropagation();
-                e.preventDefault();
                 convertToFileIcon(editor, shape.id);
                 lastTouchEndByShapeId.set(shape.id, Date.now());
               }}

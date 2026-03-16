@@ -16,3 +16,6 @@ gachaboard-fresh
 
 # Node 依存
 node_modules/
+
+# sync-server 永続化（SQLite）
+nextjs-web/sync-server/sync-data/

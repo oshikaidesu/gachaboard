@@ -12,6 +12,15 @@ export async function POST(_req: NextRequest, { params }: Params) {
   const session = await requireLogin();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // セッションの user.id が DB に存在するか確認（DB リセット後などで FK 違反を防ぐ）
+  const user = await db.user.findUnique({ where: { id: session.user.id }, select: { id: true } });
+  if (!user) {
+    return NextResponse.json(
+      { error: "セッションが無効です。再ログインしてください。" },
+      { status: 401 }
+    );
+  }
+
   const { token } = await params;
 
   if (!isValidInviteToken(token)) {

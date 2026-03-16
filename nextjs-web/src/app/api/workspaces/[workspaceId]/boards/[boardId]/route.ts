@@ -54,7 +54,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 }
 
-/** DELETE /api/workspaces/[workspaceId]/boards/[boardId] - 完全削除（ゴミ箱内のみ、オーナーのみ） */
+/** DELETE /api/workspaces/[workspaceId]/boards/[boardId] - 完全削除（ゴミ箱内のみ、オーナーのみ）。ボード・アセット・sync をまとめて削除 */
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
   const { workspaceId, boardId } = await params;
@@ -71,6 +71,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const assets = await db.asset.findMany({ where: { boardId }, select: { id: true, storageKey: true } });
   await Promise.all(assets.map((a) => deleteFile(a.storageKey).catch(() => {})));
   await db.asset.deleteMany({ where: { boardId } });
+  await db.s3UploadSession.deleteMany({ where: { boardId } });
 
   await db.board.delete({ where: { id: boardId } });
   await writeAuditLog(ctx.session.user.id, workspaceId, "board.delete", boardId);

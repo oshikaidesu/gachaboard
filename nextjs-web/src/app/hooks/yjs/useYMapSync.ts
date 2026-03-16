@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { WebsocketProvider } from "y-websocket";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 
 /**
  * Y.Doc の Map を購読し、パース・グループ化した状態を返す汎用フック。
  * BoardCommentProvider / BoardReactionProvider で共通利用。
  */
 export function useYMapSync<T, K extends string>(
-  provider: WebsocketProvider | undefined,
+  provider: HocuspocusProvider | undefined,
   mapKey: string,
   parse: (value: string) => T | null,
   groupBy: (items: T[]) => Map<K, T[]>
@@ -29,7 +29,7 @@ export function useYMapSync<T, K extends string>(
 
   useEffect(() => {
     if (!provider) return;
-    const ydoc = provider.doc;
+    const ydoc = provider.document;
     const yMap = ydoc.getMap<string>(mapKey);
 
     const handler = () => applyYUpdate(yMap);

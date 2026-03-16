@@ -9,7 +9,7 @@ import type { TLRecord } from "@cmpd/tlschema";
 import debounce from "lodash.debounce";
 import React, { useEffect, useRef } from "react";
 import { useEventListener } from "usehooks-ts";
-import type { WebsocketProvider } from "y-websocket";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 
 const DOCUMENT_SCOPE_TYPES = new Set([
   "page",
@@ -30,8 +30,8 @@ function getDocumentRecords(store: { allRecords: () => Iterable<TLRecord> }): TL
   return records;
 }
 
-function getYMapEntries(provider: WebsocketProvider, mapKey: string): Record<string, string> {
-  const yMap = provider.doc.getMap<string>(mapKey);
+function getYMapEntries(provider: HocuspocusProvider, mapKey: string): Record<string, string> {
+  const yMap = provider.document.getMap<string>(mapKey);
   const out: Record<string, string> = {};
   yMap.forEach((value, key) => {
     out[key] = value;
@@ -41,7 +41,7 @@ function getYMapEntries(provider: WebsocketProvider, mapKey: string): Record<str
 
 export type UseSnapshotSaveOptions = {
   store: { allRecords: () => Iterable<TLRecord>; listen: (fn: () => void, opts?: object) => (() => void) | undefined } | null;
-  provider?: WebsocketProvider | null;
+  provider?: HocuspocusProvider | null;
   boardId: string;
   workspaceId: string;
   enabled: boolean;
@@ -53,9 +53,9 @@ const COMMENTS_MAP_KEY = "comments";
 const REACTION_EMOJI_PRESET_MAP_KEY = "reactionEmojiPreset";
 const REACTION_EMOJI_PRESET_EMOJIS_KEY = "emojis";
 
-function getReactionEmojiPreset(provider: WebsocketProvider | null | undefined): string[] | null {
+function getReactionEmojiPreset(provider: HocuspocusProvider | null | undefined): string[] | null {
   if (!provider) return null;
-  const yMap = provider.doc.getMap<string>(REACTION_EMOJI_PRESET_MAP_KEY);
+  const yMap = provider.document.getMap<string>(REACTION_EMOJI_PRESET_MAP_KEY);
   const raw = yMap.get(REACTION_EMOJI_PRESET_EMOJIS_KEY);
   if (!raw) return null;
   try {

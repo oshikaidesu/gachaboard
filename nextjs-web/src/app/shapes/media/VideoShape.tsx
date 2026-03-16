@@ -110,7 +110,6 @@ function VolumeSlider({
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.stopPropagation();
-    e.preventDefault();
     setDragging(true);
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
     onChange(calcValue(e.clientX));
@@ -438,7 +437,6 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
         onTouchEnd={(e) => {
           if (playing) {
             e.stopPropagation();
-            e.preventDefault();
             togglePlay();
           }
         }}
@@ -450,7 +448,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); togglePlay(); }}
+            onTouchEnd={(e) => { e.stopPropagation(); togglePlay(); }}
             style={{
               position: "absolute",
               top: "50%",
@@ -551,7 +549,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); togglePlay(); }}
+            onTouchEnd={(e) => { e.stopPropagation(); togglePlay(); }}
             style={{
               width: 28,
               height: 28,
@@ -597,7 +595,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
               onMouseDown={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
-              onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); toggleMute(); }}
+              onTouchEnd={(e) => { e.stopPropagation(); toggleMute(); }}
               style={{
                 background: "none",
                 border: "none",
@@ -730,7 +728,6 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<VideoShape & TLBaseBoxShape
               onTouchStart={(e) => e.stopPropagation()}
               onTouchEnd={(e) => {
                 e.stopPropagation();
-                e.preventDefault();
                 convertToFileIcon(editor, shape.id);
                 lastTouchEndByShapeId.set(shape.id, Date.now());
               }}

@@ -64,13 +64,23 @@
 | `S3_REGION` | `us-east-1` | リージョン。MinIO は `us-east-1` 等でよい |
 | `S3_PUBLIC_URL` | `http://localhost:18583` | ブラウザが Presigned URL でアクセスするベース URL。**重要**: アップロード・配信ともクライアントは S3 に直接アクセスし、認可は Next.js API が Presigned URL 発行で行う |
 
-### 同期（sync-server）
+### 同期（sync-server / Hocuspocus）
+
+sync-server は [Hocuspocus](https://github.com/ueberdosis/hocuspocus) ベースです。認証・永続化（SQLite）・接続数制限を内蔵しています。
 
 | 変数名 | デフォルト | 説明 |
 |--------|------------|------|
 | `SYNC_SERVER_URL` | `http://sync-server:5858` | サーバー内部から sync-server への URL。Docker 内では `sync-server`、ローカル単体では `http://localhost:18582` |
 | `NEXT_PUBLIC_SYNC_WS_URL` | `ws://localhost:18582` | クライアント用 WebSocket URL。localhost では直接接続。Tailscale 等では `/ws` 経由で Next.js が転送 |
 | `SYNC_SERVER_INTERNAL_URL` | `http://127.0.0.1:18582` | Next.js の `/ws` リライト先。`npm run dev` 時は localhost。Next.js を Docker 内で動かすときは `http://sync-server:5858` |
+| `SYNC_MAX_CLIENTS_PER_ROOM` | `100` | 1ボードあたりの最大同時 WebSocket 接続数。超過時は拒否。Docker では `docker-compose.yml` の sync-server の `environment` で渡す |
+| `YPERSISTENCE` | Docker 時は `/app/sync-data`、ローカル時は `sync-server/sync-data` | Y.Doc 永続化用 SQLite の配置ディレクトリ。Docker ではボリュームをマウントすること |
+
+### 運用・チューニング
+
+| 変数名 | デフォルト | 説明 |
+|--------|------------|------|
+| `FFMPEG_MAX_CONCURRENT` | `10` | 動画・音声変換（ffmpeg）の同時実行数上限。Next.js の `nextjs-web/.env.local` で設定 |
 
 ---
 

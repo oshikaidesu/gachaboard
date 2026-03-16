@@ -120,6 +120,21 @@ index 640c07f..ddb659a 100644
          }
        ),
        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_Button.Button, { type: "normal", onClick: onCancel, children: cancel }),
+diff --git a/node_modules/@cmpd/compound/dist-cjs/lib/ui/components/Toolbar/Toolbar.js b/node_modules/@cmpd/compound/dist-cjs/lib/ui/components/Toolbar/Toolbar.js
+index 8ee75e5..1c2bb52 100644
+--- a/node_modules/@cmpd/compound/dist-cjs/lib/ui/components/Toolbar/Toolbar.js
++++ b/node_modules/@cmpd/compound/dist-cjs/lib/ui/components/Toolbar/Toolbar.js
+@@ -234,8 +234,8 @@ function ToolbarButton({
+       icon: item.icon,
+       "data-state": isSelected ? "selected" : void 0,
+       onClick: () => item.onSelect("toolbar"),
+-      onTouchStart: (e) => {
+-        (0, import_editor.preventDefault)(e);
++      onTouchEnd: (e) => {
++        e.stopPropagation();
+         item.onSelect("toolbar");
+       }
+     }
 diff --git a/node_modules/@cmpd/compound/dist-cjs/lib/ui/hooks/useBreakpoint.js b/node_modules/@cmpd/compound/dist-cjs/lib/ui/hooks/useBreakpoint.js
 index 879394f..0d07981 100644
 --- a/node_modules/@cmpd/compound/dist-cjs/lib/ui/hooks/useBreakpoint.js
@@ -278,6 +293,21 @@ index 6de59f8..ec68c65 100644
          }
        ),
        /* @__PURE__ */ jsx(Button, { type: "normal", onClick: onCancel, children: cancel }),
+diff --git a/node_modules/@cmpd/compound/dist-esm/lib/ui/components/Toolbar/Toolbar.mjs b/node_modules/@cmpd/compound/dist-esm/lib/ui/components/Toolbar/Toolbar.mjs
+index 885ebe7..dc101e9 100644
+--- a/node_modules/@cmpd/compound/dist-esm/lib/ui/components/Toolbar/Toolbar.mjs
++++ b/node_modules/@cmpd/compound/dist-esm/lib/ui/components/Toolbar/Toolbar.mjs
+@@ -201,8 +201,8 @@ function ToolbarButton({
+       icon: item.icon,
+       "data-state": isSelected ? "selected" : void 0,
+       onClick: () => item.onSelect("toolbar"),
+-      onTouchStart: (e) => {
+-        preventDefault(e);
++      onTouchEnd: (e) => {
++        e.stopPropagation();
+         item.onSelect("toolbar");
+       }
+     }
 diff --git a/node_modules/@cmpd/compound/dist-esm/lib/ui/hooks/useBreakpoint.mjs b/node_modules/@cmpd/compound/dist-esm/lib/ui/hooks/useBreakpoint.mjs
 index 5fb002d..891b2b3 100644
 --- a/node_modules/@cmpd/compound/dist-esm/lib/ui/hooks/useBreakpoint.mjs
@@ -433,3 +463,18 @@ index 0147fba..2d3a4ac 100644
  					</Button>
  				)}
  				<Button type="normal" onClick={onCancel}>
+diff --git a/node_modules/@cmpd/compound/src/lib/ui/components/Toolbar/Toolbar.tsx b/node_modules/@cmpd/compound/src/lib/ui/components/Toolbar/Toolbar.tsx
+index c900b2b..342e30c 100644
+--- a/node_modules/@cmpd/compound/src/lib/ui/components/Toolbar/Toolbar.tsx
++++ b/node_modules/@cmpd/compound/src/lib/ui/components/Toolbar/Toolbar.tsx
+@@ -262,8 +262,8 @@ function ToolbarButton({
+ 			icon={item.icon}
+ 			data-state={isSelected ? 'selected' : undefined}
+ 			onClick={() => item.onSelect('toolbar')}
+-			onTouchStart={(e) => {
+-				preventDefault(e)
++			onTouchEnd={(e) => {
++				e.stopPropagation()
+ 				item.onSelect('toolbar')
+ 			}}
+ 		/>

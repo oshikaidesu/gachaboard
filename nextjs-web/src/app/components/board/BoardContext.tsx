@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from "react";
 import type { Atom } from "@cmpd/state";
-import type { WebsocketProvider } from "y-websocket";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 
 type UserInfo = { id: string; name: string; color: string };
 
@@ -13,7 +13,7 @@ type BoardContextValue = {
   userName: string;
   avatarUrl: string | null;
   userInfoAtom: Atom<UserInfo> | null;
-  provider?: WebsocketProvider | null;
+  provider?: HocuspocusProvider | null;
   /** リアクション・コメントが同期可能なとき true（オフライン/エラー時は false） */
   syncAvailable: boolean;
 };

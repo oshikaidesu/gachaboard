@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { s3CompleteSchema } from "@/lib/apiSchemas";
 import { formatZodError, parseJsonBody } from "@/lib/parseJsonBody";
 import { ZodError } from "zod";
-import { isS3Enabled, completeMultipartUpload } from "@/lib/s3";
+import { isS3Enabled, completeMultipartUpload, getS3StorageFullError } from "@/lib/s3";
 import { runVideoConversion, runWavToMp3, runWaveform } from "@/lib/ffmpeg";
 import { getAssetKind, isPlayableAudio } from "@shared/mimeUtils";
 
@@ -34,7 +34,16 @@ export async function POST(req: NextRequest) {
 
   const { storageKey, fileName, mimeType, totalSize, boardId } = row;
 
-  await completeMultipartUpload(key, uploadId, parts);
+  try {
+    await completeMultipartUpload(key, uploadId, parts);
+  } catch (err) {
+    console.error("[S3 complete]", err);
+    const storageFull = getS3StorageFullError(err);
+    if (storageFull) {
+      return NextResponse.json({ error: storageFull.message }, { status: storageFull.status });
+    }
+    throw err;
+  }
 
   await db.s3UploadSession.delete({ where: { uploadId } });
 

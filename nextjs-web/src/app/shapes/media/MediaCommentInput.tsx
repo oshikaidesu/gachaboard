@@ -139,7 +139,6 @@ export function MediaCommentInput({
           onTouchStart={(e) => e.stopPropagation()}
           onTouchEnd={(e) => {
             e.stopPropagation();
-            e.preventDefault();
             onPostComment();
             onCommentFocusedChange(false);
           }}
