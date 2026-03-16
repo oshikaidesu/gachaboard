@@ -34,6 +34,7 @@ export function useFileDropHandler(
   const [resumableUploads, setResumableUploads] = useState<StoredSession[]>([]);
   const editorRef = useRef<Editor | null>(null);
   const errorClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const filePickerActiveRef = useRef(false);
 
   const refreshResumable = useCallback(() => {
     listResumableS3Uploads()
@@ -162,15 +163,21 @@ export function useFileDropHandler(
     async () => {
       const editor = editorRef.current;
       if (!editor) return;
-      const { openFileWithHandle } = await import("@/lib/fileAccess");
-      const result = await openFileWithHandle();
-      if (!result.ok) {
-        showError(result.error);
-        return;
+      if (filePickerActiveRef.current) return;
+      filePickerActiveRef.current = true;
+      try {
+        const { openFileWithHandle } = await import("@/lib/fileAccess");
+        const result = await openFileWithHandle();
+        if (!result.ok) {
+          if (result.error !== "キャンセルされました") showError(result.error);
+          return;
+        }
+        await processFiles(editor, [result.file], {
+          handles: [result.handle],
+        });
+      } finally {
+        filePickerActiveRef.current = false;
       }
-      await processFiles(editor, [result.file], {
-        handles: [result.handle],
-      });
     },
     [processFiles, showError],
   );
@@ -179,15 +186,21 @@ export function useFileDropHandler(
     async () => {
       const editor = editorRef.current;
       if (!editor) return;
-      const { openAllFilesPicker } = await import("@/lib/fileAccess");
-      const result = await openAllFilesPicker();
-      if (!result.ok) {
-        if (result.error !== "キャンセルされました") showError(result.error);
-        return;
+      if (filePickerActiveRef.current) return;
+      filePickerActiveRef.current = true;
+      try {
+        const { openAllFilesPicker } = await import("@/lib/fileAccess");
+        const result = await openAllFilesPicker();
+        if (!result.ok) {
+          if (result.error !== "キャンセルされました") showError(result.error);
+          return;
+        }
+        await processFiles(editor, result.files, {
+          handles: result.handles,
+        });
+      } finally {
+        filePickerActiveRef.current = false;
       }
-      await processFiles(editor, result.files, {
-        handles: result.handles,
-      });
     },
     [processFiles, showError],
   );

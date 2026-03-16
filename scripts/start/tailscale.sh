@@ -112,6 +112,11 @@ fi
 echo ""
 echo "アクセスURL: $APP_URL"
 echo "スマホ等は Tailscale 接続後に同じ URL でアクセスできます。"
+if [[ "$DO_DEV" == true ]]; then
+  echo ""
+  echo "※ HMR WebSocket が失敗する場合: tailscale serve reset の後、"
+  echo "   別ターミナルで caddy run --config Caddyfile を起動して Caddy 経由でアクセス。"
+fi
 echo "終了: Ctrl+C"
 echo "開発モード: bash scripts/start/tailscale.sh --dev"
 echo "リセット＆再起動: bash scripts/start/tailscale.sh --reset"

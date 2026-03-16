@@ -10,19 +10,17 @@ export function isFileSystemAccessSupported(): boolean {
 }
 
 export type OpenFileResult =
-  | { ok: true; file: File; handle: FileSystemFileHandle }
+  | { ok: true; file: File; handle: FileSystemFileHandle | null }
   | { ok: false; error: string };
 
 /**
- * ファイル選択ダイアログを開き、ハンドル付きでファイルを取得。
- * サポート外の場合は file 入力フォールバックを推奨。
+ * ファイル選択ダイアログを開き、可能ならハンドル付きでファイルを取得。
+ * browser-fs-access は File System Access API 非対応時は input フォールバックを使用。
+ * モバイル等では handle が null になるが、アップロードは可能。
  */
 export async function openFileWithHandle(): Promise<OpenFileResult> {
   if (typeof window === "undefined") {
     return { ok: false, error: "ブラウザ環境でのみ利用可能です" };
-  }
-  if (!isFileSystemAccessSupported()) {
-    return { ok: false, error: "File System Access API に対応していません" };
   }
   try {
     const fileWithHandle = await fileOpen({
@@ -30,10 +28,7 @@ export async function openFileWithHandle(): Promise<OpenFileResult> {
       mimeTypes: ["*/*"],
       multiple: false,
     });
-    const handle = fileWithHandle.handle;
-    if (!handle) {
-      return { ok: false, error: "ファイルハンドルを取得できませんでした" };
-    }
+    const handle = (fileWithHandle as File & { handle?: FileSystemFileHandle }).handle ?? null;
     return { ok: true, file: fileWithHandle, handle };
   } catch (e) {
     if (e instanceof Error && e.name === "AbortError") {
