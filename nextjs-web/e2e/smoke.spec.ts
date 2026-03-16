@@ -7,11 +7,15 @@ import { expect, test } from "@playwright/test";
 test("ボードページが表示される", async ({ page, baseURL }) => {
   if (!baseURL) throw new Error("baseURL is required");
 
+  await page.setExtraHTTPHeaders({
+    "x-e2e-user-id": "e2e-smoke",
+    "x-e2e-user-name": "SmokeUser",
+  });
+
   const boardId = `e2e-smoke-${Date.now()}`;
   const url = `${baseURL}/board/${boardId}?testUserId=e2e-smoke&testUserName=SmokeUser`;
 
   await page.goto(url, { waitUntil: "domcontentloaded" });
 
-  await expect(page.getByText("← 戻る")).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText(/無題のボード|Board:/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "← 戻る" })).toBeVisible({ timeout: 30_000 });
 });

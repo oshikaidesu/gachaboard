@@ -172,7 +172,8 @@ _restart_docker_desktop() {
   return 1
 }
 
-# docker compose up -d を実行。失敗時は Docker Desktop の起動・再起動を試みる
+# docker compose up -d を実行（postgres / sync-server / minio のみ。Next.js は --profile app で別起動）。
+# 開発時はローカルで npm run dev するため、ここでは web コンテナは起動しない。
 run_docker_compose_up() {
   local max_compose_retries=3
   local compose_retry_interval=5

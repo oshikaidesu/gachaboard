@@ -1,9 +1,9 @@
 import { Suspense } from "react";
-import { env } from "@/lib/env";
+import { getBaseUrl } from "@/lib/baseUrl";
 import { SignInContent } from "./SignInContent";
 
-export default function SignInPage() {
-  const discordCallbackUrl = `${env.NEXTAUTH_URL.replace(/\/$/, "")}/api/auth/callback/discord`;
+export default async function SignInPage() {
+  const discordCallbackUrl = `${await getBaseUrl()}/api/auth/callback/discord`;
 
   return (
     <Suspense

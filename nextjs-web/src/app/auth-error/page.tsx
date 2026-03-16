@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { AuthTroubleshooting } from "@/app/components/auth/AuthTroubleshooting";
-import { env } from "@/lib/env";
+import { getBaseUrl } from "@/lib/baseUrl";
 
 type Props = { searchParams: Promise<{ error?: string }> };
 
 export default async function AuthErrorPage({ searchParams }: Props) {
   const { error } = await searchParams;
-  const callbackUrl = `${env.NEXTAUTH_URL.replace(/\/$/, "")}/api/auth/callback/discord`;
+  const callbackUrl = `${await getBaseUrl()}/api/auth/callback/discord`;
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background px-4 py-8 sm:px-6">

@@ -13,3 +13,6 @@ gachaboard-fresh
 
 # エディタ用（共有不要）
 .cursor/
+
+# Node 依存
+node_modules/

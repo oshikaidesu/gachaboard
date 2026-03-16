@@ -5,20 +5,20 @@
  *
  * セキュリティ: アクセス制御は presigned URL の署名に依存する。このプロキシ自体には
  * 認証はかけていない（presigned URL は署名済みのため、URL を知っている者のみが有効に操作できる）。
- * CORS はアプリのオリジン（NEXTAUTH_URL）のみ許可し、第三者サイトからの JS アクセスを防ぐ。
+ * CORS はリクエストのオリジン（getBaseUrl）のみ許可し、第三者サイトからの JS アクセスを防ぐ。
  */
 import { NextRequest, NextResponse } from "next/server";
-import { env } from "@/lib/env";
+import { getBaseUrl } from "@/lib/baseUrl";
 
 const MINIO_ORIGIN = process.env.S3_ENDPOINT || "http://localhost:18583";
 
 /** 許可するオリジン（アプリのベース URL の origin のみ。同一オリジンのみ CORS 許可） */
-function getAllowedOrigin(): string {
-  return new URL(env.NEXTAUTH_URL).origin;
+async function getAllowedOrigin(): Promise<string> {
+  return new URL(await getBaseUrl()).origin;
 }
 
-function corsHeaders(req: NextRequest): HeadersInit {
-  const allowOrigin = getAllowedOrigin();
+async function corsHeaders(req: NextRequest): Promise<HeadersInit> {
+  const allowOrigin = await getAllowedOrigin();
   const requestOrigin = req.headers.get("origin");
   const acao = requestOrigin === allowOrigin ? requestOrigin : allowOrigin;
   return {
@@ -53,7 +53,7 @@ async function proxy(req: NextRequest) {
 
   const res = await fetch(dest, init);
   const respHeaders = new Headers(res.headers);
-  Object.entries(corsHeaders(req)).forEach(([k, v]) => respHeaders.set(k, v));
+  Object.entries(await corsHeaders(req)).forEach(([k, v]) => respHeaders.set(k, v));
 
   return new NextResponse(res.body, {
     status: res.status,
@@ -70,6 +70,6 @@ export async function HEAD(req: NextRequest) { return proxy(req); }
 export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, {
     status: 204,
-    headers: corsHeaders(req),
+    headers: await corsHeaders(req),
   });
 }

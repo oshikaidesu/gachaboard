@@ -37,6 +37,7 @@ export default async function BoardPage({ params, searchParams }: Props) {
         userName={testUserName}
         currentUserId={testUserId}
         avatarUrl={testAvatarUrl ?? null}
+        e2eImmediateLoad
       />
     );
   }

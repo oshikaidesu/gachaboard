@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { assertWorkspaceOwner, writeAuditLog } from "@/lib/authz";
 import { db } from "@/lib/db";
-import { env } from "@/lib/env";
+import { getBaseUrl } from "@/lib/baseUrl";
 
 type Params = { params: Promise<{ workspaceId: string }> };
 
@@ -18,8 +18,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
   });
   if (!workspace) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const base = await getBaseUrl();
   const inviteUrl = workspace.inviteToken
-    ? `${env.NEXTAUTH_URL.replace(/\/$/, "")}/invite/${workspace.inviteToken}`
+    ? `${base}/invite/${workspace.inviteToken}`
     : null;
 
   return NextResponse.json({ inviteUrl });
@@ -46,6 +47,6 @@ export async function POST(_req: NextRequest, { params }: Params) {
   const action = workspace.inviteToken ? "invite.reset" : "invite.create";
   await writeAuditLog(ctx.session.user.id, workspaceId, action, workspaceId);
 
-  const inviteUrl = `${env.NEXTAUTH_URL.replace(/\/$/, "")}/invite/${token}`;
+  const inviteUrl = `${await getBaseUrl()}/invite/${token}`;
   return NextResponse.json({ inviteUrl });
 }

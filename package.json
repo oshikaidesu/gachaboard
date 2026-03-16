@@ -10,8 +10,8 @@
   },
   "homepage": "https://github.com/oshikaidesu/gachaboard",
   "scripts": {
-    "up": "docker compose --profile app up -d",
-    "down": "docker compose --profile app down",
+    "up": "docker compose up -d",
+    "down": "docker compose down",
     "start": "bash scripts/start/tailscale.sh",
     "start:tailscale": "bash scripts/start/tailscale.sh",
     "start:tailscale:reset": "bash scripts/start/tailscale.sh --reset",

@@ -25,7 +25,7 @@ export function useWorkspaceDetail(workspaceId: string, e2eHeaders?: E2EHeaders 
         fetch(`/api/workspaces/${workspaceId}/members`, { headers }),
       ]);
       if (wsRes.status === 401 || boardsRes.status === 401) {
-        router.replace("/");
+        router.replace(`/auth/signin?callbackUrl=${encodeURIComponent(`/workspace/${workspaceId}`)}`);
         return;
       }
       if (wsRes.status === 403 || boardsRes.status === 403) {

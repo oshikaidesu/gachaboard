@@ -46,7 +46,10 @@ export async function GET(_req: NextRequest, { params }: Params) {
   });
 }
 
-/** PUT - Board.snapshotData を保存（定期的・離脱時にクライアントから送信） */
+/**
+ * PUT - Board.snapshotData を保存（定期的・離脱時にクライアントから送信）
+ * 注意: 受信が空のフィールドで既存データを上書きしない（records/reactions/comments それぞれでガード）
+ */
 export async function PUT(req: NextRequest, { params }: Params) {
   const { workspaceId, boardId } = await params;
 
@@ -77,9 +80,45 @@ export async function PUT(req: NextRequest, { params }: Params) {
     comments?: Record<string, string>;
     reactionEmojiPreset?: string[] | null;
   };
-  const records = Array.isArray(body?.records) ? body.records : [];
-  const reactions = body?.reactions && typeof body.reactions === "object" ? body.reactions : {};
-  const comments = body?.comments && typeof body.comments === "object" ? body.comments : {};
+  const currentRecords = Array.isArray(current.records) ? current.records : [];
+  const incomingRecords = Array.isArray(body?.records) ? body.records : [];
+  // 既存にレコードがあるのに空で上書きするのを防ぐ（リアクション追加時などの誤保存でボードが消える不具合対策）
+  const records =
+    incomingRecords.length > 0
+      ? incomingRecords
+      : currentRecords.length > 0
+        ? currentRecords
+        : incomingRecords;
+
+  const currentReactions =
+    current.reactions && typeof current.reactions === "object" && !Array.isArray(current.reactions)
+      ? (current.reactions as Record<string, string>)
+      : {};
+  const incomingReactions =
+    body?.reactions && typeof body.reactions === "object" && !Array.isArray(body.reactions)
+      ? body.reactions
+      : {};
+  const reactions =
+    Object.keys(incomingReactions).length > 0
+      ? incomingReactions
+      : Object.keys(currentReactions).length > 0
+        ? currentReactions
+        : incomingReactions;
+
+  const currentComments =
+    current.comments && typeof current.comments === "object" && !Array.isArray(current.comments)
+      ? (current.comments as Record<string, string>)
+      : {};
+  const incomingComments =
+    body?.comments && typeof body.comments === "object" && !Array.isArray(body.comments)
+      ? body.comments
+      : {};
+  const comments =
+    Object.keys(incomingComments).length > 0
+      ? incomingComments
+      : Object.keys(currentComments).length > 0
+        ? currentComments
+        : incomingComments;
   const reactionEmojiPreset =
     body?.reactionEmojiPreset !== undefined
       ? Array.isArray(body.reactionEmojiPreset) && body.reactionEmojiPreset.length > 0

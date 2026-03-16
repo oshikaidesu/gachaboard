@@ -23,7 +23,9 @@ scripts/
 │   ├── tailscale.sh     # Tailscale モード（--dev, --reset）
 │   ├── local.sh         # ローカルモード（--dev, --reset）
 │   ├── production.sh    # 本番（Mac/Linux）
-│   └── production.ps1   # 本番（Windows）
+│   ├── start.ps1        # 起動メニュー（Windows）
+│   ├── production.ps1   # 本番（Windows）
+│   └── production.bat   # 本番（Windows・BAT ラッパー）
 └── setup/        # セットアップスクリプト
     ├── env.sh              # .env 統合（Mac/Linux）
     ├── env.ps1             # .env 統合（Windows）
@@ -42,6 +44,11 @@ bash scripts/start/tailscale.sh --dev  # 開発モード
 bash scripts/start/tailscale.sh --reset
 bash scripts/setup/env.sh
 ```
+
+### Windows での起動
+
+- **start.bat**（プロジェクトルート）: ダブルクリックで起動。内部で `scripts/start/start.ps1` を実行（実行ポリシー不要）。
+- **production.bat**（scripts/start/）: 本番モードのみ・Bash 不要。Git 未導入の環境向け。
 
 ### 必須ツールの事前チェック
 

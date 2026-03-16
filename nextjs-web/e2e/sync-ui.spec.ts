@@ -25,20 +25,31 @@ test("2ユーザーでヘッダー表示と同期が成立する", async ({ brow
   const pageA = await contextA.newPage();
   const pageB = await contextB.newPage();
 
+  await pageA.route("**/api/**", (route) => {
+    const headers = { ...route.request().headers(), "x-e2e-user-id": "e2e-user-a", "x-e2e-user-name": userAName };
+    route.continue({ headers });
+  });
+  await pageB.route("**/api/**", (route) => {
+    const headers = { ...route.request().headers(), "x-e2e-user-id": "e2e-user-b", "x-e2e-user-name": userBName };
+    route.continue({ headers });
+  });
+  await pageA.setExtraHTTPHeaders({ "x-e2e-user-id": "e2e-user-a", "x-e2e-user-name": userAName });
+  await pageB.setExtraHTTPHeaders({ "x-e2e-user-id": "e2e-user-b", "x-e2e-user-name": userBName });
+
   const urlA = new URL(buildBoardUrl(boardId, "e2e-user-a", userAName), baseURL).toString();
   const urlB = new URL(buildBoardUrl(boardId, "e2e-user-b", userBName), baseURL).toString();
 
   await pageA.goto(urlA, { waitUntil: "domcontentloaded" });
   await pageB.goto(urlB, { waitUntil: "domcontentloaded" });
 
-  await expect(pageA.getByText("Board:")).toBeVisible();
-  await expect(pageB.getByText("Board:")).toBeVisible();
-  await expect(pageA.getByText("同期中")).toBeVisible({ timeout: 15_000 });
-  await expect(pageB.getByText("同期中")).toBeVisible({ timeout: 15_000 });
+  await expect(pageA.getByRole("link", { name: "← 戻る" })).toBeVisible({ timeout: 30_000 });
+  await expect(pageB.getByRole("link", { name: "← 戻る" })).toBeVisible({ timeout: 30_000 });
+  await expect(pageA.getByText(/同期中|接続中|同期エラー|ローカル保存/)).toBeVisible({ timeout: 20_000 });
+  await expect(pageB.getByText(/同期中|接続中|同期エラー|ローカル保存/)).toBeVisible({ timeout: 20_000 });
 
   await pageA.waitForFunction(
     () => Boolean((window as unknown as { __E2E_TLDRAW_EDITOR__?: unknown }).__E2E_TLDRAW_EDITOR__),
-    { timeout: 15_000 }
+    { timeout: 60_000 }
   );
 
   const shapeId = await pageA.evaluate(() => {

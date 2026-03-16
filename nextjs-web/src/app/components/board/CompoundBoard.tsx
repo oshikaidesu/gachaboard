@@ -21,6 +21,7 @@ import { PreviewModal } from "@/app/components/ui/PreviewModal";
 import { useFileDropHandler } from "@/app/hooks/useFileDropHandler";
 import { useArrowCascadeDelete } from "@/app/hooks/useArrowCascadeDelete";
 import { useAutoCreatedBy } from "@/app/hooks/useAutoCreatedBy";
+import { currentUserIdAtom } from "./currentUserAtom";
 import { useDoubleClickPreview } from "@/app/hooks/useDoubleClickPreview";
 import { useUrlPreviewAttacher } from "@/app/hooks/useUrlPreviewAttacher";
 import { useShapeDeletePositionCapture } from "@/app/hooks/useShapeDeletePositionCapture";
@@ -31,6 +32,7 @@ import { getSyncWsUrl, isSyncWsUrlValid } from "@/lib/syncWsUrl";
 import { useBoardSnapshotFetch } from "@/app/hooks/board/useBoardSnapshotFetch";
 import { useRestoreAsset } from "@/app/hooks/board/useRestoreAsset";
 import { useSyncStatus } from "@/app/hooks/board/useSyncStatus";
+import { useSyncToken } from "@/app/hooks/board/useSyncToken";
 
 type Props = {
   boardId: string;
@@ -56,6 +58,8 @@ export default function CompoundBoard({
   const [editorReady, setEditorReady] = useState(false);
   const router = useRouter();
 
+  currentUserIdAtom.set(currentUserId);
+
   // Layout のレンダー中に Compound がマウントされると setState-in-render エラーが出るため遅延
   useEffect(() => {
     setEditorReady(true);
@@ -68,11 +72,14 @@ export default function CompoundBoard({
 
   const isE2eMode =
     typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("e2e") === "1";
+    (new URLSearchParams(window.location.search).get("e2e") === "1" ||
+      new URLSearchParams(window.location.search).get("testUserId") != null);
 
   // ローカル以外（Tailscale 等）では同一オリジン /ws を利用
   const syncWsUrl = getSyncWsUrl();
   const useSync = isSyncWsUrlValid(syncWsUrl);
+  const e2eHeaders = isE2eMode ? { userId: currentUserId, userName } : null;
+  const syncToken = useSyncToken(boardId, useSync, e2eHeaders);
   const fetchSnapshotWhenEmpty = useBoardSnapshotFetch(workspaceId, boardId);
   const handleRestoreAsset = useRestoreAsset(userName, avatarUrl ?? null);
 
@@ -84,6 +91,7 @@ export default function CompoundBoard({
     userId: currentUserId,
     avatarUrl: avatarUrl ?? undefined,
     fetchSnapshotWhenEmpty: useSync ? fetchSnapshotWhenEmpty : undefined,
+    syncToken,
   });
 
   useSnapshotSave({
@@ -114,15 +122,25 @@ export default function CompoundBoard({
     []
   );
   const { registerListener: registerArrowDeleteListener } = useArrowCascadeDelete();
-  const { registerListener: registerCreatedByListener } = useAutoCreatedBy(userName, avatarUrl ?? null);
+  const { registerListener: registerCreatedByListener } = useAutoCreatedBy(currentUserId, userName, avatarUrl ?? null);
   const { registerHandler: registerDoubleClickHandler } = useDoubleClickPreview(setPreview);
   const { registerListener: registerUrlPreviewAttacher } = useUrlPreviewAttacher();
   const { registerListener: registerPositionCapture } = useShapeDeletePositionCapture();
 
   const { syncStatus, syncAvailable, isSyncError, isLoading } = useSyncStatus(useSync, yjsStore);
 
+  // Compound が一度マウントされたら loading に戻っても絶対アンマウントしない
+  const hasEverMountedCompound = useRef(false);
+  if (!isLoading && !isSyncError && editorReady) {
+    hasEverMountedCompound.current = true;
+  }
+  const showLoadingScreen = useSync && isLoading && !hasEverMountedCompound.current;
+
   const handleMount = useCallback(
     (editor: Editor) => {
+      // 画面外シェイプのカリングを緩和。マージンを広げてスクロール時の読み込みちらつきを防ぐ
+      editor.renderingBoundsMargin = 400;
+
       if (isE2eMode) {
         (window as unknown as { __E2E_TLDRAW_EDITOR__?: Editor }).__E2E_TLDRAW_EDITOR__ = editor;
         (window as unknown as { __E2E_PLACE_ASSET__?: typeof placeAsset }).__E2E_PLACE_ASSET__ = placeAsset;
@@ -191,9 +209,9 @@ export default function CompoundBoard({
           <div className="flex-1 relative">
             {!editorReady ? (
               <div className="flex h-full items-center justify-center text-sm text-zinc-400">ボードを読み込み中...</div>
-            ) : useSync && isLoading ? (
+            ) : showLoadingScreen ? (
               <div className="flex h-full items-center justify-center text-zinc-500">接続中...</div>
-            ) : useSync && isSyncError ? (
+            ) : useSync && isSyncError && !isE2eMode ? (
               <div className="flex h-full flex-col items-center justify-center gap-4 px-4">
                 <p className="text-red-500">同期エラー: {yjsStore.error?.message}</p>
                 <button
@@ -213,7 +231,7 @@ export default function CompoundBoard({
               </div>
             ) : (
               <Compound
-                {...(useSync ? { store: yjsStore } : {
+                {...(useSync && !(isE2eMode && isSyncError) ? { store: yjsStore } : {
                   persistenceKey: `gachaboard-${boardId}`,
                   sessionId: currentUserId,
                   defaultName: userName,

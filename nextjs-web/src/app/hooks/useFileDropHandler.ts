@@ -19,7 +19,11 @@ const MAX_CONCURRENT = 4;
 
 /**
  * ファイルドロップ → アップロード → キャンバス配置 のフック。
- * S3 アップロードロジックは lib/s3Upload に分離。
+ *
+ * 共通処理（@/lib/uploadCommon 参照）:
+ * - processFiles: アップロードボタン・DD 両方から利用
+ * - uploadAndPlace: placeholderShape → uploadFileViaS3 → placeFile
+ * - MIME 解決・送信%表示は s3Upload / shapes で統一
  */
 export function useFileDropHandler(
   boardId: string,
@@ -103,22 +107,41 @@ export function useFileDropHandler(
     setTimeout(() => setUploadError(null), 5000);
   }, []);
 
+  /**
+   * 共有処理: ファイル配列のアップロード + 配置。
+   * ドラッグ&ドロップ・アップロードボタン両方から利用。
+   */
+  const processFiles = useCallback(
+    async (
+      editor: Editor,
+      files: File[],
+      options: {
+        basePoint?: { x: number; y: number };
+        handles?: (FileSystemFileHandle | null)[];
+      } = {}
+    ) => {
+      const pagePoint = options.basePoint ?? getViewportPageCenter(editor);
+
+      const tasks = files.map((file, i) => async () => {
+        const position = { x: pagePoint.x + i * 120, y: pagePoint.y };
+        const handle = options.handles?.[i] ?? null;
+        await uploadAndPlace(editor, file, position, handle, showError);
+        refreshResumable();
+      });
+
+      await runWithConcurrency(tasks, MAX_CONCURRENT);
+    },
+    [getViewportPageCenter, uploadAndPlace, showError, refreshResumable],
+  );
+
   const registerHandler = useCallback(
     (editor: Editor) => {
       editorRef.current = editor;
       editor.registerExternalContentHandler("files", async ({ point, files }) => {
-        const pagePoint = point ?? getViewportPageCenter(editor);
-
-        const tasks = files.map((file, i) => async () => {
-          const position = { x: pagePoint.x + i * 120, y: pagePoint.y };
-          await uploadAndPlace(editor, file, position, null, showError);
-          refreshResumable();
-        });
-
-        await runWithConcurrency(tasks, MAX_CONCURRENT);
+        await processFiles(editor, files, { basePoint: point ?? undefined });
       });
     },
-    [getViewportPageCenter, uploadAndPlace, showError, refreshResumable],
+    [processFiles],
   );
 
   const openFilePickerAndUpload = useCallback(
@@ -131,12 +154,11 @@ export function useFileDropHandler(
         showError(result.error);
         return;
       }
-      const { file, handle } = result;
-      const position = getViewportPageCenter(editor);
-      await uploadAndPlace(editor, file, position, handle, showError);
-      refreshResumable();
+      await processFiles(editor, [result.file], {
+        handles: [result.handle],
+      });
     },
-    [getViewportPageCenter, uploadAndPlace, showError, refreshResumable],
+    [processFiles, showError],
   );
 
   const openAllFilesPickerAndUpload = useCallback(
@@ -149,18 +171,11 @@ export function useFileDropHandler(
         if (result.error !== "キャンセルされました") showError(result.error);
         return;
       }
-      const { files, handles } = result;
-      const center = getViewportPageCenter(editor);
-
-      const tasks = files.map((file, i) => async () => {
-        const position = { x: center.x + i * 120, y: center.y };
-        await uploadAndPlace(editor, file, position, handles[i] ?? null, showError);
-        refreshResumable();
+      await processFiles(editor, result.files, {
+        handles: result.handles,
       });
-
-      await runWithConcurrency(tasks, MAX_CONCURRENT);
     },
-    [getViewportPageCenter, uploadAndPlace, showError, refreshResumable],
+    [processFiles, showError],
   );
 
   const resumeUpload = useCallback(

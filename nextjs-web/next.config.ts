@@ -45,10 +45,22 @@ const nextConfig: NextConfig = {
     // 動画・大容量ファイルのアップロード用。本番ではリバースプロキシ等で制限を検討すること。
     serverActions: { bodySizeLimit: "100gb" },
   },
-  // 開発時の Hot Reload 等で許可するオリジン。カンマ区切りで指定（例: ALLOWED_DEV_ORIGINS=https://a.tailxxx.ts.net,https://b.tailxxx.ts.net）
-  allowedDevOrigins: process.env.ALLOWED_DEV_ORIGINS
-    ? process.env.ALLOWED_DEV_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean)
-    : [],
+  allowedDevOrigins: (() => {
+    const origins: string[] = [];
+    if (process.env.ALLOWED_DEV_ORIGINS) {
+      origins.push(...process.env.ALLOWED_DEV_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean));
+    }
+    // NEXTAUTH_URL が localhost 以外ならそのオリジンも自動で許可（Tailscale 等）
+    if (process.env.NEXTAUTH_URL) {
+      try {
+        const u = new URL(process.env.NEXTAUTH_URL);
+        if (u.hostname !== "localhost" && u.hostname !== "127.0.0.1") {
+          origins.push(u.origin);
+        }
+      } catch { /* invalid URL */ }
+    }
+    return [...new Set(origins)];
+  })(),
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "cdn.discordapp.com" },

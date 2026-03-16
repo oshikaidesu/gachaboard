@@ -17,6 +17,15 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith("/")) return `${baseUrl.replace(/\/$/, "")}${url}`;
+      try {
+        if (new URL(url).origin === new URL(baseUrl).origin) return url;
+      } catch {
+        // ignore invalid URL
+      }
+      return baseUrl;
+    },
     async jwt({ token, account, profile }) {
       if (account?.provider === "discord" && profile) {
         const p = profile as { id: string; username: string; global_name?: string; avatar?: string };

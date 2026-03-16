@@ -28,12 +28,26 @@ export default async function AccessDeniedPage({ searchParams }: Props) {
           </p>
         </div>
 
-        <Link
-          className="min-h-[44px] rounded-lg bg-zinc-900 px-6 py-3 text-center text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          href="/"
-        >
-          トップに戻る
-        </Link>
+        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-left dark:border-zinc-700 dark:bg-zinc-800/50">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            別のデバイスやブラウザからアクセスしている場合は、ログインし直すと解決することがあります。
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Link
+            className="min-h-[44px] rounded-lg bg-indigo-600 px-6 py-3 text-center text-sm font-medium text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
+            href="/auth/signin"
+          >
+            ログインし直す
+          </Link>
+          <Link
+            className="min-h-[44px] rounded-lg bg-zinc-900 px-6 py-3 text-center text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            href="/"
+          >
+            トップに戻る
+          </Link>
+        </div>
       </div>
     </main>
   );

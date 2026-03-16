@@ -25,10 +25,18 @@ const SHAPE_CLIPS: { filename: string; x: number; y: number; w: number; h: numbe
 
 test.describe.serial("シェイプ別スクリーンショット", () => {
   test("ボードから各シェイプをクリップ", async ({ page, baseURL }) => {
+    await page.route("**/api/**", (route) => {
+      const headers = { ...route.request().headers(), "x-e2e-user-id": "__e2e_user__", "x-e2e-user-name": "ScreenshotUser" };
+      route.continue({ headers });
+    });
+    await page.setExtraHTTPHeaders({
+      "x-e2e-user-id": "__e2e_user__",
+      "x-e2e-user-name": "ScreenshotUser",
+    });
     const url = `${baseURL}${BOARD_URL}`;
     await page.goto(url, { waitUntil: "domcontentloaded" });
-    await page.waitForSelector("text=← 戻る", { timeout: 15_000 });
-    await page.waitForSelector("[data-testid='canvas']", { timeout: 10_000 });
+    await page.waitForSelector("text=← 戻る", { timeout: 30_000 });
+    await page.waitForSelector("[data-testid='canvas']", { timeout: 60_000, state: "visible" });
     await page.waitForTimeout(2500);
 
     const canvas = page.locator("[data-testid='canvas']");
@@ -56,7 +64,7 @@ test.describe("OGP 用スクリーンショット", () => {
   test("トップページ OGP サイズ", async ({ page, baseURL }) => {
     await page.setViewportSize({ width: 1200, height: 630 });
     await page.goto(baseURL ?? "http://localhost:3010", {
-      waitUntil: "networkidle",
+      waitUntil: "domcontentloaded",
     });
     await page.screenshot({
       path: OGP_OUT,

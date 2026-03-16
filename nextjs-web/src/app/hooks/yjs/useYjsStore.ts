@@ -7,7 +7,7 @@ import {
 } from "@cmpd/editor";
 import { defaultShapeUtils } from "@cmpd/compound";
 import type { TLRecord } from "@cmpd/tlschema";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { WebsocketProvider } from "y-websocket";
 import { useYjsPersistence } from "./useYjsPersistence";
 import { useYjsSync, type StoreLike } from "./useYjsSync";
@@ -26,6 +26,8 @@ type UseYjsStoreOptions = {
     comments?: Record<string, string>;
     reactionEmojiPreset?: string[] | null;
   }>;
+  /** sync-server ゲート用。undefined=取得中, string=接続時に渡す, null=トークンなしで接続 */
+  syncToken?: string | null;
 };
 
 /**
@@ -40,8 +42,9 @@ export function useYjsStore({
   userId = "",
   avatarUrl,
   fetchSnapshotWhenEmpty,
+  syncToken,
 }: UseYjsStoreOptions): TLStoreWithStatus & { provider?: WebsocketProvider } {
-  const [status, setStatus] = useState<
+  const [status, setStatusRaw] = useState<
     TLStoreWithStatus["status"] extends infer S ? S : never
   >("loading");
   const [connectionStatus, setConnectionStatus] = useState<
@@ -50,6 +53,17 @@ export function useYjsStore({
   const [error] = useState<Error | null>(null);
   const storeRef = useRef<ReturnType<typeof createTLStore> | null>(null);
   const isLocalUpdateRef = useRef(false);
+
+  // IndexedDB 同期後に "synced-remote" になったら "loading" へ戻さない
+  const setStatus = useMemo(() => {
+    const fn = (next: "loading" | "synced-remote") => {
+      setStatusRaw((prev) => {
+        if (prev === "synced-remote" && next === "loading") return prev;
+        return next;
+      });
+    };
+    return fn;
+  }, []);
 
   const getStore = useCallback(() => {
     if (!storeRef.current) {
@@ -84,6 +98,7 @@ export function useYjsStore({
     setConnectionStatus,
     setStatus,
     isLocalUpdateRef,
+    syncToken,
   });
 
   useYjsAwareness({

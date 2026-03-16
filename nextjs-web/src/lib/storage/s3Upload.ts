@@ -4,6 +4,7 @@
  */
 
 import pLimit from "p-limit";
+import { getEffectiveMimeType } from "@/lib/uploadCommon";
 import {
   saveS3UploadSession,
   removeS3UploadSession,
@@ -31,12 +32,13 @@ export async function uploadFileViaS3(
   onProgress?: (pct: number) => void,
   handle?: FileSystemFileHandle | null,
 ): Promise<ApiAsset> {
+  const mimeType = getEffectiveMimeType(file);
   const initRes = await fetch("/api/assets/upload/s3/init", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       fileName: file.name,
-      mimeType: file.type || "application/octet-stream",
+      mimeType,
       totalSize: file.size,
       boardId,
     }),
@@ -63,7 +65,7 @@ export async function uploadFileViaS3(
       key,
       storageKey,
       fileName: file.name,
-      mimeType: file.type || "application/octet-stream",
+      mimeType,
       totalSize: file.size,
       totalParts,
       boardId,
@@ -103,7 +105,7 @@ export async function uploadFileViaS3(
       key,
       storageKey,
       fileName: file.name,
-      mimeType: file.type || "application/octet-stream",
+      mimeType,
       totalSize: file.size,
       boardId,
       parts,

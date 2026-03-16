@@ -8,6 +8,7 @@ import { Editor, type TLRecord } from "@cmpd/compound";
  * placeFile() 経由以外（付箋・長方形など）でも名前ラベル・Discord アイコンが出るようにする。
  */
 export function useAutoCreatedBy(
+  userId: string,
   userName: string,
   avatarUrl?: string | null
 ) {
@@ -23,6 +24,7 @@ export function useAutoCreatedBy(
 
           const metaBase: Record<string, unknown> = {
             createdBy: userName,
+            createdById: userId,
             createdAt: Date.now(),
             ...(avatarUrl && { createdByAvatarUrl: avatarUrl }),
           };
@@ -40,7 +42,7 @@ export function useAutoCreatedBy(
         { source: "user", scope: "document" }
       );
     },
-    [userName, avatarUrl]
+    [userId, userName, avatarUrl]
   );
 
   return { registerListener };

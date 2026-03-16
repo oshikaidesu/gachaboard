@@ -34,6 +34,7 @@ import {
   getColorForShape,
 } from "./common";
 import { getSafeAssetId } from "@/lib/safeUrl";
+import { currentUserIdAtom } from "@/app/components/board/currentUserAtom";
 
 // ---------- 共通ラップヘルパー ---------------------------------------------------
 
@@ -237,7 +238,8 @@ export class WrappedGeoShapeUtil extends GeoShapeUtil {
     const rawGeoOgpUrls = geoMeta.ogpUrls;
     const ogpUrls: string[] = Array.isArray(rawGeoOgpUrls) ? rawGeoOgpUrls as string[] : [];
 
-    const handleDismiss = ogpUrls.length > 0
+    const isOwner = !geoMeta.createdById || geoMeta.createdById === currentUserIdAtom.get();
+    const handleDismiss = ogpUrls.length > 0 && isOwner
       ? (url: string) => {
           const next = ogpUrls.filter((u) => u !== url);
           editor.updateShape({

@@ -5,6 +5,7 @@
 
 import { S3Client, CreateMultipartUploadCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand, UploadPartCommand, ListPartsCommand, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand, type CompletedPart } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { getBaseUrl } from "@/lib/baseUrl";
 import { env, getS3PublicUrl } from "@/lib/env";
 
 export function isS3Enabled(): boolean {
@@ -33,8 +34,8 @@ function getClient(): S3Client {
  * /minio/* は API route が受けて Host ヘッダを S3_ENDPOINT に設定して MinIO に転送するため、
  * 署名が一致する。
  */
-function rewritePresignedUrl(url: string): string {
-  const publicUrl = getS3PublicUrl();
+async function rewritePresignedUrl(url: string): Promise<string> {
+  const publicUrl = getS3PublicUrl(await getBaseUrl());
   const internal = env.S3_ENDPOINT || "http://localhost:18583";
   if (!publicUrl || publicUrl === internal) return url;
   return url.replace(internal, publicUrl);
@@ -109,7 +110,7 @@ export async function getPresignedPutUrl(key: string, uploadId: string, partNumb
     PartNumber: partNumber,
   });
   const url = await getSignedUrl(client, cmd, { expiresIn: 3600 });
-  return rewritePresignedUrl(url);
+  return await rewritePresignedUrl(url);
 }
 
 /** Multipart アップロードを完了 */
@@ -156,7 +157,7 @@ export async function getPresignedGetUrl(
     ...(opts?.responseContentType && { ResponseContentType: opts.responseContentType }),
   });
   const url = await getSignedUrl(client, cmd, { expiresIn });
-  return rewritePresignedUrl(url);
+  return await rewritePresignedUrl(url);
 }
 
 /** ファイルを S3 にアップロード（PutObject） */

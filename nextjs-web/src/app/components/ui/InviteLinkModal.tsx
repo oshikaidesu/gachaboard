@@ -20,7 +20,7 @@ export function InviteLinkModal({ workspaceId, workspaceName, onClose }: Props) 
         className="w-full max-w-md rounded-lg border border-zinc-200 bg-white p-5 text-center dark:border-zinc-700 dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-4 text-base font-semibold dark:text-zinc-100">
+        <h2 className="mb-4 truncate text-base font-semibold dark:text-zinc-100" title={`${workspaceName} の招待リンク`}>
           {workspaceName} の招待リンク
         </h2>
         {loading ? (

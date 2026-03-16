@@ -83,6 +83,29 @@ export const LOCAL_ORIGIN = Symbol("local-store");
 
 import type { Map as YMap, Doc as YDoc } from "yjs";
 
+/** Y.Map の値 (string | object) を TLRecord にパース。不正なら null */
+export function parseYMapValue(raw: unknown): TLRecord | null {
+  try {
+    const record: unknown = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (record && typeof record === "object" && (record as TLRecord).id) {
+      return record as TLRecord;
+    }
+  } catch {
+    /* skip */
+  }
+  return null;
+}
+
+/** Y.Map 全体から TLRecord 配列を生成（IndexedDB synced 時の初回ハイドレーション用） */
+export function recordsFromYMap(yMap: YMap<string>): TLRecord[] {
+  const records: TLRecord[] = [];
+  yMap.forEach((raw) => {
+    const rec = parseYMapValue(raw);
+    if (rec) records.push(rec);
+  });
+  return records;
+}
+
 /**
  * RecordsDiff を Y.Map に書き込む（per-record 形式）。
  * Yjs が差分のみを送信するためネットワーク効率が向上。

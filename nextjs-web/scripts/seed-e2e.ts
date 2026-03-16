@@ -10,6 +10,8 @@ config({ path: ".env.local" });
 const E2E_USER_ID = "__e2e_user__";
 const E2E_WORKSPACE_ID = "__e2e_workspace__";
 const E2E_BOARD_ID = "e2e-screenshot";
+/** E2E 招待フロー用。inviteTokenSchema 準拠（32-64 文字） */
+const E2E_INVITE_TOKEN = "e2e_invite_token_0123456789abcdef012345";
 
 async function main() {
   const { db } = await import("../src/lib/db");
@@ -30,10 +32,12 @@ async function main() {
       ownerUserId: E2E_USER_ID,
       name: "スクリーンショット用ワークスペース",
       description: "ドキュメント用のサンプルデータ",
+      inviteToken: E2E_INVITE_TOKEN,
     },
     update: {
       name: "スクリーンショット用ワークスペース",
       description: "ドキュメント用のサンプルデータ",
+      inviteToken: E2E_INVITE_TOKEN,
     },
   });
 

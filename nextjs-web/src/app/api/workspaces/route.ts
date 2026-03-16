@@ -32,7 +32,6 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
   });
 
-  // ownerUserId を含めてUIでオーナー判定できるようにする
   return NextResponse.json(
     workspaces.map((ws) => ({
       ...ws,
@@ -46,7 +45,7 @@ export async function POST(req: NextRequest) {
   const session = await requireLogin();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (env.SERVER_OWNER_DISCORD_ID.trim() && !env.E2E_TEST_MODE) {
+  if (env.SERVER_OWNER_DISCORD_ID.trim()) {
     const ctx = await assertServerOwner();
     if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

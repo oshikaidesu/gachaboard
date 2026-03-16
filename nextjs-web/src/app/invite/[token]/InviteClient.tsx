@@ -24,9 +24,22 @@ export default function InviteClient({ token }: Props) {
         <div className="flex w-full max-w-sm flex-col items-center gap-6 text-center">
           <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100 sm:text-3xl">招待リンク</h1>
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          <Link className="text-sm text-zinc-500 hover:underline dark:text-zinc-400" href="/">
-            ← トップに戻る
-          </Link>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-left dark:border-amber-800 dark:bg-amber-950/50">
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              別のデバイスやブラウザからアクセスしている場合は、このページで Discord にログインし直してからもう一度お試しください。
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link
+              className="min-h-[44px] rounded-lg bg-indigo-600 px-6 py-3 text-center text-sm font-medium text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
+              href={`/auth/signin?callbackUrl=${encodeURIComponent(`/invite/${token}`)}`}
+            >
+              ログインする
+            </Link>
+            <Link className="min-h-[44px] rounded-lg border border-zinc-300 px-6 py-3 text-center text-sm dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800" href="/">
+              トップに戻る
+            </Link>
+          </div>
         </div>
       </main>
     );

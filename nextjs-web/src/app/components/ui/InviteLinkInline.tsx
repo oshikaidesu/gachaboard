@@ -19,7 +19,7 @@ export function InviteLinkInline({ workspaceId, className = "" }: Props) {
       {loading ? (
         <span className="text-xs text-zinc-400 dark:text-slate-500">読み込み中...</span>
       ) : inviteUrl ? (
-        <div className="flex flex-col gap-1.5">
+        <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex items-center gap-2">
             <span className="shrink-0 text-xs font-medium text-zinc-500 dark:text-slate-400">招待URL</span>
             <div className="flex shrink-0 gap-1">
@@ -43,7 +43,7 @@ export function InviteLinkInline({ workspaceId, className = "" }: Props) {
               </button>
             </div>
           </div>
-          <span className="block truncate text-xs text-zinc-500 dark:text-slate-400" title={inviteUrl}>
+          <span className="block min-w-0 truncate text-xs text-zinc-500 dark:text-slate-400" title={inviteUrl}>
             {inviteUrl}
           </span>
         </div>

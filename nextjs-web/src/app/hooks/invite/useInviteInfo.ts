@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getE2EHeadersFromUrl } from "@/lib/e2eFetch";
+import { withE2EHeaders } from "@/lib/e2eFetch";
 
 export type InviteInfo = {
   workspaceId: string;
@@ -17,7 +19,8 @@ export function useInviteInfo(token: string) {
       setLoading(false);
       return;
     }
-    fetch(`/api/invite/${token}`)
+    const e2e = getE2EHeadersFromUrl();
+    fetch(`/api/invite/${token}`, { credentials: "include", headers: withE2EHeaders({}, e2e) })
       .then((res) => {
         if (!res.ok) throw new Error(res.status === 404 ? "招待リンクが無効です" : "エラーが発生しました");
         return res.json();

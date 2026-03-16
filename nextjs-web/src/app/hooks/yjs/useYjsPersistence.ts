@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
-import { restoreCameraFromLS, LOCAL_ORIGIN } from "@/lib/yjsSyncHelpers";
+import { restoreCameraFromLS, LOCAL_ORIGIN, recordsFromYMap } from "@/lib/yjsSyncHelpers";
 import type { TLRecord } from "@cmpd/tlschema";
 
 export type SnapshotData = {
@@ -91,6 +91,15 @@ export function useYjsPersistence({
           onSyncedRef.current();
         });
       } else {
+        // IndexedDB にデータがある場合: Y.Map → TLStore へ反映（初回ハイドレーションはここだけ）
+        if (hasData) {
+          const store = getStore();
+          const records = recordsFromYMap(yMap);
+          if (records.length > 0) {
+            store.mergeRemoteChanges(() => store.put(records));
+            restoreCameraFromLS(store, roomId);
+          }
+        }
         onSyncedRef.current();
       }
     });

@@ -27,13 +27,33 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
   const { onFileUploadAll } = options;
   return {
   actions(editor, actions) {
-    return actions;
+    const next = { ...actions };
+    // 単体キーアクション（Z=ズームツール）を無効化（誤爆防止）
+    const ACTIONS_WITH_SINGLE_KEY_KBD = ["select-zoom-tool"];
+    for (const id of ACTIONS_WITH_SINGLE_KEY_KBD) {
+      if (next[id]) next[id] = { ...next[id], kbd: undefined };
+    }
+    return next;
   },
   tools(editor, tools) {
     const next = { ...tools };
 
-    // 単体キーショートカット（D/E/Z）を無効化（テキスト入力中の誤動作防止）
-    const TOOLS_WITH_SINGLE_KEY_KBD = ["draw", "eraser", "zoom"];
+    // 単体キーショートカットを無効化（テキスト入力中の誤動作防止）
+    // v=select, h=hand, e=eraser, d/b/x=draw, r=rectangle, o=ellipse, a=arrow, l=line, f=frame, t=text, n=note, k=laser
+    const TOOLS_WITH_SINGLE_KEY_KBD = [
+      "select",
+      "hand",
+      "draw",
+      "eraser",
+      "rectangle",
+      "ellipse",
+      "arrow",
+      "line",
+      "frame",
+      "text",
+      "note",
+      "laser",
+    ];
     for (const id of TOOLS_WITH_SINGLE_KEY_KBD) {
       if (next[id]) next[id] = { ...next[id], kbd: undefined };
     }
@@ -128,7 +148,6 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
 
           if (source === "toolbar") {
             const size = GEO_SIZES[geoId] ?? GEO_DEFAULT_SIZE;
-            const scale = 1 / editor.getZoomLevel();
             const vp = editor.getViewportPageBounds();
             const cx = vp.x + vp.w / 2;
             const cy = vp.y + vp.h / 2;
@@ -138,8 +157,8 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
               {
                 id,
                 type: "geo",
-                x: cx - (size.w * scale) / 2,
-                y: cy - (size.h * scale) / 2,
+                x: cx - size.w / 2,
+                y: cy - size.h / 2,
                 props: {
                   geo: geoId as
                     | "rectangle"
@@ -154,8 +173,8 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
                     | "oval"
                     | "pentagon"
                     | "rhombus",
-                  w: size.w * scale,
-                  h: size.h * scale,
+                  w: size.w,
+                  h: size.h,
                 },
               },
             ]);

@@ -36,6 +36,8 @@ import {
   type TextFileShape,
   type VideoShape,
 } from "@shared/shapeDefs";
+import { getAssetKind } from "@shared/mimeUtils";
+import { getEffectiveMimeType } from "@/lib/uploadCommon";
 import type { ApiAsset } from "@shared/apiTypes";
 import {
   getImageDisplaySize,
@@ -158,7 +160,7 @@ export async function placeFile(
   existingShapeId?: ReturnType<typeof createShapeId>,
   createdByAvatarUrl?: string | null
 ): Promise<void> {
-  const mime = file.type || "application/octet-stream";
+  const mime = data.mimeType || file.type || "application/octet-stream";
   const { x, y } = position;
   const meta: Record<string, unknown> = {
     createdBy,
@@ -270,6 +272,10 @@ export async function placeAsset(
 
 /**
  * アップロード開始直後に仮シェイプを配置する。
+ *
+ * 共通化: 全ファイル種別で FileIconShape に統一し、送信%を一貫して表示。
+ * 完了後は placeFile で本来のシェイプ（VideoShape / AudioShape 等）に差し替え。
+ * MIME は getEffectiveMimeType（@/lib/uploadCommon）で統一。
  */
 export async function placeholderShape(
   editor: Editor,
@@ -278,7 +284,8 @@ export async function placeholderShape(
   createdBy = "Unknown",
   createdByAvatarUrl?: string | null
 ): Promise<ReturnType<typeof createShapeId> | null> {
-  const mime = file.type || "application/octet-stream";
+  const mime = getEffectiveMimeType(file);
+  const kind = getAssetKind(mime);
   const { x, y } = position;
   const progressMeta: Record<string, unknown> = {
     createdBy,
@@ -288,35 +295,21 @@ export async function placeholderShape(
   };
   const id = createShapeId();
 
-  if (mime.startsWith("image/") || mime.startsWith("video/")) {
-    editor.createShape<FileIconShape>({
-      id, type: SHAPE_TYPE.FILE_ICON, x, y, meta: progressMeta as object,
-      props: { assetId: "", fileName: file.name, mimeType: mime, kind: mime.startsWith("image/") ? "image" : "video", w: 96, h: 96 },
-    });
-    return id;
-  }
-
-  const resolved = resolveShapeType(mime, file.name);
-  if (!resolved) return null;
-
-  const assetData: ResolvedAssetData = {
-    assetId: "",
-    fileName: file.name,
-    mimeType: mime,
-    kind: resolved.type === SHAPE_TYPE.FILE_ICON ? "file" : undefined,
-  };
-  const defWithPlaceholderProps = {
-    ...resolved.def,
-    defaultProps: { ...resolved.def.defaultProps, w: 96, h: 96 },
-  };
-  await createShapeForResolved(
-    editor,
-    { ...resolved, def: defWithPlaceholderProps },
-    assetData,
-    position,
-    progressMeta,
-    { shapeId: id, content: resolved.type === SHAPE_TYPE.TEXT_FILE ? "" : undefined },
-  );
+  editor.createShape<FileIconShape>({
+    id,
+    type: SHAPE_TYPE.FILE_ICON,
+    x,
+    y,
+    meta: progressMeta as object,
+    props: {
+      assetId: "",
+      fileName: file.name,
+      mimeType: mime,
+      kind: kind === "gif" ? "gif" : kind,
+      w: 96,
+      h: 96,
+    } as FileIconShape["props"],
+  });
   return id;
 }
 

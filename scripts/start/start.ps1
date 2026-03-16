@@ -1,7 +1,11 @@
-# Windows でダブルクリックして起動
-# 右クリック →「PowerShell で実行」またはエクスプローラーで .ps1 を実行
+# Windows で起動（メニュー付き）
+# 推奨: プロジェクトルートの start.bat をダブルクリック（実行ポリシー不要）
 $ErrorActionPreference = "Stop"
-Set-Location $PSScriptRoot
+
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ScriptsDir = Split-Path -Parent $ScriptDir
+$RootDir = Split-Path -Parent $ScriptsDir
+Set-Location $RootDir
 
 # ── 必須ツールの存在チェック ──
 $missing = @()
@@ -47,7 +51,7 @@ if ($missing.Count -gt 0) {
 Write-Host "✓ 必須ツール インストール確認済み" -ForegroundColor Green
 
 # ── .env の存在チェック ──
-$envLocal = Join-Path $PSScriptRoot "nextjs-web\.env.local"
+$envLocal = Join-Path $RootDir "nextjs-web\.env.local"
 if (-not (Test-Path $envLocal)) {
   Write-Host ""
   Write-Host "============================================" -ForegroundColor Red
@@ -83,7 +87,7 @@ switch ($choice) {
   "2" {
     Write-Host ""
     Write-Host ">>> ビルドを再生成しています..." -ForegroundColor Cyan
-    Push-Location (Join-Path $PSScriptRoot "nextjs-web")
+    Push-Location (Join-Path $RootDir "nextjs-web")
     try {
       npx prisma generate
       npm run build

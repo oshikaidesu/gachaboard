@@ -181,10 +181,10 @@ export default function WorkspacesClient({ currentUserId, e2eHeaders }: Props) {
           {list.map((ws) => {
             const isOwner = ws.ownerUserId === currentUserId;
             return (
-              <li key={ws.id} className="group relative">
+              <li key={ws.id} className="group relative min-w-0">
                 {tab === "active" ? (
                   <div
-                    className="flex flex-col rounded-lg border-2 bg-stone-100 p-5 pr-12 transition hover:border-zinc-400 hover:bg-stone-200/50 dark:bg-[#212529] dark:hover:border-slate-500 dark:hover:bg-slate-800/80"
+                    className="flex min-w-0 flex-col overflow-hidden rounded-lg border-2 bg-stone-100 p-5 pr-12 transition hover:border-zinc-400 hover:bg-stone-200/50 dark:bg-[#212529] dark:hover:border-slate-500 dark:hover:bg-slate-800/80"
                     style={{ borderColor: getMinidenticonColor(ws.id, 45, 58) }}
                   >
                     <Link

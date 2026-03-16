@@ -9,6 +9,16 @@ Tailscale の HTTPS 機能を用いて、Gachaboard を HTTPS で提供する手
 - Tailscale がインストールされ、マシンが Tailscale ネットワークに参加している
 - [Admin Console](https://login.tailscale.com/admin/dns) で **MagicDNS** と **HTTPS Certificates** を有効化済み（[手順](https://tailscale.com/docs/how-to/set-up-https-certificates)）
 
+### Docker で Tailscale からアクセスする場合
+
+Docker Compose のポートはデフォルトで `127.0.0.1` にしかバインドされていないため、**他端末（スマホ・外出先）から Tailscale でアクセスできません**。プロジェクトルートの `.env` に次を追加してから `docker compose up -d` し直してください。
+
+```env
+HOST_BIND=0.0.0.0
+```
+
+これで全インターフェース（Tailscale 含む）で待ち受けます。**Caddy をホストで動かし `reverse_proxy localhost:18580` で HTTPS 化しているだけの場合は、`HOST_BIND` はそのままで問題ありません**（Caddy が Tailscale から受け、localhost でコンテナに届くため）。`HOST_BIND=0.0.0.0` が必要なのは、Caddy を使わず Tailscale の IP:ポート（例: `http://100.x.x.x:18580`）に直接アクセスしたい場合です。
+
 ---
 
 ## 方法 A: 自動セットアップ（推奨）
@@ -146,6 +156,35 @@ sudo caddy run --config Caddyfile
 ```
 
 または、別ポート（例: 8443）で待ち受けて Tailscale の Funnel やポートフォワードで利用する方法もあります。
+
+---
+
+## 別ネットワークからの E2E 動作確認
+
+Tailscale URL（別ネットワーク相当）向けに E2E テストを実行し、セッション・Cookie・HTTPS・getBaseUrl が別オリジンでも正しく動くことを検証できます。
+
+### 同一マシンで実行
+
+1. アプリを Tailscale モードで起動（`npm run start:tailscale` 等）
+2. Tailscale serve で `https://<host>.ts.net` が有効な状態にする
+3. 以下を実行（webServer は起動せず、既存のアプリに接続）:
+
+   ```bash
+   cd nextjs-web
+   E2E_BASE_URL=https://<host>.ts.net npm run test:e2e:tailscale
+   ```
+
+### 別マシン（真の別ネットワーク）で実行
+
+1. サーバ側でアプリを Tailscale モードで起動済み
+2. Tailscale で接続した別 PC や CI ランナーから:
+
+   ```bash
+   cd nextjs-web
+   E2E_BASE_URL=https://<サーバの.ts.net> npm run test:e2e:tailscale
+   ```
+
+`E2E_BASE_URL` が `https://` で始まる場合、Playwright は webServer を起動しません。既に起動しているアプリに向けてテストを実行します。
 
 ---
 

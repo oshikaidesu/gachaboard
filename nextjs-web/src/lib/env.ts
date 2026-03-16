@@ -24,7 +24,11 @@ const boolSchema = z
 export const env = createEnv({
   server: {
     NEXTAUTH_SECRET: z.string().min(1),
-    NEXTAUTH_URL: z.string().url(),
+    /** 未設定時は getBaseUrl() がリクエストの Host から動的に解決。HTTPS のみなら env で固定しなくてよい */
+    NEXTAUTH_URL: z
+      .union([z.string().url(), z.literal("")])
+      .optional()
+      .default(""),
     DISCORD_CLIENT_ID: z.string().min(1),
     DISCORD_CLIENT_SECRET: z.string().min(1),
     DATABASE_URL: z.string().url(),
@@ -73,11 +77,15 @@ export const env = createEnv({
 /**
  * ブラウザから見た S3 リソースの公開 URL ベースを返す。
  *
- * NEXTAUTH_URL が HTTPS（Tailscale 等）の場合、S3_PUBLIC_URL が localhost を
- * 指していても混合コンテンツ（HTTPS→HTTP）になるため /minio プロキシ経由に強制する。
+ * baseUrl 省略時は env.NEXTAUTH_URL を使用（空なら https://localhost:PORT）。
+ * リクエストコンテキストでは getBaseUrl() を渡すと動的オリジンになる。
+ *
+ * HTTPS（Tailscale 等）の場合、S3_PUBLIC_URL が localhost を指していても
+ * 混合コンテンツになるため /minio プロキシ経由に強制する。
  */
-export function getS3PublicUrl(): string {
-  const authUrl = new URL(env.NEXTAUTH_URL);
+export function getS3PublicUrl(baseUrl?: string): string {
+  const base = baseUrl || env.NEXTAUTH_URL || `https://localhost:${process.env.PORT || "18580"}`;
+  const authUrl = new URL(base);
   const isHttps = authUrl.protocol === "https:";
 
   if (env.S3_PUBLIC_URL) {

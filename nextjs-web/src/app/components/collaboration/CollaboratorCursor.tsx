@@ -20,13 +20,15 @@ export function CollaboratorCursorWithName(props: {
   zoom: number;
   name: string | null;
   chatMessage: string;
-  meta?: { avatarUrl?: string | null };
+  meta?: { avatarUrl?: string | null; cursorActive?: boolean };
 }) {
   const { point, color, zoom, name, chatMessage, meta, className } = props;
   const rCursor = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(true);
   const lastPointRef = useRef<string | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const shouldHide = !point || meta?.cursorActive === false;
 
   useEffect(() => {
     if (!point) return;
@@ -52,9 +54,9 @@ export function CollaboratorCursorWithName(props: {
     };
   }, [point?.x, point?.y]);
 
-  if (!point) return null;
+  useTransform(rCursor, point?.x ?? 0, point?.y ?? 0, 1 / zoom);
 
-  useTransform(rCursor, point.x, point.y, 1 / zoom);
+  if (shouldHide) return null;
 
   return (
     <div

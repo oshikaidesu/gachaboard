@@ -7,6 +7,7 @@ import {
   TLStateNodeConstructor,
   atom,
 } from "@cmpd/compound";
+import { currentUserIdAtom } from "@/app/components/board/currentUserAtom";
 import { PointingShapeArrowAware } from "./PointingShapeArrowAware";
 
 /**
@@ -162,6 +163,12 @@ class SmartHandIdle extends StateNode {
 
     if (shape && !this.editor.isShapeOrAncestorLocked(shape)) {
       const util = this.editor.getShapeUtil(shape);
+      if (this.editor.isShapeOfType(shape, "geo")) {
+        const createdById = (shape.meta as Record<string, unknown>)?.createdById as string | undefined;
+        if (createdById && createdById !== currentUserIdAtom.get()) {
+          return;
+        }
+      }
       if (util.canEdit(shape)) {
         this.editor.batch(() => {
           this.editor.mark("editing on double click");

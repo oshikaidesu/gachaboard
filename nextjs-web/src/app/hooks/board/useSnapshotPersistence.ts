@@ -89,6 +89,30 @@ export function useSnapshotSave({ store, provider, boardId, workspaceId, enabled
       const reactions = provider ? getYMapEntries(provider, REACTIONS_MAP_KEY) : {};
       const comments = provider ? getYMapEntries(provider, COMMENTS_MAP_KEY) : {};
       const reactionEmojiPreset = getReactionEmojiPreset(provider);
+      // 前回送信時にはレコードがあったのに今回だけ空の場合は送信しない（誤ってボードを空で上書きしない）
+      if (records.length === 0 && lastSaveRef.current) {
+        try {
+          const prev = JSON.parse(lastSaveRef.current) as { records?: unknown[] };
+          if (Array.isArray(prev.records) && prev.records.length > 0) {
+            const bodyReactionsOnly = JSON.stringify({
+              records: prev.records,
+              reactions,
+              comments,
+              reactionEmojiPreset,
+            });
+            lastSaveRef.current = bodyReactionsOnly;
+            const url = `/api/workspaces/${workspaceId}/boards/${boardId}/snapshot`;
+            fetch(url, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: bodyReactionsOnly,
+            }).catch(() => {});
+            return;
+          }
+        } catch {
+          /* ignore parse error */
+        }
+      }
       const payload = JSON.stringify({ records, reactions, comments, reactionEmojiPreset });
       if (payload === lastSaveRef.current) return;
       lastSaveRef.current = payload;
@@ -96,7 +120,7 @@ export function useSnapshotSave({ store, provider, boardId, workspaceId, enabled
       const url = `/api/workspaces/${workspaceId}/boards/${boardId}/snapshot`;
       const body = JSON.stringify({ records, reactions, comments, reactionEmojiPreset });
 
-      if (source === "beforeunload") {
+      if (source === "beforeunload" || source === "unmount") {
         fetch(url, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -122,8 +146,11 @@ export function useSnapshotSave({ store, provider, boardId, workspaceId, enabled
     );
 
     return () => {
-      saveRef.current = null;
       debouncedSave.cancel();
+      // Next.js クライアントサイドナビゲーションでは beforeunload が発火しないため、
+      // アンマウント時に明示的に保存する（keepalive でページ遷移後も完了させる）
+      save("unmount");
+      saveRef.current = null;
       unsub?.();
     };
   }, [store, provider, boardId, workspaceId, enabled]);

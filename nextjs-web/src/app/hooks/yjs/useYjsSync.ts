@@ -9,6 +9,7 @@ import {
   restoreCameraFromLS,
   isPositionOnlyUpdate,
   persistRecordsDiffToY,
+  parseYMapValue,
   type RecordsDiffLike,
 } from "@/lib/yjsSyncHelpers";
 
@@ -29,6 +30,8 @@ type UseYjsSyncOptions = {
   setConnectionStatus: (s: "online" | "offline") => void;
   setStatus: (s: "loading" | "synced-remote") => void;
   isLocalUpdateRef: React.MutableRefObject<boolean>;
+  /** sync-server ゲート用。undefined=取得中でまだ接続しない, string=接続許可, null=トークンなしで接続（ゲート未使用時） */
+  syncToken?: string | null;
 };
 
 /**
@@ -42,16 +45,17 @@ export function useYjsSync({
   setConnectionStatus,
   setStatus,
   isLocalUpdateRef,
+  syncToken,
 }: UseYjsSyncOptions): WebsocketProvider | undefined {
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
 
   useEffect(() => {
-    if (!ydoc || !wsUrl) return;
+    if (!ydoc || !wsUrl || syncToken === undefined) return;
 
     const yMap = ydoc.getMap<string>("tldraw");
-    const prov = new WebsocketProvider(wsUrl, roomId, ydoc, {
-      connect: false,
-    });
+    const wsOpts: { connect: boolean; params?: Record<string, string> } = { connect: false };
+    if (typeof syncToken === "string") wsOpts.params = { token: syncToken };
+    const prov = new WebsocketProvider(wsUrl, roomId, ydoc, wsOpts);
     setProvider(prov);
 
     const connectTimer = setTimeout(() => prov.connect(), 50);
@@ -78,14 +82,8 @@ export function useYjsSync({
           if (raw === undefined) {
             toRemove.push(key as TLRecord["id"]);
           } else {
-            try {
-              const record = typeof raw === "string" ? JSON.parse(raw) : raw;
-              if (record && typeof record === "object" && record.id) {
-                toPut.push(record);
-              }
-            } catch {
-              // skip parse errors
-            }
+            const record = parseYMapValue(raw);
+            if (record) toPut.push(record);
           }
         }
         if (toPut.length > 0 || toRemove.length > 0) {
@@ -102,6 +100,7 @@ export function useYjsSync({
     };
 
     yMap.observe(handleYUpdate);
+    // 初回の Y.Map → ストア反映は useYjsPersistence の "synced" で行う（一箇所責務）
 
     const DRAG_DEFER_MS = 100;
     let rafScheduled = false;
@@ -213,7 +212,7 @@ export function useYjsSync({
         setTimeout(runHeavyCleanup, 0);
       }
     };
-  }, [roomId, wsUrl, ydoc, getStore, setConnectionStatus, setStatus, isLocalUpdateRef]);
+  }, [roomId, wsUrl, ydoc, getStore, setConnectionStatus, setStatus, isLocalUpdateRef, syncToken]);
 
   return provider ?? undefined;
 }

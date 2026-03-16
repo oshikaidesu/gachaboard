@@ -4,6 +4,15 @@
 
 export type E2EHeaders = { userId: string; userName: string };
 
+/** URL の testUserId / testUserName から E2E ヘッダーを取得（クライアントのみ） */
+export function getE2EHeadersFromUrl(): E2EHeaders | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const userId = params.get("testUserId")?.trim();
+  const userName = params.get("testUserName")?.trim();
+  return userId && userName ? { userId, userName } : null;
+}
+
 /** 既存の headers に E2E ヘッダーをマージ */
 export function withE2EHeaders(headers: HeadersInit, e2e?: E2EHeaders | null): HeadersInit {
   if (!e2e) return headers;

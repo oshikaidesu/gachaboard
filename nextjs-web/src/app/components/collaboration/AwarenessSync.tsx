@@ -88,7 +88,7 @@ export function AwarenessSync({ provider, localUserId }: AwarenessSyncProps) {
             brush: null,
             scribbles: [],
             chatMessage: "",
-            meta: { avatarUrl, dragging: dragging ?? null },
+            meta: { avatarUrl, dragging: dragging ?? null, cursorActive: cursor != null },
           })
         );
       });
@@ -160,12 +160,24 @@ export function AwarenessSync({ provider, localUserId }: AwarenessSyncProps) {
       clearLocalCursor();
     };
 
+    const handlePointerUp = (e: PointerEvent) => {
+      if (e.pointerType === "touch") {
+        pendingRef.current = null;
+        throttledUpdate.cancel();
+        clearLocalCursor();
+      }
+    };
+
     container.addEventListener("pointermove", handlePointerMove, { passive: true });
     container.addEventListener("pointerleave", handlePointerLeave);
+    container.addEventListener("pointerup", handlePointerUp);
+    container.addEventListener("pointercancel", handlePointerLeave);
 
     return () => {
       container.removeEventListener("pointermove", handlePointerMove);
       container.removeEventListener("pointerleave", handlePointerLeave);
+      container.removeEventListener("pointerup", handlePointerUp);
+      container.removeEventListener("pointercancel", handlePointerLeave);
       throttledUpdate.cancel();
     };
   }, [editor, updateLocalCursor, clearLocalCursor]);

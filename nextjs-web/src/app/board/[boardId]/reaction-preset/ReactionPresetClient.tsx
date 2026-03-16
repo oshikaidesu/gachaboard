@@ -12,6 +12,7 @@ import {
 } from "@shared/constants";
 import { ThemeToggle } from "@/app/components/theme/ThemeToggle";
 import { getSyncWsUrl } from "@/lib/syncWsUrl";
+import { useSyncToken } from "@/app/hooks/board/useSyncToken";
 import { useCopyToClipboard } from "usehooks-ts";
 
 const REACTION_EMOJI_PRESET_MAP_KEY = "reactionEmojiPreset";
@@ -57,22 +58,26 @@ export default function ReactionPresetClient({
 
   const wsUrl = getSyncWsUrl();
   const useSync = Boolean(wsUrl);
+  const syncToken = useSyncToken(boardId, useSync);
 
   useEffect(() => {
-    if (!useSync || typeof window === "undefined") return;
+    if (!useSync || typeof window === "undefined" || syncToken === undefined) return;
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
-    new IndexeddbPersistence(boardId, ydoc);
-    const provider = new WebsocketProvider(wsUrl, boardId, ydoc, { connect: false });
+    const persistence = new IndexeddbPersistence(boardId, ydoc);
+    const opts = typeof syncToken === "string" ? { connect: false, params: { token: syncToken } } : { connect: false };
+    const provider = new WebsocketProvider(wsUrl, boardId, ydoc, opts);
     provider.connect();
     providerRef.current = provider;
     return () => {
       provider.disconnect();
       provider.destroy();
+      persistence.destroy();
+      ydoc.destroy();
       providerRef.current = null;
       ydocRef.current = null;
     };
-  }, [boardId, wsUrl, useSync]);
+  }, [boardId, wsUrl, useSync, syncToken]);
 
   // 初期値変更時（例: 別ボードへ遷移）にテキストを同期
   useEffect(() => {

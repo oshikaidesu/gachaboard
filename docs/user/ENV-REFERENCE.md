@@ -11,24 +11,25 @@
 | `DISCORD_CLIENT_ID` | Discord OAuth の Client ID。[Discord Developer Portal](https://discord.com/developers/applications) でアプリ作成後、OAuth2 から取得 | `1234567890123456789` |
 | `DISCORD_CLIENT_SECRET` | Discord OAuth の Client Secret。同上 | `abcdef123456...` |
 | `NEXTAUTH_SECRET` | セッション暗号化用。任意の長いランダム文字列。`openssl rand -base64 32` で生成可 | `xYz123...` |
-| `NEXTAUTH_URL` | アプリのベース URL。ブラウザでアクセスする URL と一致させる | モード別は下表参照 |
+| `NEXTAUTH_URL` | アプリのベース URL。**未設定可**：未設定時はリクエストの Host（Tailscale serve 等）から動的に解決するため、HTTPS のみ使うなら env で固定する必要はない。スクリプトやフォールバック用に設定してもよい。 | モード別は下表参照 |
 | `DATABASE_URL` | PostgreSQL 接続文字列 | `postgresql://gachaboard:gachaboard@localhost:18581/gachaboard` |
 
 ---
 
 ## オプション変数
 
-### ポート（他サービスと衝突する場合）
-
-他サービス（AE、他プロジェクト等）とポートが衝突する場合、以下で変更できます。
+### ポート・バインド（他サービスと衝突する場合 / Tailscale）
 
 | 変数 | 設定場所 | デフォルト | 説明 |
 |------|----------|------------|------|
+| `HOST_BIND` | `.env`（プロジェクトルート） | `127.0.0.1` | Docker のポートバインド先。**Tailscale で他端末からアクセスする場合は `0.0.0.0` に設定**。`127.0.0.1` のままではローカル以外から接続できない。 |
 | `PORT` | `nextjs-web/.env.local` | `18580` | Next.js のポート |
 | `POSTGRES_HOST_PORT` | `.env`（プロジェクトルート） | `18581` | PostgreSQL。`DATABASE_URL` のポートと一致させる |
 | `SYNC_SERVER_HOST_PORT` | `.env`（プロジェクトルート） | `18582` | sync-server。`NEXT_PUBLIC_SYNC_WS_URL` のポートと一致させる |
 | `MINIO_API_HOST_PORT` | `.env`（プロジェクトルート） | `18583` | MinIO。`S3_ENDPOINT` / `S3_PUBLIC_URL` のポートと一致させる |
 | `MINIO_CONSOLE_HOST_PORT` | `.env`（プロジェクトルート） | `18584` | MinIO 管理UI |
+
+他サービス（AE、他プロジェクト等）とポートが衝突する場合、上記ポート変数で変更できます。
 
 **自動同期**: `PORT`、`POSTGRES_HOST_PORT`、`SYNC_SERVER_HOST_PORT`、`MINIO_API_HOST_PORT` を編集するだけで、`DATABASE_URL`、`S3_*`、`NEXT_PUBLIC_SYNC_WS_URL` 等は `npm run setup:env` および起動時に自動反映されます。手動で合わせる必要はありません。
 
@@ -79,12 +80,12 @@
 
 | 変数 | local | tailscale | production |
 |------|-------|-----------|------------|
-| `NEXTAUTH_URL` | `http://localhost:18580` | `https://<Tailscaleホスト名>`（Caddy 利用時） | `https://...` または `http://<IP または ドメイン>:3000` |
+| `NEXTAUTH_URL` | 未設定可（リクエストの Host から自動）。フォールバック用に `http://localhost:18580` を設定しても可 | 未設定可（Tailscale serve 等でアクセスした Host から自動） | 未設定可（同上） |
 | `S3_PUBLIC_URL` | `http://localhost:18583` | `https://<Tailscaleホスト名>/minio` | 本番の MinIO/S3 公開 URL |
 | `DATABASE_URL` | `postgresql://gachaboard:gachaboard@localhost:18581/gachaboard` | 同上 | 本番 DB の接続文字列 |
 | `NEXT_PUBLIC_SYNC_WS_URL` | `ws://localhost:18582` | （自動: 同一オリジン `/ws` を使用） | 同上 |
 
-`npm run env:local` / `npm run env:tailscale` で NEXTAUTH_URL と S3_PUBLIC_URL を一括切り替えできます。
+NEXTAUTH_URL は未設定でよく、アクセスした URL（例: `https://<ホスト>.ts.net`）から動的に決まります。`npm run env:local` / `npm run env:tailscale` は S3_PUBLIC_URL 等の切り替えに利用できます。
 
 ---
 

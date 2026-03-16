@@ -1,3 +1,4 @@
+# HOST_BIND: ポートのバインド先。127.0.0.1=ローカルのみ、0.0.0.0=Tailscale/LAN からもアクセス可
 services:
   postgres:
     image: postgres:16
@@ -7,7 +8,7 @@ services:
       POSTGRES_PASSWORD: gachaboard
       POSTGRES_DB: gachaboard
     ports:
-      - "127.0.0.1:${POSTGRES_HOST_PORT:-18581}:5432"
+      - "${HOST_BIND:-127.0.0.1}:${POSTGRES_HOST_PORT:-18581}:5432"
     volumes:
       - compound_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,10 +23,15 @@ services:
       context: ./nextjs-web
       dockerfile: sync-server/Dockerfile
     ports:
-      - "127.0.0.1:${SYNC_SERVER_HOST_PORT:-18582}:5858"
+      - "${HOST_BIND:-127.0.0.1}:${SYNC_SERVER_HOST_PORT:-18582}:5858"
     environment:
       PORT: "5858"
       HOST: "0.0.0.0"
+      SYNC_BACKEND_PORT: "5859"
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-}
+      YPERSISTENCE: /app/sync-data
+    volumes:
+      - compound_sync_data:/app/sync-data
     restart: unless-stopped
 
   minio:
@@ -33,8 +39,8 @@ services:
     container_name: compound-minio
     command: server /data --console-address ":9001"
     ports:
-      - "127.0.0.1:${MINIO_API_HOST_PORT:-18583}:9000"
-      - "127.0.0.1:${MINIO_CONSOLE_HOST_PORT:-18584}:9001"
+      - "${HOST_BIND:-127.0.0.1}:${MINIO_API_HOST_PORT:-18583}:9000"
+      - "${HOST_BIND:-127.0.0.1}:${MINIO_CONSOLE_HOST_PORT:-18584}:9001"
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
@@ -65,7 +71,7 @@ services:
       context: ./nextjs-web
       dockerfile: docker/Dockerfile.prod
     ports:
-      - "127.0.0.1:${PORT:-18580}:3000"
+      - "${HOST_BIND:-127.0.0.1}:${PORT:-18580}:3000"
     env_file: .env
     environment:
       DATABASE_URL: postgresql://gachaboard:gachaboard@postgres:5432/gachaboard
@@ -83,3 +89,4 @@ services:
 volumes:
   compound_postgres_data:
   compound_minio_data:
+  compound_sync_data:
