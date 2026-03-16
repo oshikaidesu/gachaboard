@@ -88,9 +88,8 @@ npx prisma migrate dev
 ### sync-server
 
 - 場所: `nextjs-web/sync-server`（Docker 使用）。ルート直下にも同名フォルダあり
-- y-websocket 同梱の WebSocket サーバ
-- ルーム単位で Y.Doc をメモリ保持（永続化なし）
-- 起動: `cd nextjs-web/sync-server && PORT=5858 npm start`
+- y-websocket 同梱の WebSocket サーバ。Hocuspocus + SQLite（YPERSISTENCE）で永続化。再起動時は SQLite から復元
+- 起動: Docker 内では `PORT=5858`。ホストから接続する場合は `cd nextjs-web/sync-server && PORT=18582 HOST=0.0.0.0 npm start`（`NEXT_PUBLIC_SYNC_WS_URL=ws://localhost:18582` と合わせる）
 
 ---
 

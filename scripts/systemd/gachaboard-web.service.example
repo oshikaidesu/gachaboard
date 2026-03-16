@@ -1,0 +1,34 @@
+# Gachaboard Next.js Web を systemd で常駐・自動再起動するための例です。
+#
+# 使い方:
+#   1. このファイルをコピーし、パスとユーザー名を編集する
+#   2. sudo cp gachaboard-web.service.example /etc/systemd/system/gachaboard-web.service
+#   3. sudo systemctl edit --full gachaboard-web で WorkingDirectory / EnvironmentFile / User を設定
+#   4. sudo systemctl daemon-reload && sudo systemctl enable --now gachaboard-web
+#
+# 前提:
+#   - PostgreSQL / MinIO / sync-server は Docker で起動済み（docker compose up -d）
+#   - nextjs-web で npm run build 済み
+#   - nextjs-web/.env.local に必要な環境変数が設定されている
+
+[Unit]
+Description=Gachaboard Next.js Web
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=YOUR_USER
+Group=YOUR_USER
+WorkingDirectory=/path/to/gachaboard/nextjs-web
+Environment=NODE_ENV=production
+EnvironmentFile=-/path/to/gachaboard/nextjs-web/.env.local
+ExecStart=/usr/bin/npm run start
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gachaboard-web
+
+[Install]
+WantedBy=multi-user.target

@@ -65,10 +65,13 @@ brew install caddy
 
 プロジェクトルートに `Caddyfile` を作成。Caddy 2.5+ なら `tls` 指定不要（自動取得）:
 
-ポートは `.env` の `PORT`（Next.js）と `MINIO_API_HOST_PORT`（MinIO）に合わせてください。デフォルトは 18580 / 18583 です。
+ポートは `.env` の `PORT`（Next.js）、`SYNC_SERVER_HOST_PORT`（sync-server）、`MINIO_API_HOST_PORT`（MinIO）に合わせてください。デフォルトは 18580 / 18582 / 18583 です。
+
+**重要**: 方法 A（`npm run setup:tailscale-https`）で生成する Caddyfile には、`/ws` の IP 制限付きブロックが含まれます。手動で Caddyfile を書く場合は [SECURITY.md](../../SECURITY.md) の「Caddy で /ws を制限する例」を参照し、`reverse_proxy localhost:18580` より前に `/ws` ブロックを追加してください。
 
 ```
 <hostname>.ts.net {
+    # WebSocket（sync-server）: SECURITY.md の /ws 制限例を参照して追加推奨
     # Next.js（.env の PORT、デフォルト 18580）
     reverse_proxy localhost:18580
 

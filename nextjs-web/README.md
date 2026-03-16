@@ -42,7 +42,7 @@ nextjs-web/
 │   ├── shapeDefs.ts          # シェイプ定義（sync-server と共有）
 │   └── utils.ts              # 共通ユーティリティ
 ├── sync-server/
-│   └── (y-websocket-server)  # Yjs WebSocket サーバー（メモリのみ）
+│   └── (y-websocket-server)  # Yjs WebSocket サーバー（Hocuspocus + SQLite 永続化）
 ├── prisma/
 │   └── schema.prisma         # DB スキーマ
 ├── uploads/                  # 変換用 tmp 等（Git管理外。アップロードは S3/MinIO）

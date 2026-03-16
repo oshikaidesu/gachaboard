@@ -26,6 +26,8 @@ scripts/
 │   ├── start.ps1        # 起動メニュー（Windows）
 │   ├── production.ps1   # 本番（Windows）
 │   └── production.bat   # 本番（Windows・BAT ラッパー）
+├── systemd/      # 自動再起動用（Linux）
+│   └── gachaboard-web.service.example  # systemd ユニットの例（docs/user/AUTO-RESTART.md 参照）
 └── setup/        # セットアップスクリプト
     ├── env.sh              # .env 統合（Mac/Linux）
     ├── env.ps1             # .env 統合（Windows）

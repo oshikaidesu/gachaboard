@@ -128,7 +128,7 @@ TAILSCALE_HOST=your-machine.tail12345.ts.net npm run env:tailscale
 
 ## Tailscale 使用時の WebSocket について
 
-`NEXTAUTH_URL` を Tailscale URL にすると、ブラウザは `ws://<Tailscaleホスト>:3000/ws/...` に WebSocket 接続します。
+`NEXTAUTH_URL` を Tailscale URL にすると、ブラウザは `ws://<Tailscaleホスト>:18580/ws/...`（または `.env` の `PORT` の値）に WebSocket 接続します。
 
 - **Docker で sync-server を起動している場合**: Next.js の rewrite が `/ws/*` を sync-server に転送するため、同一オリジン（Tailscale URL）経由で WebSocket も動作します。
 - **Docker を使用せず `npm run dev` のみで起動している場合**: `sync-server` のホスト名が解決できず、WebSocket が接続できないことがあります。その場合は `npm run env:local` に戻して localhost 経由で利用するか、sync-server を別途起動し `NEXT_PUBLIC_SYNC_WS_URL` を設定してください。

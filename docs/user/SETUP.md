@@ -18,7 +18,7 @@
 git clone https://github.com/oshikaidesu/gachaboard.git
 cd gachaboard
 ```
-リポジトリを親ディレクトリで管理している場合は、`cd Gachaboard` でプロジェクトルートに移動してください。
+リポジトリを親ディレクトリで管理している場合は、クローンしたディレクトリ（例: `gachaboard`）に `cd` してプロジェクトルートに移動してください。
 
 ---
 
@@ -32,6 +32,10 @@ cd gachaboard
 ---
 
 ## ステップ 3: 環境変数を設定
+
+**推奨（プロジェクトルートで）**: `npm run setup:env` を実行すると、ルートの `.env.example` から `nextjs-web/.env.local` を生成し、ルートの `.env` をそのシンボリックリンクにします。
+
+**nextjs-web のみで使う場合**:
 
 ```bash
 cd nextjs-web

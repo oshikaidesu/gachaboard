@@ -49,6 +49,11 @@ export const authOptions: NextAuthOptions = {
         });
         token.sub = user.id;
       }
+      // ワークスペース一覧: SERVER_OWNER_DISCORD_ID 未設定なら全員、設定時はサーバーオーナーのみ
+      token.canAccessWorkspaceList =
+        env.E2E_TEST_MODE ||
+        !env.SERVER_OWNER_DISCORD_ID?.trim() ||
+        env.SERVER_OWNER_DISCORD_ID === token.discordId;
       return token;
     },
     async session({ session, token }) {
@@ -59,6 +64,7 @@ export const authOptions: NextAuthOptions = {
           session.user.name = token.discordName as string;
         }
         session.user.avatarUrl = (token.avatarUrl as string | null) ?? null;
+        session.user.canAccessWorkspaceList = token.canAccessWorkspaceList ?? false;
       }
       return session;
     },

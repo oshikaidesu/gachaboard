@@ -38,6 +38,7 @@
 | 変数名 | デフォルト | 説明 |
 |--------|------------|------|
 | `ALLOWED_DEV_ORIGINS` | （未設定） | 開発時の Hot Reload 等で許可するオリジン。カンマ区切り（例: `https://a.tailxxx.ts.net,https://b.tailxxx.ts.net`）。未設定時は空配列 |
+| `E2E_TEST_MODE` | （未設定） | E2E テスト用の認証バイパス。`1` のとき `X-E2E-User-Id` 等で擬似セッションを生成。**本番では使用禁止**（本番起動時にエラーで無効化されます） |
 
 ### 認証・権限
 
@@ -74,13 +75,25 @@ sync-server は [Hocuspocus](https://github.com/ueberdosis/hocuspocus) ベース
 | `NEXT_PUBLIC_SYNC_WS_URL` | `ws://localhost:18582` | クライアント用 WebSocket URL。localhost では直接接続。Tailscale 等では `/ws` 経由で Next.js が転送 |
 | `SYNC_SERVER_INTERNAL_URL` | `http://127.0.0.1:18582` | Next.js の `/ws` リライト先。`npm run dev` 時は localhost。Next.js を Docker 内で動かすときは `http://sync-server:5858` |
 | `SYNC_MAX_CLIENTS_PER_ROOM` | `100` | 1ボードあたりの最大同時 WebSocket 接続数。超過時は拒否。Docker では `docker-compose.yml` の sync-server の `environment` で渡す |
-| `YPERSISTENCE` | Docker 時は `/app/sync-data`、ローカル時は `sync-server/sync-data` | Y.Doc 永続化用 SQLite の配置ディレクトリ。Docker ではボリュームをマウントすること |
+| `YPERSISTENCE` | Docker 時は `/app/sync-data`、ローカル時は `sync-server/sync-data` | Y.Doc 永続化用 SQLite の配置ディレクトリ。ローカル時は sync-server の CWD 基準（例: `nextjs-web/sync-server` から起動なら `nextjs-web/sync-server/sync-data`）。Docker ではボリュームをマウントすること |
 
 ### 運用・チューニング
 
 | 変数名 | デフォルト | 説明 |
 |--------|------------|------|
 | `FFMPEG_MAX_CONCURRENT` | `10` | 動画・音声変換（ffmpeg）の同時実行数上限。Next.js の `nextjs-web/.env.local` で設定 |
+
+---
+
+## 本番デプロイ時の必須変更
+
+本番で使用する前に、以下の認証情報をデフォルトから変更してください。詳細は [SECURITY.md](../../SECURITY.md) の「本番デプロイ時の推奨事項」を参照してください。
+
+| 対象 | 環境変数 | 説明 |
+|------|----------|------|
+| PostgreSQL | `DATABASE_URL` | 接続文字列内のパスワード（デフォルト `gachaboard`）を変更 |
+| MinIO | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | デフォルトの `minioadmin` を変更 |
+| NextAuth | `NEXTAUTH_SECRET` | 推測困難な長い乱数（例: `openssl rand -base64 32`）に設定 |
 
 ---
 

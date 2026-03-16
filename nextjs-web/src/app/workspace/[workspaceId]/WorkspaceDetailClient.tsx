@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { GachaboardLogo } from "@/app/components/ui/GachaboardLogo";
 import { ThemeToggle } from "@/app/components/theme/ThemeToggle";
 import type { ApiBoard } from "@shared/apiTypes";
@@ -18,8 +19,10 @@ import { withE2EHeaders } from "@/lib/e2eFetch";
 type Props = { workspaceId: string; currentUserId: string; e2eHeaders?: E2EHeaders | null };
 
 export default function WorkspaceDetailClient({ workspaceId, currentUserId, e2eHeaders }: Props) {
+  const { data: session } = useSession();
   const { wsInfo, members, canKick, boards, loading, load } = useWorkspaceDetail(workspaceId, e2eHeaders);
   const [showForm, setShowForm] = useState(false);
+  const canAccessWorkspaceList = session?.user?.canAccessWorkspaceList ?? false;
   const [tab, setTab] = useState<"active" | "trash">("active");
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
@@ -110,12 +113,14 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId, e2eH
                 </h1>
               </div>
               <div className="mt-1 flex items-center gap-3">
-                <Link
-                  href={e2eHeaders ? `/workspaces?testUserId=${encodeURIComponent(e2eHeaders.userId)}&testUserName=${encodeURIComponent(e2eHeaders.userName)}` : "/workspaces"}
-                  className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline dark:text-slate-300 dark:hover:text-white"
-                >
-                  ← ワークスペース一覧に戻る
-                </Link>
+                {canAccessWorkspaceList && (
+                  <Link
+                    href={e2eHeaders ? `/workspaces?testUserId=${encodeURIComponent(e2eHeaders.userId)}&testUserName=${encodeURIComponent(e2eHeaders.userName)}` : "/workspaces"}
+                    className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline dark:text-slate-300 dark:hover:text-white"
+                  >
+                    ← ワークスペース一覧に戻る
+                  </Link>
+                )}
                 <Link
                   href={`/workspace/${workspaceId}/assets`}
                   className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline dark:text-slate-300 dark:hover:text-white"

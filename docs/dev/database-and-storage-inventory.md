@@ -85,14 +85,14 @@ flowchart TB
 
 ## 3. sync-server（Y.Doc）
 
-**プロセス**: `y-websocket-server`（y-websocket 同梱）  
+**プロセス**: Hocuspocus（@hocuspocus/server）+ SQLite 拡張  
 **ポート**: 18582（デフォルト）
 
 | 項目 | 内容 |
 |------|------|
-| 永続化 | **メモリのみ**。再起動で Y.Doc 消失 |
-| ルーム | URL パス（例: `/room/{boardId}`）でルーム識別 |
-| 復旧 | クライアントの IndexedDB または API の `Board.snapshotData` から復元 |
+| 永続化 | **SQLite**（`YPERSISTENCE`、既定は `/app/sync-data/collab.sqlite`）。再起動時は SQLite から復元。未使用ルームはメモリ解放の恩恵あり |
+| ルーム | URL パス（例: `/room/{boardId}`）でルーム識別。ボード削除時は Next.js が `DELETE /room/:boardId` で SQLite から該当ドキュメントを削除 |
+| 復旧 | クライアントの IndexedDB または API の `Board.snapshotData` からも復元可能 |
 
 ---
 

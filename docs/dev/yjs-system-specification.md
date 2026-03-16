@@ -35,7 +35,7 @@
 | レイヤー | 技術 | コンセプト |
 |----------|------|------------|
 | **ネットワーク** | Tailscale | 端末間 P2P 暗号化トンネル。グローバル IP・ポート開放不要。最大 100 台（無料） |
-| **ドキュメント同期** | Yjs + y-websocket | CRDT でオフライン編集もマージ可能。sync-server はメモリのみ（ゼロ構成） |
+| **ドキュメント同期** | Yjs + y-websocket | CRDT でオフライン編集もマージ可能。sync-server は Hocuspocus + SQLite（YPERSISTENCE）で永続化 |
 | **ファイル保存** | S3 / **MinIO** | S3 互換必須。MinIO で自前サーバー内に完結可能 |
 | **公開** | Tailscale / Cloudflare Tunnel | 身内向けは Tailscale で P2P。外部公開時は Tunnel で HTTPS |
 
@@ -235,7 +235,7 @@
 | **Next.js** | App Router で RSC 活用。API Routes とフロントを同一プロジェクトで管理。Vercel 以外にも Self-hosted 可能 | 16 系は比較的新しく、破壊的変更の影響範囲は要確認 |
 | **compound** | tldraw の Apache 2.0 フォーク。共同編集・カスタムシェイプ対応。OSS で改修しやすい | alpha 版のため API 変更の可能性。tldraw 本家との乖離が今後増えるリスク |
 | **yjs** | CRDT でオフライン編集もマージ可能。競合解決が自動。y-websocket と相性が良い | ドラッグ中の全軌跡が CRDT に蓄積し Y.Doc 肥大化。per-record でも JSON オーバーヘッドあり |
-| **y-websocket-server** | ゼロ構成でメモリ内ルーム管理。 Awareness 標準サポート。30 人なら十分 | 永続化なし。サーバー再起動で Y.Doc 消失。100 人超は別構成が必要 |
+| **Hocuspocus + SQLite** | sync-server は Hocuspocus で SQLite 永続化。Awareness 対応。30 人規模なら十分 | 再起動時は SQLite から復元。同時接続数・ボード数増加時のメモリ・ディスク要監視。100 人超は別構成を検討 |
 | **NextAuth** | Discord OAuth をそのまま利用。身内運用で追加 ID 連携が不要 | Discord 依存。プロバイダ障害時にログイン不可 |
 | **PostgreSQL + Prisma** | リレーション・制約を活かしたスキーマ。型安全な ORM。マイグレーション管理 | 現状 `prisma db push` 運用。本番では migrate 運用への移行検討 |
 | **S3 / MinIO** | MinIO で自前サーバー内に完結可能。S3 互換で AWS / R2 に切替え容易。Presigned URL で直接アップロード | MinIO は単一障害点。バックアップ・冗長化は別途検討 |
@@ -257,8 +257,8 @@
 
 **システム全体の不安点**:
 
-- sync-server 再起動で Y.Doc 消失 → クライアント再送で復旧するが、全員オフライン時にデータ欠損の可能性
-- ディスク容量枯渇 → 定期的な不要ファイル削除・容量監視が未整備
+- ディスク容量枯渇 → 定期的な不要ファイル削除・容量監視が未整備（24時間運用時は [24-7-OPERATION.md](../user/24-7-OPERATION.md) 参照）
+- sync-server の SQLite / メモリ増加 → ボード数・同時接続が多い場合は監視を推奨
 - WAV→MP3 等の変換が同期処理のため、大容量ファイルでタイムアウト・ジョブ化の検討余地
 - E2E_TEST_MODE が本番環境で有効になる設定ミスのリスク
 
@@ -380,14 +380,14 @@ tldraw 組み込み型: image, note, geo, text, arrow, draw, highlight, line, fr
 
 ## 15. Docker Compose サービス
 
-| サービス | イメージ | ポート | 備考 |
-|----------|----------|--------|------|
-| **postgres** | postgres:16 | 127.0.0.1:5433 → 5432 | ユーザー: gachaboard |
-| **sync-server** | ビルド | 127.0.0.1:5858 | y-websocket-server |
-| **minio** | minio/minio:latest | 9000（API）, 9001（コンソール） | S3 互換ストレージ |
+| サービス | イメージ | ポート（ホスト→コンテナ内） | 備考 |
+|----------|----------|------------------------------|------|
+| **postgres** | postgres:16 | 127.0.0.1:18581 → 5432 | ユーザー: gachaboard |
+| **sync-server** | ビルド | 127.0.0.1:18582 → 5858 | y-websocket-server |
+| **minio** | minio/minio:latest | 18583（API）, 18584（コンソール） | S3 互換ストレージ |
 | **minio-init** | minio/mc | - | バケット `my-bucket` 自動作成 |
 
-nextjs-web は compose に含まず、`npm run dev` で別途起動（ポート 3000）。
+nextjs-web は compose に含まず、`npm run dev` で別途起動（デフォルト PORT=18580。コンテナ内のみの場合は 3000）。
 
 ---
 

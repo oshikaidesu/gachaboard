@@ -1,4 +1,4 @@
-# 自動生成（setup-tailscale-https.sh で上書き）
+# 自動生成（scripts/setup/tailscale-https.sh で上書き）
 Caddyfile
 
 # 起動ロック（二重起動防止）

@@ -108,7 +108,7 @@
 
 - **サーバー専用**: NEXTAUTH_SECRET, NEXTAUTH_URL, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DATABASE_URL, MAX_UPLOAD_SIZE, S3 系, SYNC_SERVER_URL, SERVER_OWNER_DISCORD_ID, E2E_TEST_MODE, NODE_ENV 等。
 - **クライアント公開**: `NEXT_PUBLIC_SYNC_WS_URL` のみ。
-- **テンプレート**: `.env.example` はなし。`env.local.template` をコピーして `.env.local` を作成する運用。
+- **テンプレート**: ルートに `.env.example` があり、`npm run setup:env` で `nextjs-web/.env.local` を生成する。nextjs-web 単体の場合は `env.local.template` をコピーして `.env.local` としても可。
 - **秘密情報**: @t3-oss/env-nextjs + zod でバリデーション。サーバー用は `server` にのみ定義。
 
 ### 3.3 セキュリティ

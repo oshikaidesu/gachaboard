@@ -116,9 +116,9 @@ Gachaboard のシステム構成とコンポーネントの関係。
 
 | サービス | ポート | 用途 |
 |----------|--------|------|
-| postgres | 5433→5432 | PostgreSQL 16 |
-| sync-server | 5858 | y-websocket-server |
-| minio | 9000, 9001 | S3 互換ストレージ |
+| postgres | ホスト 18581→5432（コンテナ内） | PostgreSQL 16 |
+| sync-server | ホスト 18582→5858（コンテナ内） | y-websocket-server |
+| minio | 18583（API）, 18584（コンソール） | S3 互換ストレージ |
 | minio-init | - | バケット自動作成 |
 
-nextjs-web は compose 外。`npm run dev` でポート 3000 で起動。
+nextjs-web は compose 外。`npm run dev` でポート 3000（または `.env` の PORT、デフォルト 18580）で起動。
