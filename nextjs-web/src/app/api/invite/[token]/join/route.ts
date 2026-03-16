@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { handleApiError } from "@/lib/apiErrorHandler";
 import { requireLogin, writeAuditLog } from "@/lib/authz";
 import { isValidInviteToken } from "@/lib/validators";
 import { db } from "@/lib/db";
@@ -7,6 +8,7 @@ type Params = { params: Promise<{ token: string }> };
 
 /** POST /api/invite/[token]/join - 招待リンクでワークスペースに参加 */
 export async function POST(_req: NextRequest, { params }: Params) {
+  try {
   const session = await requireLogin();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -31,4 +33,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
   await writeAuditLog(session.user.id, workspace.id, "invite.join", workspace.id);
 
   return NextResponse.json({ workspaceId: workspace.id });
+  } catch (e) {
+    return handleApiError(e, "invite-join");
+  }
 }

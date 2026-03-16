@@ -4,9 +4,23 @@
  */
 
 import type { TLRecord } from "@cmpd/tlschema";
-import ColorHash from "color-hash";
 
 const CAMERA_LS_PREFIX = "gachaboard-camera:";
+
+/** ユーザーカーソル用。爽やかで視認性の良い色パレット（茶系・くすみ色を避ける） */
+const USER_CURSOR_COLORS = [
+  "#3b82f6", // blue
+  "#06b6d4", // cyan
+  "#10b981", // emerald
+  "#22c55e", // green
+  "#84cc16", // lime
+  "#eab308", // yellow
+  "#f97316", // orange
+  "#ef4444", // red
+  "#ec4899", // pink
+  "#8b5cf6", // violet
+  "#6366f1", // indigo
+] as const;
 
 export function saveCameraToLS(
   store: { allRecords: () => Iterable<TLRecord> },
@@ -146,8 +160,15 @@ export function persistRecordsDiffToY(
   isLocalUpdateRef.current = false;
 }
 
-const userColorHash = new ColorHash();
+function simpleHash(str: string): number {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
 
 export function getUserColor(userId: string): string {
-  return userColorHash.hex(userId);
+  const i = simpleHash(userId) % USER_CURSOR_COLORS.length;
+  return USER_CURSOR_COLORS[i];
 }

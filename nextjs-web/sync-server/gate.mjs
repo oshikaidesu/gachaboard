@@ -50,15 +50,26 @@ function runGate() {
     cwd: __dirname,
     stdio: "inherit",
   });
+  let isShuttingDown = false;
   backend.on("error", (err) => {
     console.error("[gate] backend spawn error:", err);
     process.exit(1);
   });
   backend.on("exit", (code) => {
+    if (isShuttingDown) return;
     process.exit(code ?? 1);
   });
 
-  const server = createServer();
+  const server = createServer((req, res) => {
+    const url = new URL(req.url ?? "", `http://${req.headers.host}`);
+    if (req.method === "GET" && url.pathname === "/health") {
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.end("ok");
+      return;
+    }
+    res.writeHead(404);
+    res.end();
+  });
   const wss = new WebSocketServer({ noServer: true });
 
   server.on("upgrade", (req, socket, head) => {
@@ -81,7 +92,28 @@ function runGate() {
       const backendUrl = `ws://127.0.0.1:${BACKEND_PORT}/${roomId}`;
       const backendWs = new WebSocket(backendUrl);
 
+      const BACKEND_TIMEOUT_MS = 5000;
+      let opened = false;
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        try {
+          backendWs.terminate();
+        } catch {}
+        try {
+          clientWs.close(1011, "backend unavailable");
+        } catch {}
+      };
+
+      const timeout = setTimeout(() => {
+        if (opened) return;
+        console.warn("[gate] backend connection timeout");
+        cleanup();
+      }, BACKEND_TIMEOUT_MS);
+
       backendWs.on("open", () => {
+        opened = true;
+        clearTimeout(timeout);
         clientWs.on("message", (data) => backendWs.send(data));
         backendWs.on("message", (data) => clientWs.send(data));
         clientWs.on("close", () => backendWs.close());
@@ -89,9 +121,34 @@ function runGate() {
         clientWs.on("error", () => backendWs.close());
         backendWs.on("error", () => clientWs.close());
       });
-      backendWs.on("error", () => clientWs.close());
+
+      backendWs.on("close", () => {
+        if (!opened) cleanup();
+      });
+      backendWs.on("error", () => {
+        if (!opened) cleanup();
+      });
     });
   });
+
+  function shutdown() {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    console.log("[gate] SIGTERM received, closing connections...");
+    for (const ws of wss.clients) {
+      try {
+        ws.close(1001, "going away");
+      } catch {}
+    }
+    backend.kill("SIGTERM");
+    server.close(() => {
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 5000);
+  }
+
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
 
   function listen() {
     server.listen(GATE_PORT, "0.0.0.0", () => {

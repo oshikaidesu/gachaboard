@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { handleApiError } from "@/lib/apiErrorHandler";
 import { isValidInviteToken } from "@/lib/validators";
 import { db } from "@/lib/db";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rateLimit";
@@ -9,6 +10,7 @@ const INVITE_RATE_LIMIT_PER_MIN = 60;
 
 /** GET /api/invite/[token] - トークン検証・ワークスペース情報（未ログインでも取得可） */
 export async function GET(req: NextRequest, { params }: Params) {
+  try {
   const key = getRateLimitKey(req, "invite");
   if (!checkRateLimit(key, INVITE_RATE_LIMIT_PER_MIN)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": "60" } });
@@ -30,4 +32,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     workspaceId: workspace.id,
     workspaceName: workspace.name,
   });
+  } catch (e) {
+    return handleApiError(e, "invite:GET");
+  }
 }

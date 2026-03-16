@@ -50,11 +50,13 @@ export function useYjsPersistence({
     const yd = new Y.Doc();
     const yMap = yd.getMap<string>("tldraw");
 
+    let cancelled = false;
     const persistence = new IndexeddbPersistence(roomId, yd);
     persistence.on("synced", () => {
       const hasData = yMap.size > 0;
       if (!hasData && fetchSnapshotWhenEmpty) {
         void fetchSnapshotWhenEmpty().then((snapshot) => {
+          if (cancelled) return;
           const records = snapshot?.records ?? [];
           const hasReactions = snapshot?.reactions && Object.keys(snapshot.reactions).length > 0;
           const hasComments = snapshot?.comments && Object.keys(snapshot.comments).length > 0;
@@ -107,6 +109,7 @@ export function useYjsPersistence({
     setYdoc(yd);
 
     return () => {
+      cancelled = true;
       persistence.destroy();
       yd.destroy();
       setYdoc(null);

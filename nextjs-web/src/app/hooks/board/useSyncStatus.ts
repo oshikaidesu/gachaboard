@@ -22,7 +22,7 @@ export function useSyncStatus(
       useSync && yjsStore.status === "synced-remote"
         ? yjsStore.connectionStatus === "online"
           ? "同期中"
-          : "オフライン"
+          : "再接続中"
         : useSync && yjsStore.status === "error"
           ? `同期エラー: ${yjsStore.error?.message ?? "不明"}`
           : useSync && yjsStore.status === "loading"

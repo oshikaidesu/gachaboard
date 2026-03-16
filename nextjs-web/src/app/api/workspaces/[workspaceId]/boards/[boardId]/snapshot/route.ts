@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { handleApiError } from "@/lib/apiErrorHandler";
 import { assertBoardAccess } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -15,6 +16,7 @@ type SnapshotData = {
 
 /** GET - Board.snapshotData を取得（sync-server 復旧時の復元用） */
 export async function GET(_req: NextRequest, { params }: Params) {
+  try {
   const { workspaceId, boardId } = await params;
 
   let data: SnapshotData = null;
@@ -44,6 +46,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
     reactionEmojiPreset,
     savedAt: data?.savedAt ?? null,
   });
+  } catch (e) {
+    return handleApiError(e, "snapshot:GET");
+  }
 }
 
 /**
@@ -51,6 +56,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
  * 注意: 受信が空のフィールドで既存データを上書きしない（records/reactions/comments それぞれでガード）
  */
 export async function PUT(req: NextRequest, { params }: Params) {
+  try {
   const { workspaceId, boardId } = await params;
 
   let current: Record<string, unknown> = {};
@@ -140,10 +146,14 @@ export async function PUT(req: NextRequest, { params }: Params) {
   });
 
   return NextResponse.json({ ok: true });
+  } catch (e) {
+    return handleApiError(e, "snapshot:PUT");
+  }
 }
 
 /** PATCH - reactionEmojiPreset のみ部分更新（reaction-preset ページ用） */
 export async function PATCH(req: NextRequest, { params }: Params) {
+  try {
   const { workspaceId, boardId } = await params;
 
   let current: Record<string, unknown> = {};
@@ -186,4 +196,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   });
 
   return NextResponse.json({ ok: true });
+  } catch (e) {
+    return handleApiError(e, "snapshot:PATCH");
+  }
 }

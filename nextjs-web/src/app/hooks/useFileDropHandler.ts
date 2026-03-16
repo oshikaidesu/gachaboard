@@ -33,6 +33,7 @@ export function useFileDropHandler(
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [resumableUploads, setResumableUploads] = useState<StoredSession[]>([]);
   const editorRef = useRef<Editor | null>(null);
+  const errorClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refreshResumable = useCallback(() => {
     listResumableS3Uploads()
@@ -103,8 +104,21 @@ export function useFileDropHandler(
   );
 
   const showError = useCallback((msg: string) => {
+    if (errorClearTimerRef.current) clearTimeout(errorClearTimerRef.current);
     setUploadError(msg);
-    setTimeout(() => setUploadError(null), 5000);
+    errorClearTimerRef.current = setTimeout(() => {
+      errorClearTimerRef.current = null;
+      setUploadError(null);
+    }, 5000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (errorClearTimerRef.current) {
+        clearTimeout(errorClearTimerRef.current);
+        errorClearTimerRef.current = null;
+      }
+    };
   }, []);
 
   /**

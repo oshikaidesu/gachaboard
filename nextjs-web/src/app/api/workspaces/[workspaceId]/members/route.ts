@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { handleApiError } from "@/lib/apiErrorHandler";
 import { assertWorkspaceAccess, writeAuditLog } from "@/lib/authz";
 import { db } from "@/lib/db";
 import type { ApiWorkspaceMember } from "@shared/apiTypes";
@@ -16,6 +17,7 @@ function canKick(workspace: { ownerUserId: string; members: { userId: string; cr
 
 /** GET /api/workspaces/[workspaceId]/members - オーナー＋招待メンバー一覧 */
 export async function GET(_req: NextRequest, { params }: Params) {
+  try {
   const { workspaceId } = await params;
   const ctx = await assertWorkspaceAccess(workspaceId);
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -51,6 +53,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const canKickMembers = canKick(workspace, ctx.session.user.id);
 
   return NextResponse.json({ members, canKick: canKickMembers });
+  } catch (e) {
+    return handleApiError(e, "members:GET");
+  }
 }
 
 /**
@@ -60,6 +65,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
  * キック時に招待リンクを自動リセット（旧リンク無効化）
  */
 export async function DELETE(req: NextRequest, { params }: Params) {
+  try {
   const { workspaceId } = await params;
   const ctx = await assertWorkspaceAccess(workspaceId);
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -102,4 +108,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   await writeAuditLog(ctx.session.user.id, workspaceId, "member.kick", userId);
 
   return new NextResponse(null, { status: 204 });
+  } catch (e) {
+    return handleApiError(e, "members:DELETE");
+  }
 }

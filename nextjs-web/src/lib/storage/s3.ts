@@ -12,7 +12,10 @@ export function isS3Enabled(): boolean {
   return !!(env.S3_BUCKET && env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY);
 }
 
+let _s3Client: S3Client | null = null;
+
 function getClient(): S3Client {
+  if (_s3Client) return _s3Client;
   const config: ConstructorParameters<typeof S3Client>[0] = {
     region: env.S3_REGION,
     credentials: {
@@ -24,7 +27,8 @@ function getClient(): S3Client {
     config.endpoint = env.S3_ENDPOINT;
     config.forcePathStyle = true;
   }
-  return new S3Client(config);
+  _s3Client = new S3Client(config);
+  return _s3Client;
 }
 
 /**

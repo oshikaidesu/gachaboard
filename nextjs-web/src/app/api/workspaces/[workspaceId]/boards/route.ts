@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { assertWorkspaceAccess, assertWorkspaceOwner, requireLogin, writeAuditLog } from "@/lib/authz";
+import { handleApiError } from "@/lib/apiErrorHandler";
+import { assertWorkspaceAccess, writeAuditLog } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { createBoardSchema } from "@/lib/apiSchemas";
 import { formatZodError, parseJsonBody } from "@/lib/parseJsonBody";
@@ -9,6 +10,7 @@ type Params = { params: Promise<{ workspaceId: string }> };
 
 /** GET /api/workspaces/[workspaceId]/boards - SERVER_OWNER 設定時はオーナー or 招待メンバーのみ */
 export async function GET(req: NextRequest, { params }: Params) {
+  try {
   const { workspaceId } = await params;
   const ctx = await assertWorkspaceAccess(workspaceId);
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -27,10 +29,14 @@ export async function GET(req: NextRequest, { params }: Params) {
   });
 
   return NextResponse.json(boards);
+  } catch (e) {
+    return handleApiError(e, "boards:GET");
+  }
 }
 
 /** POST /api/workspaces/[workspaceId]/boards - SERVER_OWNER 設定時はオーナー or 招待メンバーのみ */
 export async function POST(req: NextRequest, { params }: Params) {
+  try {
   const { workspaceId } = await params;
   const ctx = await assertWorkspaceAccess(workspaceId);
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -50,4 +56,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   await writeAuditLog(session.user.id, workspaceId, "board.create", board.id);
   return NextResponse.json(board, { status: 201 });
+  } catch (e) {
+    return handleApiError(e, "boards:POST");
+  }
 }

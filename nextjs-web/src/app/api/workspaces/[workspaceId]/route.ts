@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { assertWorkspaceAccess, assertWorkspaceOwner, requireLogin, writeAuditLog } from "@/lib/authz";
+import { handleApiError } from "@/lib/apiErrorHandler";
+import { assertWorkspaceAccess, assertWorkspaceOwner, writeAuditLog } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { deleteFile } from "@/lib/storage";
 
@@ -7,6 +8,7 @@ type Params = { params: Promise<{ workspaceId: string }> };
 
 /** GET /api/workspaces/[workspaceId] - ワークスペース詳細。SERVER_OWNER 設定時はオーナー or 招待メンバーのみ */
 export async function GET(_req: NextRequest, { params }: Params) {
+  try {
   const { workspaceId } = await params;
   const ctx = await assertWorkspaceAccess(workspaceId);
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -18,10 +20,14 @@ export async function GET(_req: NextRequest, { params }: Params) {
   if (!workspace) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   return NextResponse.json({ ...workspace, ownerName: workspace.owner.discordName });
+  } catch (e) {
+    return handleApiError(e, "workspace:GET");
+  }
 }
 
 /** PATCH /api/workspaces/[workspaceId] - trash, restore, or rename */
 export async function PATCH(req: NextRequest, { params }: Params) {
+  try {
   const { workspaceId } = await params;
   const ctx = await assertWorkspaceOwner(workspaceId);
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -49,10 +55,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   await writeAuditLog(session.user.id, workspaceId, `workspace.${body.action}`, workspaceId);
   return NextResponse.json(updated);
+  } catch (e) {
+    return handleApiError(e, "workspace:PATCH");
+  }
 }
 
 /** DELETE /api/workspaces/[workspaceId] - 完全削除（ゴミ箱内のみ） */
 export async function DELETE(_req: NextRequest, { params }: Params) {
+  try {
   const { workspaceId } = await params;
   const ctx = await assertWorkspaceOwner(workspaceId);
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -68,4 +78,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   await db.workspace.delete({ where: { id: workspaceId } });
   await writeAuditLog(ctx.session.user.id, workspaceId, "workspace.delete", workspaceId);
   return new NextResponse(null, { status: 204 });
+  } catch (e) {
+    return handleApiError(e, "workspace:DELETE");
+  }
 }

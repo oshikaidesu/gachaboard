@@ -33,10 +33,17 @@ services:
     volumes:
       - compound_sync_data:/app/sync-data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:5858/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
 
   minio:
     image: minio/minio:latest
     container_name: compound-minio
+    restart: unless-stopped
     command: server /data --console-address ":9001"
     ports:
       - "${HOST_BIND:-127.0.0.1}:${MINIO_API_HOST_PORT:-18583}:9000"
@@ -47,12 +54,19 @@ services:
       MINIO_SERVER_URL: "http://localhost:9000"
     volumes:
       - compound_minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 3s bash -c ':> /dev/tcp/127.0.0.1/9000' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
   minio-init:
     image: minio/mc:latest
     container_name: compound-minio-init
     depends_on:
-      - minio
+      minio:
+        condition: service_healthy
     entrypoint: >
       /bin/sh -c "
       echo 'Waiting for MinIO...';
@@ -81,7 +95,7 @@ services:
       postgres:
         condition: service_healthy
       sync-server:
-        condition: service_started
+        condition: service_healthy
       minio-init:
         condition: service_completed_successfully
     restart: unless-stopped

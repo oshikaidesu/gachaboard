@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { handleApiError } from "@/lib/apiErrorHandler";
 import { requireLogin } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { USER_SELECT } from "@/lib/prismaHelpers";
@@ -12,6 +13,7 @@ export async function POST() {
 }
 
 export async function GET(req: NextRequest) {
+  try {
   const session = await requireLogin();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -49,6 +51,9 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(
     assets.map((a) => ({ ...a, sizeBytes: a.sizeBytes.toString() }))
   );
+  } catch (e) {
+    return handleApiError(e, "assets:GET");
+  }
 }
 
 

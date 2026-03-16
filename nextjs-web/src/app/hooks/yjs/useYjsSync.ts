@@ -102,11 +102,9 @@ export function useYjsSync({
     yMap.observe(handleYUpdate);
     // 初回の Y.Map → ストア反映は useYjsPersistence の "synced" で行う（一箇所責務）
 
-    const DRAG_DEFER_MS = 100;
     let rafScheduled = false;
     let pendingChanges: RecordsDiffLike | null = null;
     let cameraSaveTimer: ReturnType<typeof setTimeout> | null = null;
-    let dragDeferTimer: ReturnType<typeof setTimeout> | null = null;
     const flushToY = () => {
       if (!pendingChanges) return;
       prov.awareness.setLocalStateField("dragging", null);
@@ -121,13 +119,6 @@ export function useYjsSync({
         rafScheduled = false;
         flushToY();
       });
-    };
-    const scheduleFlushDeferred = () => {
-      if (dragDeferTimer) clearTimeout(dragDeferTimer);
-      dragDeferTimer = setTimeout(() => {
-        dragDeferTimer = null;
-        flushToY();
-      }, DRAG_DEFER_MS);
     };
     const persistToY = (entry: { changes: RecordsDiffLike; source: string }) => {
       if (entry.source !== "user") return;
@@ -155,23 +146,27 @@ export function useYjsSync({
             y: shape.y,
           });
         }
-        scheduleFlushDeferred();
+        // ドラッグ中は Y.Doc に送らない。ゴーストは awareness で表示。pointerup でフラッシュ。
       } else {
         prov.awareness.setLocalStateField("dragging", null);
-        if (dragDeferTimer) {
-          clearTimeout(dragDeferTimer);
-          dragDeferTimer = null;
-        }
         scheduleFlush();
       }
     };
+
+    const onPointerUp = () => {
+      if (pendingChanges) flushToY();
+    };
+    document.addEventListener("pointerup", onPointerUp);
 
     const unsubStore = store.listen(persistToY, {
       source: "user",
       scope: "document",
     });
 
-    const handleBeforeUnload = () => saveCameraToLS(store, roomId);
+    const handleBeforeUnload = () => {
+      saveCameraToLS(store, roomId);
+      if (pendingChanges) flushToY();
+    };
     window.addEventListener("beforeunload", handleBeforeUnload);
 
     let hasConnectedOnce = false;
@@ -196,7 +191,7 @@ export function useYjsSync({
     return () => {
       clearTimeout(connectTimer);
       if (cameraSaveTimer) clearTimeout(cameraSaveTimer);
-      if (dragDeferTimer) clearTimeout(dragDeferTimer);
+      document.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("beforeunload", handleBeforeUnload);
       unsubStore();
       yMap.unobserve(handleYUpdate);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { handleApiError } from "@/lib/apiErrorHandler";
 import { assertServerOwner, requireLogin, writeAuditLog } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -8,6 +9,7 @@ import { ZodError } from "zod";
 
 /** GET /api/workspaces - ワークスペース一覧。SERVER_OWNER_DISCORD_ID 設定時はサーバーオーナーの WS のみ */
 export async function GET(req: NextRequest) {
+  try {
   const session = await requireLogin();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -38,10 +40,14 @@ export async function GET(req: NextRequest) {
       ownerName: ws.owner.discordName,
     }))
   );
+  } catch (e) {
+    return handleApiError(e, "workspaces:GET");
+  }
 }
 
 /** POST /api/workspaces - ワークスペース作成。SERVER_OWNER_DISCORD_ID 設定時はサーバーオーナーのみ */
 export async function POST(req: NextRequest) {
+  try {
   const session = await requireLogin();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -68,4 +74,7 @@ export async function POST(req: NextRequest) {
 
   await writeAuditLog(session.user.id, workspace.id, "workspace.create", workspace.id);
   return NextResponse.json(workspace, { status: 201 });
+  } catch (e) {
+    return handleApiError(e, "workspaces:POST");
+  }
 }

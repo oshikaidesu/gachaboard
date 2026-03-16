@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { assertWorkspaceAccess, assertWorkspaceOwner, requireLogin, writeAuditLog } from "@/lib/authz";
+import { handleApiError } from "@/lib/apiErrorHandler";
+import { assertWorkspaceAccess, assertWorkspaceOwner, writeAuditLog } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { deleteFile } from "@/lib/storage";
 import { env } from "@/lib/env";
@@ -11,6 +12,7 @@ type Params = { params: Promise<{ workspaceId: string; boardId: string }> };
 
 /** PATCH /api/workspaces/[workspaceId]/boards/[boardId] - trash, restore, or rename */
 export async function PATCH(req: NextRequest, { params }: Params) {
+  try {
   const { workspaceId, boardId } = await params;
   const ctx = await assertWorkspaceAccess(workspaceId);
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -47,10 +49,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   await writeAuditLog(session.user.id, workspaceId, `board.${body.action}`, boardId);
   return NextResponse.json(updated);
+  } catch (e) {
+    return handleApiError(e, "board:PATCH");
+  }
 }
 
 /** DELETE /api/workspaces/[workspaceId]/boards/[boardId] - 完全削除（ゴミ箱内のみ、オーナーのみ） */
 export async function DELETE(_req: NextRequest, { params }: Params) {
+  try {
   const { workspaceId, boardId } = await params;
   const ctx = await assertWorkspaceOwner(workspaceId);
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -78,4 +84,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   }
 
   return new NextResponse(null, { status: 204 });
+  } catch (e) {
+    return handleApiError(e, "board:DELETE");
+  }
 }

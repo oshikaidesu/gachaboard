@@ -16,7 +16,7 @@ export function SyncStatusBadge({ store }: Props) {
     store.status === "synced-remote" && store.connectionStatus === "online"
       ? "同期中"
       : store.status === "synced-remote"
-        ? "オフライン"
+        ? "再接続中"
         : "ローカル保存";
   return <span className="text-xs text-zinc-400">{status}</span>;
 }

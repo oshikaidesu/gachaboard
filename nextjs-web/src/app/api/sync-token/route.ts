@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { handleApiError } from "@/lib/apiErrorHandler";
 import { assertBoardAccess, requireLogin } from "@/lib/authz";
 import { signSyncToken } from "@/lib/syncToken";
 import { env } from "@/lib/env";
@@ -11,6 +12,7 @@ export const dynamic = "force-dynamic";
  * E2E モード時にボード未作成の場合は、セッションがあれば任意の boardId で発行する。
  */
 export async function GET(request: Request) {
+  try {
   const { searchParams } = new URL(request.url);
   const boardId = searchParams.get("boardId");
   if (!boardId || typeof boardId !== "string" || boardId.length > 64) {
@@ -28,4 +30,7 @@ export async function GET(request: Request) {
 
   const token = signSyncToken(boardId, env.NEXTAUTH_SECRET);
   return NextResponse.json({ token });
+  } catch (e) {
+    return handleApiError(e, "sync-token");
+  }
 }

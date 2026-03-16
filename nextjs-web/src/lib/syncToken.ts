@@ -6,7 +6,7 @@
 
 import crypto from "crypto";
 
-const TOKEN_TTL_MS = 2 * 60 * 1000; // 2 分
+const TOKEN_TTL_MS = 30 * 60 * 1000; // 30 分（24時間運用時の再接続対応）
 
 export type SyncTokenPayload = {
   boardId: string;

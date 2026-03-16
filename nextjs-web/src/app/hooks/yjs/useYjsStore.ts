@@ -7,7 +7,7 @@ import {
 } from "@cmpd/editor";
 import { defaultShapeUtils } from "@cmpd/compound";
 import type { TLRecord } from "@cmpd/tlschema";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WebsocketProvider } from "y-websocket";
 import { useYjsPersistence } from "./useYjsPersistence";
 import { useYjsSync, type StoreLike } from "./useYjsSync";
@@ -53,6 +53,23 @@ export function useYjsStore({
   const [error] = useState<Error | null>(null);
   const storeRef = useRef<ReturnType<typeof createTLStore> | null>(null);
   const isLocalUpdateRef = useRef(false);
+  const offlineDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const setConnectionStatusDebounced = useCallback((next: "online" | "offline") => {
+    if (next === "online") {
+      if (offlineDebounceRef.current) {
+        clearTimeout(offlineDebounceRef.current);
+        offlineDebounceRef.current = null;
+      }
+      setConnectionStatus("online");
+    } else {
+      if (offlineDebounceRef.current) return;
+      offlineDebounceRef.current = setTimeout(() => {
+        offlineDebounceRef.current = null;
+        setConnectionStatus("offline");
+      }, 2000);
+    }
+  }, []);
 
   // IndexedDB 同期後に "synced-remote" になったら "loading" へ戻さない
   const setStatus = useMemo(() => {
@@ -95,11 +112,20 @@ export function useYjsStore({
     wsUrl,
     ydoc,
     getStore: getStore as unknown as () => StoreLike,
-    setConnectionStatus,
+    setConnectionStatus: setConnectionStatusDebounced,
     setStatus,
     isLocalUpdateRef,
     syncToken,
   });
+
+  useEffect(() => {
+    return () => {
+      if (offlineDebounceRef.current) {
+        clearTimeout(offlineDebounceRef.current);
+        offlineDebounceRef.current = null;
+      }
+    };
+  }, []);
 
   useYjsAwareness({
     provider,

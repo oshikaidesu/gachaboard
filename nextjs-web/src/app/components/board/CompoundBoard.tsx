@@ -11,6 +11,7 @@ import { useYjsStore } from "@/app/hooks/yjs/useYjsStore";
 import { SmartHandTool } from "@/app/tools/SmartHandTool";
 import { createBoardOverrides } from "./boardOverrides";
 import { CollaboratorCursorWithName } from "@/app/components/collaboration/CollaboratorCursor";
+import { DraggingGhostOverlay } from "@/app/components/collaboration/DraggingGhostOverlay";
 import { BrushModeToolbarSync } from "./BrushModeToolbarSync";
 import { BoardContext } from "./BoardContext";
 import { BoardReactionProvider } from "./BoardReactionProvider";
@@ -118,7 +119,10 @@ export default function CompoundBoard({
   );
 
   const components = useMemo(
-    () => ({ CollaboratorCursor: CollaboratorCursorWithName }),
+    () => ({
+      CollaboratorCursor: CollaboratorCursorWithName,
+      InFrontOfTheCanvas: DraggingGhostOverlay,
+    }),
     []
   );
   const { registerListener: registerArrowDeleteListener } = useArrowCascadeDelete();

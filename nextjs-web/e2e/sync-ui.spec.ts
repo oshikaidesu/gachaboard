@@ -44,8 +44,8 @@ test("2ユーザーでヘッダー表示と同期が成立する", async ({ brow
 
   await expect(pageA.getByRole("link", { name: "← 戻る" })).toBeVisible({ timeout: 30_000 });
   await expect(pageB.getByRole("link", { name: "← 戻る" })).toBeVisible({ timeout: 30_000 });
-  await expect(pageA.getByText(/同期中|接続中|同期エラー|ローカル保存/)).toBeVisible({ timeout: 20_000 });
-  await expect(pageB.getByText(/同期中|接続中|同期エラー|ローカル保存/)).toBeVisible({ timeout: 20_000 });
+  await expect(pageA.getByText(/同期中|接続中|再接続中|同期エラー|ローカル保存/)).toBeVisible({ timeout: 20_000 });
+  await expect(pageB.getByText(/同期中|接続中|再接続中|同期エラー|ローカル保存/)).toBeVisible({ timeout: 20_000 });
 
   await pageA.waitForFunction(
     () => Boolean((window as unknown as { __E2E_TLDRAW_EDITOR__?: unknown }).__E2E_TLDRAW_EDITOR__),
