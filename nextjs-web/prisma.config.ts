@@ -1,4 +1,4 @@
-import { defineConfig } from "prisma/config";
+import { defineConfig } from "@prisma/config";
 import * as fs from "fs";
 import * as path from "path";
 import * as urlModule from "url";

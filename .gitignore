@@ -19,3 +19,6 @@ node_modules/
 
 # sync-server 永続化（SQLite）
 nextjs-web/sync-server/sync-data/
+
+# Docker データ保存先（GACHABOARD_DATA_DIR 未設定時の ./data）
+data/

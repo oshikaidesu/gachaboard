@@ -11,7 +11,7 @@ services:
     ports:
       - "${HOST_BIND:-127.0.0.1}:${POSTGRES_HOST_PORT:-18581}:5432"
     volumes:
-      - compound_postgres_data:/var/lib/postgresql/data
+      - "${GACHABOARD_DATA_DIR:-./data}/postgres:/var/lib/postgresql/data"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U gachaboard -q"]
       interval: 2s
@@ -34,7 +34,7 @@ services:
       # 1ボードあたり最大同時接続数（デフォルト100）。必要なら SYNC_MAX_CLIENTS_PER_ROOM で上書き
       SYNC_MAX_CLIENTS_PER_ROOM: ${SYNC_MAX_CLIENTS_PER_ROOM:-100}
     volumes:
-      - compound_sync_data:/app/sync-data
+      - "${GACHABOARD_DATA_DIR:-./data}/sync:/app/sync-data"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:5858/health || exit 1"]
@@ -56,7 +56,7 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin
       MINIO_SERVER_URL: "http://localhost:9000"
     volumes:
-      - compound_minio_data:/data
+      - "${GACHABOARD_DATA_DIR:-./data}/minio:/data"
     healthcheck:
       test: ["CMD-SHELL", "timeout 3s bash -c ':> /dev/tcp/127.0.0.1/9000' || exit 1"]
       interval: 5s
@@ -103,7 +103,3 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
-volumes:
-  compound_postgres_data:
-  compound_minio_data:
-  compound_sync_data:

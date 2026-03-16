@@ -46,10 +46,13 @@ if ((Test-Path $EnvRoot) -and -not ((Get-Item $EnvRoot).Attributes -band [System
 node "$ScriptsDir\setup\create-env-symlink.mjs"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-# 4. ポート変数から派生する値を同期
-if (Test-Path "$ScriptsDir\lib\sync-env-ports.sh") {
-  bash "$ScriptsDir/lib/sync-env-ports.sh" 2>$null
+# 4. ポート変数から派生する値を同期（bash が使える場合のみ・失敗しても続行）
+$syncScriptPath = Join-Path $ScriptsDir "lib\sync-env-ports.sh"
+if (Test-Path $syncScriptPath) {
+  $syncScript = $syncScriptPath -replace '\\', '/'
+  try { & bash $syncScript 2>$null } catch { }
 }
 
 Write-Host ""
 Write-Host "✓ セットアップ完了。$EnvLocal を編集（Discord OAuth 等）してから docker compose up -d と npm run dev を実行してください。" -ForegroundColor Green
+exit 0
