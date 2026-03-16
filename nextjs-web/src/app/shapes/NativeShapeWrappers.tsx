@@ -144,6 +144,11 @@ export class WrappedImageShapeUtil extends ImageShapeUtil {
         id={shape.id}
         style={{ width: w, height: h, position: "relative", overflow: "visible" }}
       >
+        <CreatorLabel
+          name={getCreatedBy(shape)}
+          avatarUrl={getCreatedByAvatarUrl(shape)}
+          rank={getCreationRank(editor, shape)}
+        />
         {/* チェッカー背景（透過画像用）+ 画像を比率通りに表示 */}
         <div style={{ position: "absolute", inset: 0, ...CHECKER_STYLE }}>
           {base}
