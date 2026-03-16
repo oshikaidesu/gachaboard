@@ -61,6 +61,9 @@ import type { ApiComment } from "@shared/apiTypes";
 export type { VideoShape } from "@shared/shapeDefs";
 export { MIN_COMMENT_LIST_H } from "@/app/hooks/media/useMediaPlayerComments";
 
+/** タッチで変換した直後の click 二重実行を防ぐため */
+const lastTouchEndByShapeId = new Map<string, number>();
+
 /**
  * 動画エリア以外の UI（ヘッダー・コントロール・コメント入力欄）の合計高さ。
  * シェイプの h = 動画エリアの高さ + VIDEO_UI_OVERHEAD になる。
@@ -717,10 +720,20 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<VideoShape & TLBaseBoxShape
               title="アイコンで表示"
               onClick={(e) => {
                 e.stopPropagation();
+                if (lastTouchEndByShapeId.has(shape.id) && Date.now() - (lastTouchEndByShapeId.get(shape.id) ?? 0) < 400) {
+                  lastTouchEndByShapeId.delete(shape.id);
+                  return;
+                }
                 convertToFileIcon(editor, shape.id);
               }}
               onPointerDown={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                convertToFileIcon(editor, shape.id);
+                lastTouchEndByShapeId.set(shape.id, Date.now());
+              }}
               style={{
                 width: 20,
                 height: 20,
@@ -731,6 +744,7 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<VideoShape & TLBaseBoxShape
                 color: "#fff",
                 fontSize: 12,
                 cursor: "pointer",
+                touchAction: "manipulation",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",

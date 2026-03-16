@@ -28,6 +28,9 @@ import { getSafeAssetId } from "@/lib/safeUrl";
 
 export type { FileIconShape } from "@shared/shapeDefs";
 
+/** タッチで変換した直後の click 二重実行を防ぐため */
+const lastTouchEndByShapeId = new Map<string, number>();
+
 export function getFileEmoji(fileName: string, kind: string): string {
   if (kind === "image" || kind === "gif") return "🖼️";
   if (kind === "video") return "🎬";
@@ -230,10 +233,20 @@ function FileIconShapeInner({ shape }: { shape: FileIconShape }) {
                 title="プレイヤーで表示"
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (lastTouchEndByShapeId.has(shape.id) && Date.now() - (lastTouchEndByShapeId.get(shape.id) ?? 0) < 400) {
+                    lastTouchEndByShapeId.delete(shape.id);
+                    return;
+                  }
                   convertToMediaPlayer(editor, shape.id);
                 }}
                 onPointerDown={(e) => e.stopPropagation()}
                 onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  convertToMediaPlayer(editor, shape.id);
+                  lastTouchEndByShapeId.set(shape.id, Date.now());
+                }}
                 style={{
                   width: 20,
                   height: 20,
@@ -244,6 +257,7 @@ function FileIconShapeInner({ shape }: { shape: FileIconShape }) {
                   color: "#fff",
                   fontSize: 12,
                   cursor: "pointer",
+                  touchAction: "manipulation",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",

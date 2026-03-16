@@ -55,6 +55,9 @@ import {
 
 export type { AudioShape } from "@shared/shapeDefs";
 
+/** タッチで変換した直後の click 二重実行を防ぐため */
+const lastTouchEndByShapeId = new Map<string, number>();
+
 // ---------- 音量スライダー（PointerCapture 方式） ----------
 
 function VolumeSlider({
@@ -509,10 +512,20 @@ export class AudioShapeUtil extends BaseBoxShapeUtil<AudioShape> {
               title="アイコンで表示"
               onClick={(e) => {
                 e.stopPropagation();
+                if (lastTouchEndByShapeId.has(shape.id) && Date.now() - (lastTouchEndByShapeId.get(shape.id) ?? 0) < 400) {
+                  lastTouchEndByShapeId.delete(shape.id);
+                  return;
+                }
                 convertToFileIcon(editor, shape.id);
               }}
               onPointerDown={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                convertToFileIcon(editor, shape.id);
+                lastTouchEndByShapeId.set(shape.id, Date.now());
+              }}
               style={{
                 width: 20,
                 height: 20,
@@ -523,6 +536,7 @@ export class AudioShapeUtil extends BaseBoxShapeUtil<AudioShape> {
                 color: "#fff",
                 fontSize: 12,
                 cursor: "pointer",
+                touchAction: "manipulation",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
