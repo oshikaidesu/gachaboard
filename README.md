@@ -21,6 +21,8 @@
   </p>
 </div>
 
+**フォーク元**: ホワイトボードエンジンは [DallasCarraher/compound](https://github.com/DallasCarraher/compound)（tldraw の Apache 2.0 フォーク）をベースにしています。
+
 ---
 
 ## 🚀 Gachaboard とは？
