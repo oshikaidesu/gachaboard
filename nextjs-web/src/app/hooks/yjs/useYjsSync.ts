@@ -25,6 +25,23 @@ export type StoreLike = {
   allRecords: () => Iterable<TLRecord>;
 };
 
+const SMOOTH_LERP_FACTOR = 0.25;
+const SMOOTH_DONE_DISTANCE = 0.5;
+
+function getPeerDraggedShapeIds(store: StoreLike): Set<string> {
+  const ids = new Set<string>();
+  for (const rec of store.allRecords()) {
+    if (rec.typeName !== "instance_presence") continue;
+    const p = rec as { selectedShapeIds?: string[] };
+    for (const id of p.selectedShapeIds ?? []) ids.add(id);
+  }
+  return ids;
+}
+
+function isShapeWithPosition(rec: TLRecord): rec is TLRecord & { id: string; x: number; y: number } {
+  return "x" in rec && "y" in rec && typeof (rec as { x?: unknown }).x === "number" && typeof (rec as { y?: unknown }).y === "number";
+}
+
 type UseYjsSyncOptions = {
   roomId: string;
   wsUrl: string;
@@ -97,6 +114,50 @@ export function useYjsSync({
     let hasRestoredCamera = false;
     let syncRafScheduled = false;
     const changedKeys = new Set<string>();
+    const smoothTargets = new Map<string, { targetX: number; targetY: number; record: TLRecord }>();
+    let smoothRafId: number | null = null;
+
+    const runSmoothLoop = () => {
+      smoothRafId = null;
+      const s = getStoreRef.current?.();
+      if (!s || smoothTargets.size === 0) return;
+      const peerDragged = getPeerDraggedShapeIds(s);
+      const records = Array.from(s.allRecords());
+      const getShape = (id: string) => records.find((r) => r.id === id) as (TLRecord & { x: number; y: number }) | undefined;
+
+      for (const [shapeId, { targetX, targetY, record }] of Array.from(smoothTargets.entries())) {
+        if (!peerDragged.has(shapeId)) {
+          s.mergeRemoteChanges(() => s.put([record]));
+          smoothTargets.delete(shapeId);
+          continue;
+        }
+        const current = getShape(shapeId);
+        if (!current) {
+          s.mergeRemoteChanges(() => s.put([record]));
+          smoothTargets.delete(shapeId);
+          continue;
+        }
+        const dx = targetX - current.x;
+        const dy = targetY - current.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < SMOOTH_DONE_DISTANCE) {
+          s.mergeRemoteChanges(() => s.put([record]));
+          smoothTargets.delete(shapeId);
+          continue;
+        }
+        const newX = current.x + dx * SMOOTH_LERP_FACTOR;
+        const newY = current.y + dy * SMOOTH_LERP_FACTOR;
+        const next = { ...record, x: newX, y: newY } as TLRecord;
+        s.mergeRemoteChanges(() => s.put([next]));
+        smoothTargets.set(shapeId, { targetX, targetY, record });
+      }
+      if (smoothTargets.size > 0) smoothRafId = requestAnimationFrame(runSmoothLoop);
+    };
+
+    const scheduleSmooth = () => {
+      if (smoothRafId === null && smoothTargets.size > 0) smoothRafId = requestAnimationFrame(runSmoothLoop);
+    };
+
     const handleYUpdate = (event: { changes: { keys: Map<string, { action: string }> } }) => {
       if (isLocalUpdateRef.current) return;
       event.changes.keys.forEach((_, key) => changedKeys.add(key));
@@ -118,10 +179,20 @@ export function useYjsSync({
             if (record) toPut.push(record);
           }
         }
-        if (toPut.length > 0 || toRemove.length > 0) {
+        const peerDragged = getPeerDraggedShapeIds(store);
+        const toPutImmediate: TLRecord[] = [];
+        for (const rec of toPut) {
+          if (isShapeWithPosition(rec) && peerDragged.has(rec.id)) {
+            smoothTargets.set(rec.id, { targetX: rec.x, targetY: rec.y, record: rec });
+            scheduleSmooth();
+          } else {
+            toPutImmediate.push(rec);
+          }
+        }
+        if (toPutImmediate.length > 0 || toRemove.length > 0) {
           store.mergeRemoteChanges(() => {
             if (toRemove.length > 0) store.remove(toRemove);
-            if (toPut.length > 0) store.put(toPut);
+            if (toPutImmediate.length > 0) store.put(toPutImmediate);
           });
         }
         if (!hasRestoredCamera) {
@@ -143,12 +214,14 @@ export function useYjsSync({
       }
     }
 
+    const DRAG_SYNC_THROTTLE_MS = 80;
     let rafScheduled = false;
     let pendingChanges: RecordsDiffLike | null = null;
     let cameraSaveTimer: ReturnType<typeof setTimeout> | null = null;
-    const flushToY = () => {
+    let dragSyncTimer: ReturnType<typeof setTimeout> | null = null;
+    const flushToY = (clearDragging = true) => {
       if (!pendingChanges) return;
-      prov.awareness?.setLocalStateField("dragging", null);
+      if (clearDragging) prov.awareness?.setLocalStateField("dragging", null);
       const changes = pendingChanges;
       pendingChanges = null;
       persistRecordsDiffToY(yMap, changes, isLocalUpdateRef, ydoc);
@@ -160,6 +233,13 @@ export function useYjsSync({
         rafScheduled = false;
         flushToY();
       });
+    };
+    const scheduleDragSync = () => {
+      if (dragSyncTimer) return;
+      dragSyncTimer = setTimeout(() => {
+        dragSyncTimer = null;
+        if (pendingChanges) flushToY(false);
+      }, DRAG_SYNC_THROTTLE_MS);
     };
     const persistToY = (entry: { changes: RecordsDiffLike; source: string }) => {
       if (entry.source !== "user") return;
@@ -191,6 +271,7 @@ export function useYjsSync({
             x,
             y,
           });
+          scheduleDragSync();
         }
       } else {
         prov.awareness?.setLocalStateField("dragging", null);
@@ -218,7 +299,9 @@ export function useYjsSync({
     setStatusRef.current?.("loading");
 
     return () => {
+      if (smoothRafId !== null) cancelAnimationFrame(smoothRafId);
       if (cameraSaveTimer) clearTimeout(cameraSaveTimer);
+      if (dragSyncTimer) clearTimeout(dragSyncTimer);
       document.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("beforeunload", handleBeforeUnload);
       unsubStore();

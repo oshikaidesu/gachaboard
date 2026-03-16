@@ -7,6 +7,7 @@
  * - avatarUrl / color は他クライアント由来のため検証してから store に格納
  */
 import { useEditor } from "@cmpd/editor";
+import type { TLShapeId } from "@cmpd/tlschema";
 import { InstancePresenceRecordType } from "@cmpd/tlschema";
 import rafThrottle from "raf-throttle";
 import { useCallback, useEffect, useRef } from "react";
@@ -83,7 +84,7 @@ export function AwarenessSync({ provider, localUserId }: AwarenessSyncProps) {
             color,
             camera: { x: 0, y: 0, z: 1 },
             screenBounds: { x: viewport.x, y: viewport.y, w: viewport.w, h: viewport.h },
-            selectedShapeIds: [],
+            selectedShapeIds: dragging?.shapeId ? [dragging.shapeId as TLShapeId] : [],
             // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TLPageId is branded, editor.getCurrentPageId() returns valid page id
             currentPageId: currentPageId as any,
             brush: null,
