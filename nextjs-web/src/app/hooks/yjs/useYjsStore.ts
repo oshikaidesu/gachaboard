@@ -4,6 +4,7 @@ import {
   createTLStore,
   TLStoreWithStatus,
   type TLAnyShapeUtilConstructor,
+  type Editor,
 } from "@cmpd/editor";
 import { defaultShapeUtils } from "@cmpd/compound";
 import type { TLRecord } from "@cmpd/tlschema";
@@ -21,6 +22,8 @@ type UseYjsStoreOptions = {
   defaultName?: string;
   userId?: string;
   avatarUrl?: string | null;
+  /** ドラッグ中ゴーストの座標をページ座標で送るために使用。Compound onMount で設定 */
+  getEditorRef?: RefObject<Editor | null>;
   fetchSnapshotWhenEmpty?: () => Promise<{
     records: TLRecord[];
     reactions?: Record<string, string>;
@@ -46,6 +49,7 @@ export function useYjsStore({
   defaultName = "",
   userId = "",
   avatarUrl,
+  getEditorRef,
   fetchSnapshotWhenEmpty,
   syncToken,
 }: UseYjsStoreOptions): TLStoreWithStatus & { provider?: HocuspocusProvider } {
@@ -135,6 +139,7 @@ export function useYjsStore({
     wsUrl,
     ydoc,
     getStoreRef: getStoreRef as RefObject<() => StoreLike>,
+    getEditorRef,
     setConnectionStatusRef,
     setStatusRef,
     setErrorRef,

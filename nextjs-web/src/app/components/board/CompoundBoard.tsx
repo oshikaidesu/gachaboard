@@ -57,6 +57,7 @@ export default function CompoundBoard({
   const [preview, setPreview] = useState<ApiAsset | null>(null);
   const [headerActionsEl, setHeaderActionsEl] = useState<HTMLDivElement | null>(null);
   const [editorReady, setEditorReady] = useState(false);
+  const editorRef = useRef<Editor | null>(null);
   const router = useRouter();
 
   currentUserIdAtom.set(currentUserId);
@@ -91,6 +92,7 @@ export default function CompoundBoard({
     defaultName: userName,
     userId: currentUserId,
     avatarUrl: avatarUrl ?? undefined,
+    getEditorRef: useSync ? editorRef : undefined,
     fetchSnapshotWhenEmpty: useSync ? fetchSnapshotWhenEmpty : undefined,
     syncToken,
   });
@@ -142,6 +144,7 @@ export default function CompoundBoard({
 
   const handleMount = useCallback(
     (editor: Editor) => {
+      editorRef.current = editor;
       // 画面外シェイプのカリングを緩和。マージンを広げてスクロール時の読み込みちらつきを防ぐ
       editor.renderingBoundsMargin = 400;
 

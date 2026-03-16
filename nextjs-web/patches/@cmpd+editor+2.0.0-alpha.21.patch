@@ -1,5 +1,5 @@
 diff --git a/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js b/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js
-index a589b0a..90e765a 100644
+index a589b0a..669a99c 100644
 --- a/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js
 +++ b/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js
 @@ -87,6 +87,18 @@ function Canvas({ className }) {
@@ -30,6 +30,495 @@ index a589b0a..90e765a 100644
        children: [
          Background && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Background, {}),
          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(GridWrapper, {}),
+@@ -147,9 +159,9 @@ function Canvas({ className }) {
+             /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HintedShapeIndicator, {}),
+             /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SnapLinesWrapper, {}),
+             /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SelectionForegroundWrapper, {}),
++            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(InFrontOfTheCanvasWrapper, {}),
+             /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_LiveCollaborators.LiveCollaborators, {})
+           ] }),
+-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(InFrontOfTheCanvasWrapper, {})
+         ] })
+       ]
+     }
+diff --git a/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js.orig b/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js.orig
+new file mode 100644
+index 0000000..a589b0a
+--- /dev/null
++++ b/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js.orig
+@@ -0,0 +1,472 @@
++"use strict";
++var __create = Object.create;
++var __defProp = Object.defineProperty;
++var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
++var __getOwnPropNames = Object.getOwnPropertyNames;
++var __getProtoOf = Object.getPrototypeOf;
++var __hasOwnProp = Object.prototype.hasOwnProperty;
++var __export = (target, all) => {
++  for (var name in all)
++    __defProp(target, name, { get: all[name], enumerable: true });
++};
++var __copyProps = (to, from, except, desc) => {
++  if (from && typeof from === "object" || typeof from === "function") {
++    for (let key of __getOwnPropNames(from))
++      if (!__hasOwnProp.call(to, key) && key !== except)
++        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
++  }
++  return to;
++};
++var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
++  // If the importer is in node compatibility mode or this is not an ESM
++  // file that has been converted to a CommonJS file using a Babel-
++  // compatible transform (i.e. "__esModule" has not been set), then set
++  // "default" to the CommonJS "module.exports" for node compatibility.
++  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
++  mod
++));
++var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
++var Canvas_exports = {};
++__export(Canvas_exports, {
++  Canvas: () => Canvas,
++  InFrontOfTheCanvasWrapper: () => InFrontOfTheCanvasWrapper,
++  OnTheCanvasWrapper: () => OnTheCanvasWrapper,
++  SelectionBackgroundWrapper: () => SelectionBackgroundWrapper,
++  SelectionForegroundWrapper: () => SelectionForegroundWrapper
++});
++module.exports = __toCommonJS(Canvas_exports);
++var import_jsx_runtime = require("react/jsx-runtime");
++var import_state = require("@cmpd/state");
++var import_utils = require("@cmpd/utils");
++var import_classnames = __toESM(require("classnames"));
++var import_react = __toESM(require("react"));
++var import_useCanvasEvents = require("../hooks/useCanvasEvents");
++var import_useCoarsePointer = require("../hooks/useCoarsePointer");
++var import_useDocumentEvents = require("../hooks/useDocumentEvents");
++var import_useEditor = require("../hooks/useEditor");
++var import_useEditorComponents = require("../hooks/useEditorComponents");
++var import_useFixSafariDoubleTapZoomPencilEvents = require("../hooks/useFixSafariDoubleTapZoomPencilEvents");
++var import_useGestureEvents = require("../hooks/useGestureEvents");
++var import_useHandleEvents = require("../hooks/useHandleEvents");
++var import_useScreenBounds = require("../hooks/useScreenBounds");
++var import_Matrix2d = require("../primitives/Matrix2d");
++var import_utils2 = require("../primitives/utils");
++var import_debug_flags = require("../utils/debug-flags");
++var import_GeometryDebuggingView = require("./GeometryDebuggingView");
++var import_LiveCollaborators = require("./LiveCollaborators");
++var import_Shape = require("./Shape");
++var import_ShapeIndicator = require("./ShapeIndicator");
++function Canvas({ className }) {
++  const editor = (0, import_useEditor.useEditor)();
++  const { Background, SvgDefs } = (0, import_useEditorComponents.useEditorComponents)();
++  const rCanvas = import_react.default.useRef(null);
++  const rHtmlLayer = import_react.default.useRef(null);
++  const rHtmlLayer2 = import_react.default.useRef(null);
++  (0, import_useScreenBounds.useScreenBounds)();
++  (0, import_useDocumentEvents.useDocumentEvents)();
++  (0, import_useCoarsePointer.useCoarsePointer)();
++  (0, import_useGestureEvents.useGestureEvents)(rCanvas);
++  (0, import_useFixSafariDoubleTapZoomPencilEvents.useFixSafariDoubleTapZoomPencilEvents)(rCanvas);
++  (0, import_state.useQuickReactor)(
++    "position layers",
++    () => {
++      const htmlElm = rHtmlLayer.current;
++      if (!htmlElm)
++        return;
++      const htmlElm2 = rHtmlLayer2.current;
++      if (!htmlElm2)
++        return;
++      const { x, y, z } = editor.getCamera();
++      const offset = z >= 1 ? (0, import_utils.modulate)(z, [1, 8], [0.125, 0.5], true) : (0, import_utils.modulate)(z, [0.1, 1], [-2, 0.125], true);
++      const transform = `scale(${(0, import_utils2.toDomPrecision)(z)}) translate(${(0, import_utils2.toDomPrecision)(
++        x + offset
++      )}px,${(0, import_utils2.toDomPrecision)(y + offset)}px)`;
++      htmlElm.style.setProperty("transform", transform);
++      htmlElm2.style.setProperty("transform", transform);
++    },
++    [editor]
++  );
++  const events = (0, import_useCanvasEvents.useCanvasEvents)();
++  const shapeSvgDefs = (0, import_state.useValue)(
++    "shapeSvgDefs",
++    () => {
++      const shapeSvgDefsByKey = /* @__PURE__ */ new Map();
++      for (const util of (0, import_utils.objectMapValues)(editor.shapeUtils)) {
++        if (!util)
++          return;
++        const defs = util.getCanvasSvgDefs();
++        for (const { key, component: Component } of defs) {
++          if (shapeSvgDefsByKey.has(key))
++            continue;
++          shapeSvgDefsByKey.set(key, /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Component, {}, key));
++        }
++      }
++      return [...shapeSvgDefsByKey.values()];
++    },
++    [editor]
++  );
++  const hideShapes = (0, import_state.useValue)("debug_shapes", () => import_debug_flags.debugFlags.hideShapes.get(), [import_debug_flags.debugFlags]);
++  const debugSvg = (0, import_state.useValue)("debug_svg", () => import_debug_flags.debugFlags.debugSvg.get(), [import_debug_flags.debugFlags]);
++  const debugGeometry = (0, import_state.useValue)("debug_geometry", () => import_debug_flags.debugFlags.debugGeometry.get(), [
++    import_debug_flags.debugFlags
++  ]);
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
++    "div",
++    {
++      ref: rCanvas,
++      draggable: false,
++      className: (0, import_classnames.default)("tl-canvas", className),
++      "data-testid": "canvas",
++      ...events,
++      children: [
++        Background && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Background, {}),
++        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(GridWrapper, {}),
++        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(UiLogger, {}),
++        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { className: "tl-svg-context", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("defs", { children: [
++          shapeSvgDefs,
++          Cursor && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Cursor, {}),
++          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CollaboratorHint, {}),
++          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowheadDot, {}),
++          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ArrowheadCross, {}),
++          SvgDefs && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SvgDefs, {})
++        ] }) }),
++        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { ref: rHtmlLayer, className: "tl-html-layer tl-shapes", draggable: false, children: [
++          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(OnTheCanvasWrapper, {}),
++          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SelectionBackgroundWrapper, {}),
++          hideShapes ? null : debugSvg ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ShapesWithSVGs, {}) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ShapesToDisplay, {})
++        ] }),
++        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "tl-fixed-layer tl-overlays", children: [
++          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { ref: rHtmlLayer2, className: "tl-html-layer", children: [
++            debugGeometry ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_GeometryDebuggingView.GeometryDebuggingView, {}) : null,
++            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HandlesWrapper, {}),
++            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(BrushWrapper, {}),
++            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ScribbleWrapper, {}),
++            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ZoomBrushWrapper, {}),
++            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SelectedIdIndicators, {}),
++            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HoveredShapeIndicator, {}),
++            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HintedShapeIndicator, {}),
++            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SnapLinesWrapper, {}),
++            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SelectionForegroundWrapper, {}),
++            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_LiveCollaborators.LiveCollaborators, {})
++          ] }),
++          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(InFrontOfTheCanvasWrapper, {})
++        ] })
++      ]
++    }
++  );
++}
++function GridWrapper() {
++  const editor = (0, import_useEditor.useEditor)();
++  const gridSize = (0, import_state.useValue)("gridSize", () => editor.getDocumentSettings().gridSize, [editor]);
++  const { x, y, z } = (0, import_state.useValue)("camera", () => editor.getCamera(), [editor]);
++  const isGridMode = (0, import_state.useValue)("isGridMode", () => editor.getInstanceState().isGridMode, [editor]);
++  const { Grid } = (0, import_useEditorComponents.useEditorComponents)();
++  if (!(Grid && isGridMode))
++    return null;
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Grid, { x, y, z, size: gridSize });
++}
++function ScribbleWrapper() {
++  const editor = (0, import_useEditor.useEditor)();
++  const scribbles = (0, import_state.useValue)("scribbles", () => editor.getInstanceState().scribbles, [editor]);
++  const zoomLevel = (0, import_state.useValue)("zoomLevel", () => editor.getZoomLevel(), [editor]);
++  const { Scribble } = (0, import_useEditorComponents.useEditorComponents)();
++  if (!(Scribble && scribbles.length))
++    return null;
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_jsx_runtime.Fragment, { children: scribbles.map((scribble) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
++    Scribble,
++    {
++      className: "tl-user-scribble",
++      scribble,
++      zoom: zoomLevel
++    },
++    scribble.id
++  )) });
++}
++function BrushWrapper() {
++  const editor = (0, import_useEditor.useEditor)();
++  const brush = (0, import_state.useValue)("brush", () => editor.getInstanceState().brush, [editor]);
++  const { Brush } = (0, import_useEditorComponents.useEditorComponents)();
++  if (!(Brush && brush))
++    return null;
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Brush, { className: "tl-user-brush", brush });
++}
++function ZoomBrushWrapper() {
++  const editor = (0, import_useEditor.useEditor)();
++  const zoomBrush = (0, import_state.useValue)("zoomBrush", () => editor.getInstanceState().zoomBrush, [editor]);
++  const { ZoomBrush } = (0, import_useEditorComponents.useEditorComponents)();
++  if (!(ZoomBrush && zoomBrush))
++    return null;
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ZoomBrush, { className: "tl-user-brush tl-zoom-brush", brush: zoomBrush });
++}
++function SnapLinesWrapper() {
++  const editor = (0, import_useEditor.useEditor)();
++  const lines = (0, import_state.useValue)("snapLines", () => editor.snaps.getLines(), [editor]);
++  const zoomLevel = (0, import_state.useValue)("zoomLevel", () => editor.getZoomLevel(), [editor]);
++  const { SnapLine } = (0, import_useEditorComponents.useEditorComponents)();
++  if (!(SnapLine && lines.length > 0))
++    return null;
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_jsx_runtime.Fragment, { children: lines.map((line) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SnapLine, { className: "tl-user-snapline", line, zoom: zoomLevel }, line.id)) });
++}
++const MIN_HANDLE_DISTANCE = 48;
++function HandlesWrapper() {
++  const editor = (0, import_useEditor.useEditor)();
++  const { Handles } = (0, import_useEditorComponents.useEditorComponents)();
++  const zoomLevel = (0, import_state.useValue)("zoomLevel", () => editor.getZoomLevel(), [editor]);
++  const isCoarse = (0, import_state.useValue)("coarse pointer", () => editor.getInstanceState().isCoarsePointer, [
++    editor
++  ]);
++  const onlySelectedShape = (0, import_state.useValue)("onlySelectedShape", () => editor.getOnlySelectedShape(), [
++    editor
++  ]);
++  const isChangingStyle = (0, import_state.useValue)(
++    "isChangingStyle",
++    () => editor.getInstanceState().isChangingStyle,
++    [editor]
++  );
++  const isReadonly = (0, import_state.useValue)("isChangingStyle", () => editor.getInstanceState().isReadonly, [
++    editor
++  ]);
++  const handles = (0, import_state.useValue)(
++    "handles",
++    () => {
++      const onlySelectedShape2 = editor.getOnlySelectedShape();
++      if (onlySelectedShape2) {
++        return editor.getShapeHandles(onlySelectedShape2);
++      }
++      return void 0;
++    },
++    [editor]
++  );
++  const transform = (0, import_state.useValue)(
++    "transform",
++    () => {
++      const onlySelectedShape2 = editor.getOnlySelectedShape();
++      if (onlySelectedShape2) {
++        return editor.getShapePageTransform(onlySelectedShape2);
++      }
++      return void 0;
++    },
++    [editor]
++  );
++  if (!Handles || !onlySelectedShape || isChangingStyle || isReadonly)
++    return null;
++  if (!handles)
++    return null;
++  if (!transform)
++    return null;
++  const handlesToDisplay = [];
++  for (let i = 0, handle = handles[i]; i < handles.length; i++, handle = handles[i]) {
++    if (handle.type !== "vertex") {
++      const prev = handles[i - 1];
++      const next = handles[i + 1];
++      if (prev && next) {
++        if (Math.hypot(prev.y - next.y, prev.x - next.x) < MIN_HANDLE_DISTANCE / zoomLevel) {
++          continue;
++        }
++      }
++    }
++    handlesToDisplay.push(handle);
++  }
++  handlesToDisplay.sort((a) => a.type === "vertex" ? 1 : -1);
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Handles, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("g", { transform: import_Matrix2d.Matrix2d.toCssString(transform), children: handlesToDisplay.map((handle) => {
++    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
++      HandleWrapper,
++      {
++        shapeId: onlySelectedShape.id,
++        handle,
++        zoom: zoomLevel,
++        isCoarse
++      },
++      handle.id
++    );
++  }) }) });
++}
++function HandleWrapper({
++  shapeId,
++  handle,
++  zoom,
++  isCoarse
++}) {
++  const events = (0, import_useHandleEvents.useHandleEvents)(shapeId, handle.id);
++  const { Handle } = (0, import_useEditorComponents.useEditorComponents)();
++  if (!Handle)
++    return null;
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("g", { "aria-label": "handle", transform: `translate(${handle.x}, ${handle.y})`, ...events, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Handle, { shapeId, handle, zoom, isCoarse }) });
++}
++function ShapesWithSVGs() {
++  const editor = (0, import_useEditor.useEditor)();
++  const renderingShapes = (0, import_state.useValue)("rendering shapes", () => editor.getRenderingShapes(), [editor]);
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_jsx_runtime.Fragment, { children: renderingShapes.map((result) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_react.default.Fragment, { children: [
++    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_Shape.Shape, { ...result }),
++    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(DebugSvgCopy, { id: result.id })
++  ] }, result.id + "_fragment")) });
++}
++function ShapesToDisplay() {
++  const editor = (0, import_useEditor.useEditor)();
++  const renderingShapes = (0, import_state.useValue)("rendering shapes", () => editor.getRenderingShapes(), [editor]);
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_jsx_runtime.Fragment, { children: renderingShapes.map((result) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_Shape.Shape, { ...result }, result.id + "_shape")) });
++}
++function SelectedIdIndicators() {
++  const editor = (0, import_useEditor.useEditor)();
++  const selectedShapeIds = (0, import_state.useValue)(
++    "selectedShapeIds",
++    () => editor.getCurrentPageState().selectedShapeIds,
++    [editor]
++  );
++  const shouldDisplay = (0, import_state.useValue)(
++    "should display selected ids",
++    () => {
++      return editor.isInAny(
++        "select.idle",
++        "select.brushing",
++        "select.scribble_brushing",
++        "select.editing_shape",
++        "select.pointing_shape",
++        "select.pointing_selection",
++        "select.pointing_handle"
++      ) && !editor.getInstanceState().isChangingStyle;
++    },
++    [editor]
++  );
++  if (!shouldDisplay)
++    return null;
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_jsx_runtime.Fragment, { children: selectedShapeIds.map((id) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_ShapeIndicator.ShapeIndicator, { className: "tl-user-indicator__selected", id }, id + "_indicator")) });
++}
++const HoveredShapeIndicator = function HoveredShapeIndicator2() {
++  const editor = (0, import_useEditor.useEditor)();
++  const { HoveredShapeIndicator: HoveredShapeIndicator3 } = (0, import_useEditorComponents.useEditorComponents)();
++  const isCoarsePointer = (0, import_state.useValue)(
++    "coarse pointer",
++    () => editor.getInstanceState().isCoarsePointer,
++    [editor]
++  );
++  const isHoveringCanvas = (0, import_state.useValue)(
++    "hovering canvas",
++    () => editor.getInstanceState().isHoveringCanvas,
++    [editor]
++  );
++  const hoveredShapeId = (0, import_state.useValue)("hovered id", () => editor.getCurrentPageState().hoveredShapeId, [
++    editor
++  ]);
++  if (isCoarsePointer || !isHoveringCanvas || !hoveredShapeId || !HoveredShapeIndicator3)
++    return null;
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HoveredShapeIndicator3, { shapeId: hoveredShapeId });
++};
++const HintedShapeIndicator = (0, import_state.track)(function HintedShapeIndicator2() {
++  const editor = (0, import_useEditor.useEditor)();
++  const ids = (0, import_utils.dedupe)(editor.getHintingShapeIds());
++  if (!ids.length)
++    return null;
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_jsx_runtime.Fragment, { children: ids.map((id) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_ShapeIndicator.ShapeIndicator, { className: "tl-user-indicator__hint", id }, id + "_hinting")) });
++});
++function Cursor() {
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { id: "cursor", children: [
++    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { fill: "rgba(0,0,0,.2)", transform: "translate(-11,-11)", children: [
++      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "m12 24.4219v-16.015l11.591 11.619h-6.781l-.411.124z" }),
++      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "m21.0845 25.0962-3.605 1.535-4.682-11.089 3.686-1.553z" })
++    ] }),
++    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { fill: "white", transform: "translate(-12,-12)", children: [
++      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "m12 24.4219v-16.015l11.591 11.619h-6.781l-.411.124z" }),
++      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "m21.0845 25.0962-3.605 1.535-4.682-11.089 3.686-1.553z" })
++    ] }),
++    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { fill: "currentColor", transform: "translate(-12,-12)", children: [
++      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "m19.751 24.4155-1.844.774-3.1-7.374 1.841-.775z" }),
++      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "m13 10.814v11.188l2.969-2.866.428-.139h4.768z" })
++    ] })
++  ] });
++}
++function CollaboratorHint() {
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { id: "cursor_hint", fill: "currentColor", d: "M -2,-5 2,0 -2,5 Z" });
++}
++function ArrowheadDot() {
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("marker", { id: "arrowhead-dot", className: "tl-arrow-hint", refX: "3.0", refY: "3.0", orient: "0", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: "3", cy: "3", r: "2", strokeDasharray: "100%" }) });
++}
++function ArrowheadCross() {
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("marker", { id: "arrowhead-cross", className: "tl-arrow-hint", refX: "3.0", refY: "3.0", orient: "auto", children: [
++    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: "1.5", y1: "1.5", x2: "4.5", y2: "4.5", strokeDasharray: "100%" }),
++    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("line", { x1: "1.5", y1: "4.5", x2: "4.5", y2: "1.5", strokeDasharray: "100%" })
++  ] });
++}
++const DebugSvgCopy = (0, import_state.track)(function DupSvg({ id }) {
++  const editor = (0, import_useEditor.useEditor)();
++  const shape = editor.getShape(id);
++  const [html, setHtml] = import_react.default.useState("");
++  const isInRoot = shape?.parentId === editor.getCurrentPageId();
++  import_react.default.useEffect(() => {
++    if (!isInRoot)
++      return;
++    let latest = null;
++    const unsubscribe = (0, import_state.react)("shape to svg", async () => {
++      const renderId = Math.random();
++      latest = renderId;
++      const bb = editor.getShapePageBounds(id);
++      const el = await editor.getSvg([id], { padding: 0 });
++      if (el && bb && latest === renderId) {
++        el.style.setProperty("overflow", "visible");
++        el.setAttribute("preserveAspectRatio", "xMidYMin slice");
++        el.style.setProperty("transform", `translate(${bb.x}px, ${bb.y + bb.h + 12}px)`);
++        el.style.setProperty("border", "1px solid black");
++        setHtml(el?.outerHTML);
++      }
++    });
++    return () => {
++      latest = null;
++      unsubscribe();
++    };
++  }, [editor, id, isInRoot]);
++  if (!isInRoot)
++    return null;
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { paddingTop: 12, position: "absolute" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex" }, dangerouslySetInnerHTML: { __html: html } }) });
++});
++function UiLogger() {
++  const uiLog = (0, import_state.useValue)("debugging ui log", () => import_debug_flags.debugFlags.logMessages.get(), [import_debug_flags.debugFlags]);
++  if (!uiLog.length)
++    return null;
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "debug__ui-logger", children: uiLog.map((message, messageIndex) => {
++    const text = typeof message === "string" ? message : JSON.stringify(message);
++    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "debug__ui-logger__line", children: text }, messageIndex);
++  }) });
++}
++function SelectionForegroundWrapper() {
++  const editor = (0, import_useEditor.useEditor)();
++  const selectionRotation = (0, import_state.useValue)("selection rotation", () => editor.getSelectionRotation(), [
++    editor
++  ]);
++  const selectionBounds = (0, import_state.useValue)(
++    "selection bounds",
++    () => editor.getSelectionRotatedPageBounds(),
++    [editor]
++  );
++  const { SelectionForeground } = (0, import_useEditorComponents.useEditorComponents)();
++  if (!selectionBounds || !SelectionForeground)
++    return null;
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SelectionForeground, { bounds: selectionBounds, rotation: selectionRotation });
++}
++function SelectionBackgroundWrapper() {
++  const editor = (0, import_useEditor.useEditor)();
++  const selectionRotation = (0, import_state.useValue)("selection rotation", () => editor.getSelectionRotation(), [
++    editor
++  ]);
++  const selectionBounds = (0, import_state.useValue)(
++    "selection bounds",
++    () => editor.getSelectionRotatedPageBounds(),
++    [editor]
++  );
++  const { SelectionBackground } = (0, import_useEditorComponents.useEditorComponents)();
++  if (!selectionBounds || !SelectionBackground)
++    return null;
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SelectionBackground, { bounds: selectionBounds, rotation: selectionRotation });
++}
++function OnTheCanvasWrapper() {
++  const { OnTheCanvas } = (0, import_useEditorComponents.useEditorComponents)();
++  if (!OnTheCanvas)
++    return null;
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(OnTheCanvas, {});
++}
++function InFrontOfTheCanvasWrapper() {
++  const { InFrontOfTheCanvas } = (0, import_useEditorComponents.useEditorComponents)();
++  if (!InFrontOfTheCanvas)
++    return null;
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(InFrontOfTheCanvas, {});
++}
++//# sourceMappingURL=Canvas.js.map
 diff --git a/node_modules/@cmpd/editor/dist-cjs/lib/components/LiveCollaborators.js b/node_modules/@cmpd/editor/dist-cjs/lib/components/LiveCollaborators.js
 index cc9390c..4c2afd0 100644
 --- a/node_modules/@cmpd/editor/dist-cjs/lib/components/LiveCollaborators.js
@@ -84,25 +573,6 @@ index 46ae2f7..4846e7a 100644
                break;
              }
              case "key_repeat": {
-diff --git a/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useCanvasEvents.js b/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useCanvasEvents.js
-index 0e30da6..6d6ffe6 100644
---- a/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useCanvasEvents.js
-+++ b/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useCanvasEvents.js
-@@ -108,14 +108,10 @@ function useCanvasEvents() {
-         ;
-         e.isKilled = true;
-         document.body.click();
--        (0, import_dom.preventDefault)(e);
-       }
-       function onTouchEnd(e) {
-         ;
-         e.isKilled = true;
--        if (e.target.tagName !== "A" && e.target.tagName !== "TEXTAREA") {
--          (0, import_dom.preventDefault)(e);
--        }
-       }
-       function onDragOver(e) {
-         (0, import_dom.preventDefault)(e);
 diff --git a/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useGestureEvents.js b/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useGestureEvents.js
 index 393e273..8b358a9 100644
 --- a/node_modules/@cmpd/editor/dist-cjs/lib/hooks/useGestureEvents.js
@@ -166,7 +636,7 @@ index 0b10d51..b93caf9 100644
  }
  //# sourceMappingURL=normalizeWheel.js.map
 diff --git a/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs b/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs
-index 9ac80d5..d8e9a4f 100644
+index 9ac80d5..71dc55b 100644
 --- a/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs
 +++ b/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs
 @@ -50,6 +50,18 @@ function Canvas({ className }) {
@@ -197,6 +667,465 @@ index 9ac80d5..d8e9a4f 100644
        children: [
          Background && /* @__PURE__ */ jsx(Background, {}),
          /* @__PURE__ */ jsx(GridWrapper, {}),
+@@ -110,9 +122,9 @@ function Canvas({ className }) {
+             /* @__PURE__ */ jsx(HintedShapeIndicator, {}),
+             /* @__PURE__ */ jsx(SnapLinesWrapper, {}),
+             /* @__PURE__ */ jsx(SelectionForegroundWrapper, {}),
++            /* @__PURE__ */ jsx(InFrontOfTheCanvasWrapper, {}),
+             /* @__PURE__ */ jsx(LiveCollaborators, {})
+           ] }),
+-          /* @__PURE__ */ jsx(InFrontOfTheCanvasWrapper, {})
+         ] })
+       ]
+     }
+diff --git a/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs.orig b/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs.orig
+new file mode 100644
+index 0000000..9ac80d5
+--- /dev/null
++++ b/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs.orig
+@@ -0,0 +1,442 @@
++import { Fragment, jsx, jsxs } from "react/jsx-runtime";
++import { react, track, useQuickReactor, useValue } from "@cmpd/state";
++import { dedupe, modulate, objectMapValues } from "@cmpd/utils";
++import classNames from "classnames";
++import React from "react";
++import { useCanvasEvents } from "../hooks/useCanvasEvents.mjs";
++import { useCoarsePointer } from "../hooks/useCoarsePointer.mjs";
++import { useDocumentEvents } from "../hooks/useDocumentEvents.mjs";
++import { useEditor } from "../hooks/useEditor.mjs";
++import { useEditorComponents } from "../hooks/useEditorComponents.mjs";
++import { useFixSafariDoubleTapZoomPencilEvents } from "../hooks/useFixSafariDoubleTapZoomPencilEvents.mjs";
++import { useGestureEvents } from "../hooks/useGestureEvents.mjs";
++import { useHandleEvents } from "../hooks/useHandleEvents.mjs";
++import { useScreenBounds } from "../hooks/useScreenBounds.mjs";
++import { Matrix2d } from "../primitives/Matrix2d.mjs";
++import { toDomPrecision } from "../primitives/utils.mjs";
++import { debugFlags } from "../utils/debug-flags.mjs";
++import { GeometryDebuggingView } from "./GeometryDebuggingView.mjs";
++import { LiveCollaborators } from "./LiveCollaborators.mjs";
++import { Shape } from "./Shape.mjs";
++import { ShapeIndicator } from "./ShapeIndicator.mjs";
++function Canvas({ className }) {
++  const editor = useEditor();
++  const { Background, SvgDefs } = useEditorComponents();
++  const rCanvas = React.useRef(null);
++  const rHtmlLayer = React.useRef(null);
++  const rHtmlLayer2 = React.useRef(null);
++  useScreenBounds();
++  useDocumentEvents();
++  useCoarsePointer();
++  useGestureEvents(rCanvas);
++  useFixSafariDoubleTapZoomPencilEvents(rCanvas);
++  useQuickReactor(
++    "position layers",
++    () => {
++      const htmlElm = rHtmlLayer.current;
++      if (!htmlElm)
++        return;
++      const htmlElm2 = rHtmlLayer2.current;
++      if (!htmlElm2)
++        return;
++      const { x, y, z } = editor.getCamera();
++      const offset = z >= 1 ? modulate(z, [1, 8], [0.125, 0.5], true) : modulate(z, [0.1, 1], [-2, 0.125], true);
++      const transform = `scale(${toDomPrecision(z)}) translate(${toDomPrecision(
++        x + offset
++      )}px,${toDomPrecision(y + offset)}px)`;
++      htmlElm.style.setProperty("transform", transform);
++      htmlElm2.style.setProperty("transform", transform);
++    },
++    [editor]
++  );
++  const events = useCanvasEvents();
++  const shapeSvgDefs = useValue(
++    "shapeSvgDefs",
++    () => {
++      const shapeSvgDefsByKey = /* @__PURE__ */ new Map();
++      for (const util of objectMapValues(editor.shapeUtils)) {
++        if (!util)
++          return;
++        const defs = util.getCanvasSvgDefs();
++        for (const { key, component: Component } of defs) {
++          if (shapeSvgDefsByKey.has(key))
++            continue;
++          shapeSvgDefsByKey.set(key, /* @__PURE__ */ jsx(Component, {}, key));
++        }
++      }
++      return [...shapeSvgDefsByKey.values()];
++    },
++    [editor]
++  );
++  const hideShapes = useValue("debug_shapes", () => debugFlags.hideShapes.get(), [debugFlags]);
++  const debugSvg = useValue("debug_svg", () => debugFlags.debugSvg.get(), [debugFlags]);
++  const debugGeometry = useValue("debug_geometry", () => debugFlags.debugGeometry.get(), [
++    debugFlags
++  ]);
++  return /* @__PURE__ */ jsxs(
++    "div",
++    {
++      ref: rCanvas,
++      draggable: false,
++      className: classNames("tl-canvas", className),
++      "data-testid": "canvas",
++      ...events,
++      children: [
++        Background && /* @__PURE__ */ jsx(Background, {}),
++        /* @__PURE__ */ jsx(GridWrapper, {}),
++        /* @__PURE__ */ jsx(UiLogger, {}),
++        /* @__PURE__ */ jsx("svg", { className: "tl-svg-context", children: /* @__PURE__ */ jsxs("defs", { children: [
++          shapeSvgDefs,
++          Cursor && /* @__PURE__ */ jsx(Cursor, {}),
++          /* @__PURE__ */ jsx(CollaboratorHint, {}),
++          /* @__PURE__ */ jsx(ArrowheadDot, {}),
++          /* @__PURE__ */ jsx(ArrowheadCross, {}),
++          SvgDefs && /* @__PURE__ */ jsx(SvgDefs, {})
++        ] }) }),
++        /* @__PURE__ */ jsxs("div", { ref: rHtmlLayer, className: "tl-html-layer tl-shapes", draggable: false, children: [
++          /* @__PURE__ */ jsx(OnTheCanvasWrapper, {}),
++          /* @__PURE__ */ jsx(SelectionBackgroundWrapper, {}),
++          hideShapes ? null : debugSvg ? /* @__PURE__ */ jsx(ShapesWithSVGs, {}) : /* @__PURE__ */ jsx(ShapesToDisplay, {})
++        ] }),
++        /* @__PURE__ */ jsxs("div", { className: "tl-fixed-layer tl-overlays", children: [
++          /* @__PURE__ */ jsxs("div", { ref: rHtmlLayer2, className: "tl-html-layer", children: [
++            debugGeometry ? /* @__PURE__ */ jsx(GeometryDebuggingView, {}) : null,
++            /* @__PURE__ */ jsx(HandlesWrapper, {}),
++            /* @__PURE__ */ jsx(BrushWrapper, {}),
++            /* @__PURE__ */ jsx(ScribbleWrapper, {}),
++            /* @__PURE__ */ jsx(ZoomBrushWrapper, {}),
++            /* @__PURE__ */ jsx(SelectedIdIndicators, {}),
++            /* @__PURE__ */ jsx(HoveredShapeIndicator, {}),
++            /* @__PURE__ */ jsx(HintedShapeIndicator, {}),
++            /* @__PURE__ */ jsx(SnapLinesWrapper, {}),
++            /* @__PURE__ */ jsx(SelectionForegroundWrapper, {}),
++            /* @__PURE__ */ jsx(LiveCollaborators, {})
++          ] }),
++          /* @__PURE__ */ jsx(InFrontOfTheCanvasWrapper, {})
++        ] })
++      ]
++    }
++  );
++}
++function GridWrapper() {
++  const editor = useEditor();
++  const gridSize = useValue("gridSize", () => editor.getDocumentSettings().gridSize, [editor]);
++  const { x, y, z } = useValue("camera", () => editor.getCamera(), [editor]);
++  const isGridMode = useValue("isGridMode", () => editor.getInstanceState().isGridMode, [editor]);
++  const { Grid } = useEditorComponents();
++  if (!(Grid && isGridMode))
++    return null;
++  return /* @__PURE__ */ jsx(Grid, { x, y, z, size: gridSize });
++}
++function ScribbleWrapper() {
++  const editor = useEditor();
++  const scribbles = useValue("scribbles", () => editor.getInstanceState().scribbles, [editor]);
++  const zoomLevel = useValue("zoomLevel", () => editor.getZoomLevel(), [editor]);
++  const { Scribble } = useEditorComponents();
++  if (!(Scribble && scribbles.length))
++    return null;
++  return /* @__PURE__ */ jsx(Fragment, { children: scribbles.map((scribble) => /* @__PURE__ */ jsx(
++    Scribble,
++    {
++      className: "tl-user-scribble",
++      scribble,
++      zoom: zoomLevel
++    },
++    scribble.id
++  )) });
++}
++function BrushWrapper() {
++  const editor = useEditor();
++  const brush = useValue("brush", () => editor.getInstanceState().brush, [editor]);
++  const { Brush } = useEditorComponents();
++  if (!(Brush && brush))
++    return null;
++  return /* @__PURE__ */ jsx(Brush, { className: "tl-user-brush", brush });
++}
++function ZoomBrushWrapper() {
++  const editor = useEditor();
++  const zoomBrush = useValue("zoomBrush", () => editor.getInstanceState().zoomBrush, [editor]);
++  const { ZoomBrush } = useEditorComponents();
++  if (!(ZoomBrush && zoomBrush))
++    return null;
++  return /* @__PURE__ */ jsx(ZoomBrush, { className: "tl-user-brush tl-zoom-brush", brush: zoomBrush });
++}
++function SnapLinesWrapper() {
++  const editor = useEditor();
++  const lines = useValue("snapLines", () => editor.snaps.getLines(), [editor]);
++  const zoomLevel = useValue("zoomLevel", () => editor.getZoomLevel(), [editor]);
++  const { SnapLine } = useEditorComponents();
++  if (!(SnapLine && lines.length > 0))
++    return null;
++  return /* @__PURE__ */ jsx(Fragment, { children: lines.map((line) => /* @__PURE__ */ jsx(SnapLine, { className: "tl-user-snapline", line, zoom: zoomLevel }, line.id)) });
++}
++const MIN_HANDLE_DISTANCE = 48;
++function HandlesWrapper() {
++  const editor = useEditor();
++  const { Handles } = useEditorComponents();
++  const zoomLevel = useValue("zoomLevel", () => editor.getZoomLevel(), [editor]);
++  const isCoarse = useValue("coarse pointer", () => editor.getInstanceState().isCoarsePointer, [
++    editor
++  ]);
++  const onlySelectedShape = useValue("onlySelectedShape", () => editor.getOnlySelectedShape(), [
++    editor
++  ]);
++  const isChangingStyle = useValue(
++    "isChangingStyle",
++    () => editor.getInstanceState().isChangingStyle,
++    [editor]
++  );
++  const isReadonly = useValue("isChangingStyle", () => editor.getInstanceState().isReadonly, [
++    editor
++  ]);
++  const handles = useValue(
++    "handles",
++    () => {
++      const onlySelectedShape2 = editor.getOnlySelectedShape();
++      if (onlySelectedShape2) {
++        return editor.getShapeHandles(onlySelectedShape2);
++      }
++      return void 0;
++    },
++    [editor]
++  );
++  const transform = useValue(
++    "transform",
++    () => {
++      const onlySelectedShape2 = editor.getOnlySelectedShape();
++      if (onlySelectedShape2) {
++        return editor.getShapePageTransform(onlySelectedShape2);
++      }
++      return void 0;
++    },
++    [editor]
++  );
++  if (!Handles || !onlySelectedShape || isChangingStyle || isReadonly)
++    return null;
++  if (!handles)
++    return null;
++  if (!transform)
++    return null;
++  const handlesToDisplay = [];
++  for (let i = 0, handle = handles[i]; i < handles.length; i++, handle = handles[i]) {
++    if (handle.type !== "vertex") {
++      const prev = handles[i - 1];
++      const next = handles[i + 1];
++      if (prev && next) {
++        if (Math.hypot(prev.y - next.y, prev.x - next.x) < MIN_HANDLE_DISTANCE / zoomLevel) {
++          continue;
++        }
++      }
++    }
++    handlesToDisplay.push(handle);
++  }
++  handlesToDisplay.sort((a) => a.type === "vertex" ? 1 : -1);
++  return /* @__PURE__ */ jsx(Handles, { children: /* @__PURE__ */ jsx("g", { transform: Matrix2d.toCssString(transform), children: handlesToDisplay.map((handle) => {
++    return /* @__PURE__ */ jsx(
++      HandleWrapper,
++      {
++        shapeId: onlySelectedShape.id,
++        handle,
++        zoom: zoomLevel,
++        isCoarse
++      },
++      handle.id
++    );
++  }) }) });
++}
++function HandleWrapper({
++  shapeId,
++  handle,
++  zoom,
++  isCoarse
++}) {
++  const events = useHandleEvents(shapeId, handle.id);
++  const { Handle } = useEditorComponents();
++  if (!Handle)
++    return null;
++  return /* @__PURE__ */ jsx("g", { "aria-label": "handle", transform: `translate(${handle.x}, ${handle.y})`, ...events, children: /* @__PURE__ */ jsx(Handle, { shapeId, handle, zoom, isCoarse }) });
++}
++function ShapesWithSVGs() {
++  const editor = useEditor();
++  const renderingShapes = useValue("rendering shapes", () => editor.getRenderingShapes(), [editor]);
++  return /* @__PURE__ */ jsx(Fragment, { children: renderingShapes.map((result) => /* @__PURE__ */ jsxs(React.Fragment, { children: [
++    /* @__PURE__ */ jsx(Shape, { ...result }),
++    /* @__PURE__ */ jsx(DebugSvgCopy, { id: result.id })
++  ] }, result.id + "_fragment")) });
++}
++function ShapesToDisplay() {
++  const editor = useEditor();
++  const renderingShapes = useValue("rendering shapes", () => editor.getRenderingShapes(), [editor]);
++  return /* @__PURE__ */ jsx(Fragment, { children: renderingShapes.map((result) => /* @__PURE__ */ jsx(Shape, { ...result }, result.id + "_shape")) });
++}
++function SelectedIdIndicators() {
++  const editor = useEditor();
++  const selectedShapeIds = useValue(
++    "selectedShapeIds",
++    () => editor.getCurrentPageState().selectedShapeIds,
++    [editor]
++  );
++  const shouldDisplay = useValue(
++    "should display selected ids",
++    () => {
++      return editor.isInAny(
++        "select.idle",
++        "select.brushing",
++        "select.scribble_brushing",
++        "select.editing_shape",
++        "select.pointing_shape",
++        "select.pointing_selection",
++        "select.pointing_handle"
++      ) && !editor.getInstanceState().isChangingStyle;
++    },
++    [editor]
++  );
++  if (!shouldDisplay)
++    return null;
++  return /* @__PURE__ */ jsx(Fragment, { children: selectedShapeIds.map((id) => /* @__PURE__ */ jsx(ShapeIndicator, { className: "tl-user-indicator__selected", id }, id + "_indicator")) });
++}
++const HoveredShapeIndicator = function HoveredShapeIndicator2() {
++  const editor = useEditor();
++  const { HoveredShapeIndicator: HoveredShapeIndicator3 } = useEditorComponents();
++  const isCoarsePointer = useValue(
++    "coarse pointer",
++    () => editor.getInstanceState().isCoarsePointer,
++    [editor]
++  );
++  const isHoveringCanvas = useValue(
++    "hovering canvas",
++    () => editor.getInstanceState().isHoveringCanvas,
++    [editor]
++  );
++  const hoveredShapeId = useValue("hovered id", () => editor.getCurrentPageState().hoveredShapeId, [
++    editor
++  ]);
++  if (isCoarsePointer || !isHoveringCanvas || !hoveredShapeId || !HoveredShapeIndicator3)
++    return null;
++  return /* @__PURE__ */ jsx(HoveredShapeIndicator3, { shapeId: hoveredShapeId });
++};
++const HintedShapeIndicator = track(function HintedShapeIndicator2() {
++  const editor = useEditor();
++  const ids = dedupe(editor.getHintingShapeIds());
++  if (!ids.length)
++    return null;
++  return /* @__PURE__ */ jsx(Fragment, { children: ids.map((id) => /* @__PURE__ */ jsx(ShapeIndicator, { className: "tl-user-indicator__hint", id }, id + "_hinting")) });
++});
++function Cursor() {
++  return /* @__PURE__ */ jsxs("g", { id: "cursor", children: [
++    /* @__PURE__ */ jsxs("g", { fill: "rgba(0,0,0,.2)", transform: "translate(-11,-11)", children: [
++      /* @__PURE__ */ jsx("path", { d: "m12 24.4219v-16.015l11.591 11.619h-6.781l-.411.124z" }),
++      /* @__PURE__ */ jsx("path", { d: "m21.0845 25.0962-3.605 1.535-4.682-11.089 3.686-1.553z" })
++    ] }),
++    /* @__PURE__ */ jsxs("g", { fill: "white", transform: "translate(-12,-12)", children: [
++      /* @__PURE__ */ jsx("path", { d: "m12 24.4219v-16.015l11.591 11.619h-6.781l-.411.124z" }),
++      /* @__PURE__ */ jsx("path", { d: "m21.0845 25.0962-3.605 1.535-4.682-11.089 3.686-1.553z" })
++    ] }),
++    /* @__PURE__ */ jsxs("g", { fill: "currentColor", transform: "translate(-12,-12)", children: [
++      /* @__PURE__ */ jsx("path", { d: "m19.751 24.4155-1.844.774-3.1-7.374 1.841-.775z" }),
++      /* @__PURE__ */ jsx("path", { d: "m13 10.814v11.188l2.969-2.866.428-.139h4.768z" })
++    ] })
++  ] });
++}
++function CollaboratorHint() {
++  return /* @__PURE__ */ jsx("path", { id: "cursor_hint", fill: "currentColor", d: "M -2,-5 2,0 -2,5 Z" });
++}
++function ArrowheadDot() {
++  return /* @__PURE__ */ jsx("marker", { id: "arrowhead-dot", className: "tl-arrow-hint", refX: "3.0", refY: "3.0", orient: "0", children: /* @__PURE__ */ jsx("circle", { cx: "3", cy: "3", r: "2", strokeDasharray: "100%" }) });
++}
++function ArrowheadCross() {
++  return /* @__PURE__ */ jsxs("marker", { id: "arrowhead-cross", className: "tl-arrow-hint", refX: "3.0", refY: "3.0", orient: "auto", children: [
++    /* @__PURE__ */ jsx("line", { x1: "1.5", y1: "1.5", x2: "4.5", y2: "4.5", strokeDasharray: "100%" }),
++    /* @__PURE__ */ jsx("line", { x1: "1.5", y1: "4.5", x2: "4.5", y2: "1.5", strokeDasharray: "100%" })
++  ] });
++}
++const DebugSvgCopy = track(function DupSvg({ id }) {
++  const editor = useEditor();
++  const shape = editor.getShape(id);
++  const [html, setHtml] = React.useState("");
++  const isInRoot = shape?.parentId === editor.getCurrentPageId();
++  React.useEffect(() => {
++    if (!isInRoot)
++      return;
++    let latest = null;
++    const unsubscribe = react("shape to svg", async () => {
++      const renderId = Math.random();
++      latest = renderId;
++      const bb = editor.getShapePageBounds(id);
++      const el = await editor.getSvg([id], { padding: 0 });
++      if (el && bb && latest === renderId) {
++        el.style.setProperty("overflow", "visible");
++        el.setAttribute("preserveAspectRatio", "xMidYMin slice");
++        el.style.setProperty("transform", `translate(${bb.x}px, ${bb.y + bb.h + 12}px)`);
++        el.style.setProperty("border", "1px solid black");
++        setHtml(el?.outerHTML);
++      }
++    });
++    return () => {
++      latest = null;
++      unsubscribe();
++    };
++  }, [editor, id, isInRoot]);
++  if (!isInRoot)
++    return null;
++  return /* @__PURE__ */ jsx("div", { style: { paddingTop: 12, position: "absolute" }, children: /* @__PURE__ */ jsx("div", { style: { display: "flex" }, dangerouslySetInnerHTML: { __html: html } }) });
++});
++function UiLogger() {
++  const uiLog = useValue("debugging ui log", () => debugFlags.logMessages.get(), [debugFlags]);
++  if (!uiLog.length)
++    return null;
++  return /* @__PURE__ */ jsx("div", { className: "debug__ui-logger", children: uiLog.map((message, messageIndex) => {
++    const text = typeof message === "string" ? message : JSON.stringify(message);
++    return /* @__PURE__ */ jsx("div", { className: "debug__ui-logger__line", children: text }, messageIndex);
++  }) });
++}
++function SelectionForegroundWrapper() {
++  const editor = useEditor();
++  const selectionRotation = useValue("selection rotation", () => editor.getSelectionRotation(), [
++    editor
++  ]);
++  const selectionBounds = useValue(
++    "selection bounds",
++    () => editor.getSelectionRotatedPageBounds(),
++    [editor]
++  );
++  const { SelectionForeground } = useEditorComponents();
++  if (!selectionBounds || !SelectionForeground)
++    return null;
++  return /* @__PURE__ */ jsx(SelectionForeground, { bounds: selectionBounds, rotation: selectionRotation });
++}
++function SelectionBackgroundWrapper() {
++  const editor = useEditor();
++  const selectionRotation = useValue("selection rotation", () => editor.getSelectionRotation(), [
++    editor
++  ]);
++  const selectionBounds = useValue(
++    "selection bounds",
++    () => editor.getSelectionRotatedPageBounds(),
++    [editor]
++  );
++  const { SelectionBackground } = useEditorComponents();
++  if (!selectionBounds || !SelectionBackground)
++    return null;
++  return /* @__PURE__ */ jsx(SelectionBackground, { bounds: selectionBounds, rotation: selectionRotation });
++}
++function OnTheCanvasWrapper() {
++  const { OnTheCanvas } = useEditorComponents();
++  if (!OnTheCanvas)
++    return null;
++  return /* @__PURE__ */ jsx(OnTheCanvas, {});
++}
++function InFrontOfTheCanvasWrapper() {
++  const { InFrontOfTheCanvas } = useEditorComponents();
++  if (!InFrontOfTheCanvas)
++    return null;
++  return /* @__PURE__ */ jsx(InFrontOfTheCanvas, {});
++}
++export {
++  Canvas,
++  InFrontOfTheCanvasWrapper,
++  OnTheCanvasWrapper,
++  SelectionBackgroundWrapper,
++  SelectionForegroundWrapper
++};
++//# sourceMappingURL=Canvas.mjs.map
 diff --git a/node_modules/@cmpd/editor/dist-esm/lib/components/LiveCollaborators.mjs b/node_modules/@cmpd/editor/dist-esm/lib/components/LiveCollaborators.mjs
 index 865c753..9e631f5 100644
 --- a/node_modules/@cmpd/editor/dist-esm/lib/components/LiveCollaborators.mjs
@@ -251,25 +1180,6 @@ index beccefa..f2674b7 100644
                break;
              }
              case "key_repeat": {
-diff --git a/node_modules/@cmpd/editor/dist-esm/lib/hooks/useCanvasEvents.mjs b/node_modules/@cmpd/editor/dist-esm/lib/hooks/useCanvasEvents.mjs
-index 61e1939..6c189e0 100644
---- a/node_modules/@cmpd/editor/dist-esm/lib/hooks/useCanvasEvents.mjs
-+++ b/node_modules/@cmpd/editor/dist-esm/lib/hooks/useCanvasEvents.mjs
-@@ -90,14 +90,10 @@ function useCanvasEvents() {
-         ;
-         e.isKilled = true;
-         document.body.click();
--        preventDefault(e);
-       }
-       function onTouchEnd(e) {
-         ;
-         e.isKilled = true;
--        if (e.target.tagName !== "A" && e.target.tagName !== "TEXTAREA") {
--          preventDefault(e);
--        }
-       }
-       function onDragOver(e) {
-         preventDefault(e);
 diff --git a/node_modules/@cmpd/editor/dist-esm/lib/hooks/useGestureEvents.mjs b/node_modules/@cmpd/editor/dist-esm/lib/hooks/useGestureEvents.mjs
 index e6a1429..6fd6cd4 100644
 --- a/node_modules/@cmpd/editor/dist-esm/lib/hooks/useGestureEvents.mjs
@@ -384,25 +1294,3 @@ index 390a3a4..7e7d0f5 100644
  							break
  						}
  						case 'key_repeat': {
-diff --git a/node_modules/@cmpd/editor/src/lib/hooks/useCanvasEvents.ts b/node_modules/@cmpd/editor/src/lib/hooks/useCanvasEvents.ts
-index 1633708..2f6648f 100644
---- a/node_modules/@cmpd/editor/src/lib/hooks/useCanvasEvents.ts
-+++ b/node_modules/@cmpd/editor/src/lib/hooks/useCanvasEvents.ts
-@@ -100,17 +100,10 @@ export function useCanvasEvents() {
- 				// todo: investigate whether this effects keyboard shortcuts
- 				// god damn it, but necessary for long presses to open the context menu
- 				document.body.click()
--				preventDefault(e)
- 			}
- 
- 			function onTouchEnd(e: React.TouchEvent) {
- 				;(e as any).isKilled = true
--				if (
--					(e.target as HTMLElement).tagName !== 'A' &&
--					(e.target as HTMLElement).tagName !== 'TEXTAREA'
--				) {
--					preventDefault(e)
--				}
- 			}
- 
- 			function onDragOver(e: React.DragEvent<Element>) {

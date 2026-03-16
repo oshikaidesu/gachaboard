@@ -1,6 +1,7 @@
 "use client";
 
-import type { TLRecord } from "@cmpd/tlschema";
+import type { Editor } from "@cmpd/editor";
+import type { TLRecord, TLShapeId } from "@cmpd/tlschema";
 import type { MutableRefObject, RefObject } from "react";
 import { useEffect, useState } from "react";
 import * as Y from "yjs";
@@ -29,6 +30,7 @@ type UseYjsSyncOptions = {
   wsUrl: string;
   ydoc: Y.Doc | null;
   getStoreRef: RefObject<() => StoreLike>;
+  getEditorRef?: RefObject<Editor | null>;
   setConnectionStatusRef: RefObject<(s: "online" | "offline") => void>;
   setStatusRef: RefObject<(s: "loading" | "synced-remote") => void>;
   setErrorRef: RefObject<(err: Error | null) => void>;
@@ -48,6 +50,7 @@ export function useYjsSync({
   wsUrl,
   ydoc,
   getStoreRef,
+  getEditorRef,
   setConnectionStatusRef,
   setStatusRef,
   setErrorRef,
@@ -178,10 +181,15 @@ export function useYjsSync({
         if (updated.length === 1) {
           const [, to] = updated[0];
           const shape = to as { id: string; x: number; y: number };
+          const editor = getEditorRef?.current ?? null;
+          const { x, y } =
+            editor != null
+              ? editor.getShapePageTransform(shape.id as TLShapeId).point()
+              : { x: shape.x, y: shape.y };
           prov.awareness?.setLocalStateField("dragging", {
             shapeId: shape.id,
-            x: shape.x,
-            y: shape.y,
+            x,
+            y,
           });
         }
       } else {

@@ -3,7 +3,7 @@
 /**
  * 他ユーザーがドラッグ中のシェイプをリアルタイムで表示する軽量ゴースト。
  * meta.dragging（awareness）のみを使用し、Y.Doc 同期はドロップ時のみ。
- * 元のシェイプのジオメトリ（サイズ・回転）を参照する。
+ * 元のシェイプのジオメトリ（サイズ）を参照する。
  */
 import type { TLShapeId } from "@cmpd/tlschema";
 import { toDomPrecision, useEditor, useTransform } from "@cmpd/editor";
@@ -52,26 +52,25 @@ const GHOST_OPACITY = 0.35;
 
 function GhostShape({
   shapeId,
-  x,
-  y,
+  topLeftX,
+  topLeftY,
   color,
 }: {
   shapeId: TLShapeId;
-  x: number;
-  y: number;
+  topLeftX: number;
+  topLeftY: number;
   color: string;
 }) {
   const editor = useEditor();
   const rSvg = useRef<SVGSVGElement>(null);
 
   const geometry = editor.getShapeGeometry(shapeId);
-  const pageTransform = editor.getShapePageTransform(shapeId);
   const bounds = geometry?.bounds;
-  const rotation = pageTransform?.rotation() ?? 0;
-
-  useTransform(rSvg, x, y, 1, rotation);
 
   if (!bounds || bounds.w <= 0 || bounds.h <= 0) return null;
+
+  // dragging は shape origin の page 座標。ゴーストはページ上のシェイプなのでズームに合わせてスケール（1/zoom は不要）
+  useTransform(rSvg, topLeftX, topLeftY);
 
   return (
     <svg
@@ -92,17 +91,23 @@ function GhostShape({
 }
 
 function PeerDraggingGhost({ userId }: { userId: string }) {
+  const editor = useEditor();
   const presence = usePresence(userId);
   const dragging = (presence?.meta as { dragging?: { shapeId: string; x: number; y: number } | null })
     ?.dragging;
   if (!presence || !dragging?.shapeId) return null;
 
   const color = getSafeColor(presence.color) ?? "#888888";
+  const bounds = editor.getShapeGeometry(dragging.shapeId as TLShapeId)?.bounds;
+  // dragging は shape origin の page 座標。bounds は geometry の local オフセット（y は座標系で反転するため減算）
+  const topLeftX = dragging.x + (bounds?.x ?? 0);
+  const topLeftY = dragging.y - (bounds?.y ?? 0);
+
   return (
     <GhostShape
       shapeId={dragging.shapeId as TLShapeId}
-      x={dragging.x}
-      y={dragging.y}
+      topLeftX={topLeftX}
+      topLeftY={topLeftY}
       color={color}
     />
   );
