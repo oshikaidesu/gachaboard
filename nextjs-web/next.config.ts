@@ -1,13 +1,12 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 import "./src/lib/env";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@hocuspocus/provider"],
-  output: "standalone",
-  // マルチ lockfile 環境でのパス解決を安定させる
-  outputFileTracingRoot: path.resolve(process.cwd()),
+  // Docker ビルド時のみ standalone 出力（next start は standalone 非互換のため、
+  // ホスト実行時は通常ビルドを使用する）
+  ...(process.env.DOCKER_BUILD === "1" && { output: "standalone" as const }),
   // 開発時のターミナル出力を抑える
   logging: {
     incomingRequests: false,

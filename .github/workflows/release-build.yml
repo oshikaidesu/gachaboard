@@ -35,7 +35,7 @@ jobs:
             -x ".env" \
             -x ".git/*" \
             -x ".cursor/*" \
-            -x "Caddyfile" \
+            -x "config/Caddyfile" \
             -x "*.zip"
 
       - name: Upload artifact

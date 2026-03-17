@@ -91,6 +91,7 @@ services:
       - "${HOST_BIND:-127.0.0.1}:${PORT:-18580}:3000"
     env_file: .env
     environment:
+      PORT: "3000"
       DATABASE_URL: postgresql://gachaboard:gachaboard@postgres:5432/gachaboard
       S3_ENDPOINT: http://minio:9000
       SYNC_SERVER_INTERNAL_URL: http://sync-server:5858

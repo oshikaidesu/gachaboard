@@ -20,12 +20,10 @@ scripts/
 │   ├── common.sh         # Docker 起動、ポート解放、ブラウザ起動など
 │   └── sync-env-ports.sh # ポート変数から .env を自動同期
 ├── start/        # 起動スクリプト
+│   ├── launcher.sh      # 起動ランチャー（Mac/Windows 共用・モード選択）
 │   ├── tailscale.sh     # Tailscale モード（--dev, --reset）
 │   ├── local.sh         # ローカルモード（--dev, --reset）
-│   ├── production.sh    # 本番（Mac/Linux）
-│   ├── start.ps1        # 起動メニュー（Windows）
-│   ├── production.ps1   # 本番（Windows）
-│   └── production.bat   # 本番（Windows・BAT ラッパー）
+│   └── production.sh    # 本番（Mac/Linux）
 ├── systemd/      # 自動再起動用（Linux）
 │   └── gachaboard-web.service.example  # systemd ユニットの例（docs/user/AUTO-RESTART.md 参照）
 └── setup/        # セットアップスクリプト
@@ -49,8 +47,7 @@ bash scripts/setup/env.sh
 
 ### Windows での起動
 
-- **start.bat**（プロジェクトルート）: ダブルクリックで起動。内部で `scripts/start/start.ps1` を実行（実行ポリシー不要）。
-- **production.bat**（scripts/start/）: 本番モードのみ・Bash 不要。Git 未導入の環境向け。
+- **start.bat**（プロジェクトルート）: ダブルクリックで WSL2 を起動し、`launcher.sh` → `tailscale.sh` を実行。WSL2 が必須。
 
 ### 必須ツールの事前チェック
 
@@ -61,4 +58,4 @@ bash scripts/setup/env.sh
 
 ### Tailscale モード起動時
 
-`tailscale.sh` 実行時に `setup/tailscale-https.sh` を自動実行し、Caddyfile を `.env`（正本は `.env.local`）のポートに合わせて更新します。Caddy は別途 `caddy run --config Caddyfile` で起動してください。
+`tailscale.sh` 実行時に `setup/tailscale-https.sh` を自動実行し、Caddyfile を `.env`（正本は `.env.local`）のポートに合わせて更新します。Caddy は別途 `caddy run --config config/Caddyfile` で起動してください。

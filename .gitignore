@@ -1,7 +1,10 @@
 # 自動生成（scripts/setup/tailscale-https.sh で上書き）
 Caddyfile
+config/Caddyfile
 
-# 起動ロック（二重起動防止）
+# ランタイム（起動ロック、Docker WSL 設定）
+.gachaboard/
+.docker-wsl2
 .gachaboard-start.lock
 
 # 環境変数（シークレット含む）
@@ -20,5 +23,9 @@ node_modules/
 # sync-server 永続化（SQLite）
 nextjs-web/sync-server/sync-data/
 
-# Docker データ保存先（GACHABOARD_DATA_DIR 未設定時の ./data）
+# Docker データ保存先（./data）
 data/
+
+# デバッグ・テスト用ログ
+tailscale-*.log
+tailscale-*.txt

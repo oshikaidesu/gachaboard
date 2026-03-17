@@ -1,0 +1,2 @@
+# config/ - 設定ファイル
+# Caddyfile は npm run setup:tailscale-https で自動生成（.gitignore）

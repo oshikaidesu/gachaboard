@@ -46,7 +46,7 @@ bash scripts/setup/tailscale-https.sh
 
 ```bash
 brew install caddy
-caddy run --config Caddyfile
+caddy run --config config/Caddyfile
 ```
 （プロジェクトルートで実行）
 
@@ -63,7 +63,7 @@ brew install caddy
 
 ### 2. Caddyfile を作成
 
-プロジェクトルートに `Caddyfile` を作成。Caddy 2.5+ なら `tls` 指定不要（自動取得）:
+`config/Caddyfile` を作成。Caddy 2.5+ なら `tls` 指定不要（自動取得）:
 
 ポートは `.env` の `PORT`（Next.js）、`SYNC_SERVER_HOST_PORT`（sync-server）、`MINIO_API_HOST_PORT`（MinIO）に合わせてください。デフォルトは 18580 / 18582 / 18583 です。
 
@@ -114,13 +114,13 @@ S3_PUBLIC_URL=https://<hostname>.ts.net/minio
 3. Caddy を起動（HTTPS:443 で待ち受け。プロジェクトルートで）:
 
    ```bash
-   caddy run --config Caddyfile
+   caddy run --config config/Caddyfile
    ```
 
   バックグラウンドで動かす場合:
 
    ```bash
-   caddy start --config Caddyfile
+   caddy start --config config/Caddyfile
    ```
 
 4. ブラウザで `https://<hostname>.ts.net` にアクセス
@@ -155,7 +155,7 @@ https://<hostname>.ts.net/api/auth/callback/discord
 macOS では 1024 未満のポート利用に管理者権限が必要な場合があります:
 
 ```bash
-sudo caddy run --config Caddyfile
+sudo caddy run --config config/Caddyfile
 ```
 
 または、別ポート（例: 8443）で待ち受けて Tailscale の Funnel やポートフォワードで利用する方法もあります。

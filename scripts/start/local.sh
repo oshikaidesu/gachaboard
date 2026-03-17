@@ -25,6 +25,13 @@ echo "=== Gachaboard 起動（ローカルモード）==="
 check_required || exit 1
 check_env_exists "$ROOT_DIR" || exit 1
 ensure_env_symlink "$ROOT_DIR"
+check_discord_env "$ROOT_DIR" || exit 1
+
+if [[ ! -d "$ROOT_DIR/nextjs-web/node_modules" ]]; then
+  echo ">>> nextjs-web の依存をインストールしています（初回のみ）..."
+  (cd "$ROOT_DIR/nextjs-web" && npm install) || exit 1
+  echo ""
+fi
 
 echo ">>> 1. ポート変数を同期"
 bash "$SCRIPTS_DIR/lib/sync-env-ports.sh" 2>/dev/null || true
@@ -32,6 +39,7 @@ echo ">>> 2. env をローカル用に切り替え"
 cd nextjs-web
 bash scripts/switch-env.sh local
 cd "$ROOT_DIR"
+sync_env_to_root "$ROOT_DIR"
 
 echo ">>> 3. 依存サービス起動 (PostgreSQL, MinIO, Sync Server)"
 if [[ "$DO_RESET" == true ]]; then
@@ -94,6 +102,7 @@ fi
 
 echo ""
 echo "アクセスURL: $APP_URL"
+echo "Discord でログインするには: Discord Developer Portal → OAuth2 → Redirects に追加: $APP_URL/api/auth/callback/discord"
 echo "終了: Ctrl+C"
 echo "開発モード: bash scripts/start/local.sh --dev"
 echo "リセット＆再起動: bash scripts/start/local.sh --reset"

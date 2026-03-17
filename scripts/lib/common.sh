@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # 起動スクリプト共通処理
 
+# WSL2 かどうか判定
+_is_wsl2() {
+  [[ -f /proc/version ]] && grep -qi microsoft /proc/version 2>/dev/null
+}
+
 # 必須ツールの存在チェック。未インストールなら催促して return 1
+# WSL2 の場合、自動インストールを案内・実行する
 # 使用: check_required [tailscale] || exit 1
 #   tailscale … Tailscale モード用に tailscale コマンドも必須にする
 check_required() {
@@ -12,13 +18,11 @@ check_required() {
   done
 
   command -v docker >/dev/null 2>&1 || missing+=("docker")
-  # node と npm はセットで判定（node がなければ npm も表示不要）
   if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
     missing+=("node")
   fi
   command -v curl >/dev/null 2>&1 || missing+=("curl")
   [[ "$need_tailscale" == true ]] && { command -v tailscale >/dev/null 2>&1 || missing+=("tailscale"); }
-  # Caddy は必須にしない（Tailscale Serve で HTTPS する場合は不要）
 
   if [[ ${#missing[@]} -gt 0 ]]; then
     echo ""
@@ -30,10 +34,50 @@ check_required() {
     for m in "${missing[@]}"; do
       case "$m" in
         node) echo "     - Node.js（npm 同梱）" ;;
+        tailscale) echo "     - Tailscale（tailscale CLI）" ;;
         *)    echo "     - $m" ;;
       esac
     done
     echo ""
+
+    # WSL2: 自動インストールを実行（プロンプトなし、start.bat から一発起動）
+    if _is_wsl2; then
+      if [[ "${CHECK_REQUIRED_INSTALL_ATTEMPTED:-0}" == "1" ]]; then
+        echo "  インストール後も不足があります。手動で docs/user/WSL2-SETUP.md を参照してください。"
+        echo "============================================"
+        echo ""
+        return 1
+      fi
+      echo "  📦 不足しているツールをインストールしています..."
+      echo "     詳細: docs/user/WSL2-SETUP.md"
+      echo ""
+      export CHECK_REQUIRED_INSTALL_ATTEMPTED=1
+      local root_dir="${GACHABOARD_ROOT:-.}"
+      local setup_script="${root_dir}/scripts/setup/wsl2-install-deps.sh"
+      if [[ -f "$setup_script" ]]; then
+        local install_ok=false
+        for p in /mnt/c/Windows/System32/wsl.exe /mnt/c/WINDOWS/System32/wsl.exe; do
+          if [[ -x "$p" ]]; then
+            "$p" -u root -e bash -c "cd \"$root_dir\" && bash scripts/setup/wsl2-install-deps.sh" && install_ok=true
+            break
+          fi
+        done
+        [[ "$install_ok" != true ]] && bash "$setup_script" && install_ok=true
+        if [[ "$install_ok" == true ]]; then
+          echo ""
+          echo "  インストール完了。起動を再試行します..."
+          echo "============================================"
+          echo ""
+          check_required "$@"
+          return $?
+        fi
+      else
+        echo "  セットアップスクリプトが見つかりません: $setup_script"
+      fi
+      echo "============================================"
+      echo ""
+      return 1
+    fi
 
     local step=1
     if [[ "$(uname)" == "Darwin" ]]; then
@@ -51,9 +95,10 @@ check_required() {
           curl)      echo "  ${step}) curl をインストール（通常はプリインストール）"
                      echo "     brew install curl"
                      echo ""; step=$((step+1)) ;;
-          tailscale) echo "  ${step}) Tailscale をインストール"
+          tailscale) echo "  ${step}) Tailscale CLI をインストール"
                      echo "     brew install tailscale"
-                     echo "     または https://tailscale.com/download"
+                     echo "     インストール後、ターミナルで tailscale コマンドが使えます。"
+                     echo "     https://tailscale.com/download"
                      echo ""; step=$((step+1)) ;;
         esac
       done
@@ -71,8 +116,9 @@ check_required() {
           curl)      echo "  ${step}) curl をインストール"
                      echo "     sudo apt install curl  # Debian/Ubuntu"
                      echo ""; step=$((step+1)) ;;
-          tailscale) echo "  ${step}) Tailscale をインストール"
-                     echo "     https://tailscale.com/download"
+          tailscale) echo "  ${step}) Tailscale CLI をインストール"
+                     echo "     https://tailscale.com/download で配布元に合わせてインストール"
+                     echo "     （Debian/Ubuntu: 公式リポジトリ追加後 apt install tailscale）"
                      echo ""; step=$((step+1)) ;;
         esac
       done
@@ -88,6 +134,47 @@ check_required() {
     return 1
   fi
   echo "✓ 必須ツール インストール確認済み"
+  return 0
+}
+
+# Discord ログインに必要な env が nextjs-web/.env.local に設定されているか確認
+# 未設定なら案内して return 1（Callback エラーを起動前に防ぐ）
+# 使用: check_discord_env "$ROOT_DIR" || exit 1
+check_discord_env() {
+  local root_dir="${1:-.}"
+  local env_file="${root_dir}/nextjs-web/.env.local"
+  [[ -f "$env_file" ]] || [[ -L "$env_file" ]] || return 0
+
+  local missing=()
+  _get_env_val() {
+    grep -E "^${1}=" "$env_file" 2>/dev/null | cut -d= -f2- | tr -d '"\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+  }
+  [[ -n "$(_get_env_val NEXTAUTH_SECRET)" ]]    || missing+=("NEXTAUTH_SECRET")
+  [[ -n "$(_get_env_val DISCORD_CLIENT_ID)" ]]  || missing+=("DISCORD_CLIENT_ID")
+  [[ -n "$(_get_env_val DISCORD_CLIENT_SECRET)" ]] || missing+=("DISCORD_CLIENT_SECRET")
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    echo ""
+    echo "============================================"
+    echo "  ❌ Discord ログインに必要な設定が未入力です"
+    echo "============================================"
+    echo ""
+    echo "  未設定: $(IFS=,; echo "${missing[*]}")"
+    echo ""
+    echo "  nextjs-web/.env.local を開いて以下を入力してください:"
+    echo "    - NEXTAUTH_SECRET … セッション暗号化用（英数字32文字程度でOK）"
+    echo "    - DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET … Discord Developer Portal で取得"
+    echo ""
+    echo "  初回セットアップ: プロジェクトルートで npm run setup:env を実行"
+    echo "  詳細: docs/user/SETUP.md または docs/user/discord-auth-troubleshooting.md"
+    echo ""
+    echo "============================================"
+    if [[ -t 0 ]]; then
+      echo "Enter キーを押すと終了します..."
+      read -r
+    fi
+    return 1
+  fi
   return 0
 }
 
@@ -120,15 +207,17 @@ check_env_exists() {
   return 0
 }
 
-# プロジェクトルートの .env が nextjs-web/.env.local へのシンボリックリンクか確認し、
-# 通常ファイルになっていたら修復する（二重管理で env が食い違う問題を防止）
+# .env (root) を nextjs-web/.env.local へのシンボリックリンクにする。
+# Mac / Linux / WSL2 共通。1ファイルで管理し二重管理を防ぐ。
 # 使用: ensure_env_symlink "$ROOT_DIR"
+ROOT_ONLY_KEYS=""
+
 ensure_env_symlink() {
   local root_dir="${1:-.}"
   local env_local="${root_dir}/nextjs-web/.env.local"
   local env_root="${root_dir}/.env"
 
-  [[ -f "$env_local" ]] || return 0
+  [[ -f "$env_local" ]] || [[ -L "$env_local" ]] || return 0
 
   if [[ -L "$env_root" ]]; then
     return 0
@@ -136,15 +225,56 @@ ensure_env_symlink() {
 
   if [[ -f "$env_root" ]]; then
     echo ">>> .env が通常ファイルです。シンボリックリンクに修復します..."
-    cp "$env_root" "$env_local"
-    rm "$env_root"
-    ln -s "nextjs-web/.env.local" "$env_root"
-    echo "    ✓ .env → nextjs-web/.env.local シンボリックリンク復元"
-    return 0
+    for key in $ROOT_ONLY_KEYS; do
+      local val
+      val=$(grep -E "^[[:space:]]*${key}=" "$env_root" 2>/dev/null | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -d '\"\\r')
+      [[ -z "$val" ]] && continue
+      grep -qE "^[[:space:]]*${key}=" "$env_local" 2>/dev/null || echo "${key}=${val}" >> "$env_local"
+    done
+    rm -f "$env_root"
   fi
 
-  ln -s "nextjs-web/.env.local" "$env_root"
+  ln -sf "nextjs-web/.env.local" "$env_root"
   echo "    ✓ .env → nextjs-web/.env.local シンボリックリンク作成"
+}
+
+# switch-env.sh 実行後、.env.local の変更を root .env に反映する。
+# シンボリックリンク時は同一ファイルなので不要。コピー方式（Windows で symlink 不可）のときのみ必要。
+sync_env_to_root() {
+  local root_dir="${1:-.}"
+  local env_local="${root_dir}/nextjs-web/.env.local"
+  local env_root="${root_dir}/.env"
+  [[ -f "$env_local" ]] || return 0
+  [[ -L "$env_root" ]] && return 0
+  cp "$env_local" "$env_root"
+}
+
+# Tailscale ホスト名を取得（jq 不要）
+# TAILSCALE_HOST が設定済みならそれを使い、未設定なら tailscale status から自動検出
+detect_tailscale_host() {
+  if [[ -n "${TAILSCALE_HOST:-}" ]]; then
+    echo "$TAILSCALE_HOST"
+    return 0
+  fi
+  if ! command -v tailscale >/dev/null 2>&1; then
+    return 1
+  fi
+  local json
+  json=$(tailscale status --json --peers=false 2>/dev/null) || return 1
+  [[ -z "$json" ]] && return 1
+
+  local dns
+  if command -v jq >/dev/null 2>&1; then
+    dns=$(echo "$json" | jq -r '.Self.DNSName // empty')
+  else
+    dns=$(echo "$json" | grep -o '"DNSName"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+  fi
+
+  if [[ -n "$dns" && "$dns" != "null" ]]; then
+    echo "${dns%.}"
+    return 0
+  fi
+  return 1
 }
 
 # Docker Engine が応答するか（docker info で CLI 経由の接続を確認）
@@ -152,14 +282,28 @@ _docker_engine_alive() {
   docker info >/dev/null 2>&1
 }
 
-# PostgreSQL が接続を受け付けるまで待つ（最大60秒）
-# docker compose up -d 直後は DB がまだ立ち上がっていないため、Next 起動前に必須
+# PostgreSQL が接続を受け付けるまで待つ
+# 本質: コンテナ稼働後に pg_isready で判定（Docker health は補助）。Windows でも確実に通す。
 # 使用: wait_for_postgres || exit 1
 wait_for_postgres() {
-  local max=60
+  local max=300
   echo "    PostgreSQL の起動を待機中..."
   for i in $(seq 1 "$max"); do
+    # コンテナが存在しない・未稼働のときは docker exec を叩かずスキップ（エラー抑制）
+    local running
+    running=$(docker inspect -f '{{.State.Running}}' compound-postgres 2>/dev/null || echo "false")
+    if [[ "$running" != "true" ]]; then
+      sleep 1
+      continue
+    fi
+    # 接続可能なら完了（判定の主体は pg_isready。health は参考）
     if docker exec compound-postgres pg_isready -U gachaboard -q 2>/dev/null; then
+      echo "    ✓ PostgreSQL 準備完了 (${i}秒)"
+      return 0
+    fi
+    local status
+    status=$(docker inspect -f '{{.State.Health.Status}}' compound-postgres 2>/dev/null || true)
+    if [[ "$status" == "healthy" ]]; then
       echo "    ✓ PostgreSQL 準備完了 (${i}秒)"
       return 0
     fi
@@ -173,8 +317,9 @@ wait_for_postgres() {
 # 使用: apply_prisma_schema "$ROOT_DIR"
 apply_prisma_schema() {
   local root_dir="${1:-.}"
+  local web_dir="${root_dir}/nextjs-web"
   echo ">>> スキーマ適用 (prisma generate / db push)"
-  (cd "${root_dir}/nextjs-web" && npx prisma generate && npx prisma db push)
+  (cd "$web_dir" && npx prisma generate && npx prisma db push)
 }
 
 # macOS: Docker Desktop を完全終了→再起動→Engine 準備完了まで待つ
@@ -228,16 +373,58 @@ run_docker_compose_up() {
           fi
         done
       fi
+    elif _is_wsl2; then
+      echo ""
+      echo ">>> Docker Engine が未起動です。起動しています..."
+      for p in /mnt/c/Windows/System32/wsl.exe /mnt/c/WINDOWS/System32/wsl.exe; do
+        if [[ -x "$p" ]]; then
+          "$p" -u root -e service docker start 2>/dev/null || true
+          break
+        fi
+      done
+      echo "    Engine の起動を待機中（最大60秒）..."
+      for i in $(seq 1 60); do
+        if _docker_engine_alive; then
+          echo "    ✓ Docker Engine 起動完了 (${i}秒)"
+          break
+        fi
+        sleep 1
+        if [[ $i -eq 60 ]]; then
+          echo ""
+          echo "❌ Docker に接続できません。WSL で sudo service docker start を実行してください。"
+          return 1
+        fi
+      done
     else
       echo ""
-      echo "❌ Docker に接続できません。Docker Desktop を起動してから再試行してください。"
-      echo "   macOS: open -a Docker"
+      echo "❌ Docker に接続できません。Docker を起動してから再試行してください。"
       return 1
     fi
   fi
 
-  # 2. 古いコンテナを掃除してから docker compose up -d --build を実行（最大3回リトライ、5秒間隔）
-  # --build: sync-server 等のイメージを必要に応じてリビルド（コード変更後も古いイメージのまま起動しない）
+  # 2. データは常にプロジェクト直下 ./data（オプション廃止）
+  local root="${GACHABOARD_ROOT:-.}"
+  if _is_wsl2; then
+    export PATH="/usr/bin:$PATH"
+    [[ -n "$root" ]] && {
+      mkdir -p "${root}/.gachaboard/docker-wsl2"
+      [[ ! -f "${root}/.gachaboard/docker-wsl2/config.json" ]] && echo '{}' > "${root}/.gachaboard/docker-wsl2/config.json"
+      export DOCKER_CONFIG="${root}/.gachaboard/docker-wsl2"
+    }
+    export DOCKER_BUILDKIT=0
+    if [[ "$root" == /mnt/d/* ]]; then
+      export GACHABOARD_DATA_DIR="/mnt/d/gachaboard-data"
+    elif [[ "$root" == /mnt/* ]]; then
+      export GACHABOARD_DATA_DIR="$HOME/gachaboard-data"
+    else
+      export GACHABOARD_DATA_DIR="${root}/data"
+    fi
+  else
+    export GACHABOARD_DATA_DIR="${root}/data"
+  fi
+  mkdir -p "$GACHABOARD_DATA_DIR"
+
+  # 3. 古いコンテナを掃除してから docker compose up -d --build を実行
   docker compose down --remove-orphans 2>/dev/null || true
 
   local attempt=1
@@ -264,6 +451,10 @@ run_docker_compose_up() {
         if ! _restart_docker_desktop; then
           return 1
         fi
+      elif _is_wsl2; then
+        for p in /mnt/c/Windows/System32/wsl.exe /mnt/c/WINDOWS/System32/wsl.exe; do
+          [[ -x "$p" ]] && "$p" -u root -e service docker start 2>/dev/null; break
+        done
       else
         echo ""
         echo "❌ Docker Engine に接続できません。Docker を起動してから再試行してください。"
@@ -278,8 +469,6 @@ run_docker_compose_up() {
 }
 
 # 指定ポートを解放（既存の Next.js を停止）
-# 使用: kill_app_port または kill_app_port 3010
-# 環境変数 PORT または第1引数。未指定時は 18580
 kill_app_port() {
   local port="${1:-${PORT:-18580}}"
   if command -v lsof >/dev/null 2>&1; then
@@ -334,6 +523,13 @@ open_app_url() {
     esac
     # 前面がブラウザでない、または失敗した場合は通常の open（新タブで開く）
     open "$url"
+  elif [[ -f /proc/version ]] && grep -qi microsoft /proc/version 2>/dev/null; then
+    for p in /mnt/c/Windows/System32/cmd.exe /mnt/c/WINDOWS/System32/cmd.exe; do
+      if [[ -x "$p" ]]; then
+        "$p" /c start "" "$url" 2>/dev/null && return 0
+        break
+      fi
+    done
   elif command -v xdg-open >/dev/null 2>&1; then
     xdg-open "$url"
   elif command -v open >/dev/null 2>&1; then

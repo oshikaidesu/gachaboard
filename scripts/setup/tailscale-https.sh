@@ -11,21 +11,33 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SCRIPTS_DIR="$(dirname "$SCRIPT_DIR")"
 ROOT_DIR="$(dirname "$SCRIPTS_DIR")"
-CADDYFILE="${ROOT_DIR}/Caddyfile"
+mkdir -p "${ROOT_DIR}/config"
+CADDYFILE="${ROOT_DIR}/config/Caddyfile"
+# 旧配置からの移行（ルートの Caddyfile があれば config/ へ）
+[[ -f "${ROOT_DIR}/Caddyfile" ]] && [[ ! -f "$CADDYFILE" ]] && mv "${ROOT_DIR}/Caddyfile" "$CADDYFILE"
 
-# ホスト名取得
+# ホスト名取得（jq がなくても grep/sed で動作）
 get_hostname() {
   if [[ -n "${TAILSCALE_HOST:-}" ]]; then
     echo "${TAILSCALE_HOST}"
     return 0
   fi
-  if command -v tailscale >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
-    local dns
-    dns=$(tailscale status --json --peers=false 2>/dev/null | jq -r '.Self.DNSName // empty')
-    if [[ -n "$dns" && "$dns" != "null" ]]; then
-      echo "${dns%.}"
-      return 0
-    fi
+  if ! command -v tailscale >/dev/null 2>&1; then
+    return 1
+  fi
+  local json
+  json=$(tailscale status --json --peers=false 2>/dev/null) || return 1
+  [[ -z "$json" ]] && return 1
+
+  local dns
+  if command -v jq >/dev/null 2>&1; then
+    dns=$(echo "$json" | jq -r '.Self.DNSName // empty')
+  else
+    dns=$(echo "$json" | grep -o '"DNSName"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+  fi
+  if [[ -n "$dns" && "$dns" != "null" ]]; then
+    echo "${dns%.}"
+    return 0
   fi
   return 1
 }

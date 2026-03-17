@@ -33,14 +33,6 @@
 
 **自動同期**: `PORT`、`POSTGRES_HOST_PORT`、`SYNC_SERVER_HOST_PORT`、`MINIO_API_HOST_PORT` を編集するだけで、`DATABASE_URL`、`S3_*`、`NEXT_PUBLIC_SYNC_WS_URL` 等は `npm run setup:env` および起動時に自動反映されます。手動で合わせる必要はありません。
 
-### Docker データ保存先（.env の一か所で変更可）
-
-| 変数 | 設定場所 | デフォルト | 説明 |
-|------|----------|------------|------|
-| `GACHABOARD_DATA_DIR` | `.env`（プロジェクトルート） | `./data` | PostgreSQL・MinIO・sync-server の永続データを置くディレクトリ。**未設定時はプロジェクト直下の `./data`**。D ドライブにまとめたい場合は `D:\gachaboard-data` など絶対パスを指定。編集するのはこの1つだけ。 |
-
-既に名前付きボリュームで運用している場合、初回は空のディレクトリが使われます。既存データを引き継ぎたい場合は、旧ボリュームの中身を `GACHABOARD_DATA_DIR` で指定したパスにコピーしてから起動してください。
-
 ### 開発用（Next.js）
 
 | 変数名 | デフォルト | 説明 |

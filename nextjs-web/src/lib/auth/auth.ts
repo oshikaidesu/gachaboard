@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 
 export const authOptions: NextAuthOptions = {
+  debug: process.env.NODE_ENV !== "production",
   secret: env.NEXTAUTH_SECRET,
   // @ts-expect-error v4 型定義に trustHost がないが proxy 配下では必要
   trustHost: true,
@@ -35,19 +36,24 @@ export const authOptions: NextAuthOptions = {
           ? `https://cdn.discordapp.com/avatars/${p.id}/${p.avatar}.png`
           : null;
 
-        const user = await db.user.upsert({
-          where: { discordId: p.id },
-          update: {
-            discordName: p.global_name ?? p.username,
-            avatarUrl: token.avatarUrl as string | null,
-          },
-          create: {
-            discordId: p.id,
-            discordName: p.global_name ?? p.username,
-            avatarUrl: token.avatarUrl as string | null,
-          },
-        });
-        token.sub = user.id;
+        try {
+          const user = await db.user.upsert({
+            where: { discordId: p.id },
+            update: {
+              discordName: p.global_name ?? p.username,
+              avatarUrl: token.avatarUrl as string | null,
+            },
+            create: {
+              discordId: p.id,
+              discordName: p.global_name ?? p.username,
+              avatarUrl: token.avatarUrl as string | null,
+            },
+          });
+          token.sub = user.id;
+        } catch (err) {
+          console.error("[auth] db.user.upsert failed:", err);
+          throw err;
+        }
       }
       // ワークスペース一覧: SERVER_OWNER_DISCORD_ID 未設定なら全員、設定時はサーバーオーナーのみ
       token.canAccessWorkspaceList =
