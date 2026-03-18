@@ -1,6 +1,6 @@
 # Windows 起動（start.bat）
 
-**start.bat をダブルクリック** → 1（ローカル）または 2（Tailscale）を選択。Postgres / MinIO / sync-server は portable スクリプトで起動し、Next.js は Node.js で起動する。
+**start.bat をダブルクリック** → 1（ローカル）または 2（Tailscale）を選択するだけで起動できる。Postgres / MinIO / sync-server は自動でセットアップされ、Next.js もそのまま立ち上がる。
 
 ---
 
