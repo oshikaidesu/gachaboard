@@ -356,8 +356,10 @@ function rebindArrowsToShape(editor: Editor, shapeId: TLShapeId, boundArrows: { 
   }
 }
 
+const CONVERTIBLE_TO_FILE_ICON = [SHAPE_TYPE.AUDIO, SHAPE_TYPE.VIDEO, SHAPE_TYPE.TEXT_FILE] as const;
+
 /**
- * audio-player / video-player を file-icon（アイコン表示）に変換する。
+ * audio-player / video-player / text-file を file-icon（アイコン表示）に変換する。
  * tldraw は updateShape で type を変更できないため、削除→作成で実現する。
  * 削除時に矢印の binding が point に変わるため、作成後に再 bind する。
  */
@@ -365,16 +367,19 @@ export function convertToFileIcon(editor: Editor, shapeId: string): boolean {
   const sid = shapeId as TLShapeId;
   const shape = editor.getShape(sid);
   if (!shape) return false;
-  if (shape.type !== SHAPE_TYPE.AUDIO && shape.type !== SHAPE_TYPE.VIDEO) return false;
+  if (!CONVERTIBLE_TO_FILE_ICON.includes(shape.type as (typeof CONVERTIBLE_TO_FILE_ICON)[number])) return false;
 
   const boundArrows = getArrowsBoundToShape(editor, sid);
-  const p = shape.props as { assetId?: string; fileName?: string; mimeType?: string };
+  const p = shape.props as { assetId?: string; fileName?: string; mimeType?: string; content?: string };
   const assetId = p.assetId ?? "";
   const fileName = p.fileName ?? "";
   const mimeType = p.mimeType ?? "";
-  const kind = shape.type === SHAPE_TYPE.AUDIO ? "audio" : "video";
+  const kind = shape.type === SHAPE_TYPE.AUDIO ? "audio" : shape.type === SHAPE_TYPE.VIDEO ? "video" : "file";
   const { x, y } = shape;
-  const meta = shape.meta ?? {};
+  const meta = { ...(shape.meta ?? {}) } as Record<string, string | number>;
+  if (shape.type === SHAPE_TYPE.TEXT_FILE && p.content) {
+    meta._textContent = p.content;
+  }
 
   editor.batch(() => {
     editor.deleteShapes([sid]);
@@ -398,19 +403,22 @@ export function convertToFileIcon(editor: Editor, shapeId: string): boolean {
   return true;
 }
 
+/** file-icon から変換可能な kind（audio / video → プレイヤー、file → text-file） */
+const CONVERTIBLE_FROM_FILE_ICON_KINDS = ["audio", "video", "file"] as const;
+
 /**
- * file-icon（kind: audio / video）を audio-player / video-player に変換する。
+ * file-icon を kind に応じて audio-player / video-player / text-file に変換する。
  * tldraw は updateShape で type を変更できないため、削除→作成で実現する。
  * 削除時に矢印の binding が point に変わるため、作成後に再 bind する。
  */
-export function convertToMediaPlayer(editor: Editor, shapeId: string): boolean {
+export function convertFromFileIcon(editor: Editor, shapeId: string): boolean {
   const sid = shapeId as TLShapeId;
   const shape = editor.getShape(sid);
   if (!shape || shape.type !== SHAPE_TYPE.FILE_ICON) return false;
 
   const p = shape.props as FileIconShape["props"];
   const kind = p.kind;
-  if (!(MEDIA_ICON_KINDS as readonly string[]).includes(kind)) return false;
+  if (!(CONVERTIBLE_FROM_FILE_ICON_KINDS as readonly string[]).includes(kind)) return false;
 
   const boundArrows = getArrowsBoundToShape(editor, sid);
   const assetId = p.assetId ?? "";
@@ -438,7 +446,7 @@ export function convertToMediaPlayer(editor: Editor, shapeId: string): boolean {
       });
       rebindArrowsToShape(editor, sid, boundArrows);
     });
-  } else {
+  } else if (kind === "video") {
     const w = 480;
     const videoAreaH = Math.round(w / (16 / 9));
     const defaultH = videoAreaH + VIDEO_UI_OVERHEAD + MIN_COMMENT_LIST_H;
@@ -460,9 +468,35 @@ export function convertToMediaPlayer(editor: Editor, shapeId: string): boolean {
       });
       rebindArrowsToShape(editor, sid, boundArrows);
     });
+  } else {
+    const savedContent = typeof meta._textContent === "string" ? meta._textContent : "";
+    const restoredMeta = { ...meta } as Record<string, unknown>;
+    delete restoredMeta._textContent;
+    editor.batch(() => {
+      editor.deleteShapes([sid]);
+      editor.createShape({
+        id: sid,
+        type: SHAPE_TYPE.TEXT_FILE,
+        x,
+        y,
+        meta: restoredMeta as object,
+        props: {
+          assetId,
+          fileName,
+          mimeType,
+          content: savedContent,
+          w: 320,
+          h: 240,
+        } as TextFileShape["props"],
+      });
+      rebindArrowsToShape(editor, sid, boundArrows);
+    });
   }
   return true;
 }
+
+/** @deprecated convertFromFileIcon を使用 */
+export const convertToMediaPlayer = convertFromFileIcon;
 
 export { FileIconShapeUtil, getFileEmoji } from "./file/FileIconShape";
 export { TextFileShapeUtil, isTextFile } from "./file/TextFileShape";

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Gachaboard 起動（Tailscale モード）
-# env を Tailscale 用に切り替え、Docker と Next.js を起動
+# env を Tailscale 用に切り替え、Postgres/MinIO/sync をネイティブ起動してから Next.js を起動
 #
 # オプション:
 #   --dev    npm run dev（開発モード・ホットリロード）
-#   --reset  Docker を一度停止してから起動（リセット＆再起動）
+#   --reset  依存サービスを一度停止してから起動（リセット＆再起動）
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -70,6 +70,11 @@ if [[ ! -d "$ROOT_DIR/nextjs-web/node_modules" ]]; then
   (cd "$ROOT_DIR/nextjs-web" && npm install) || exit 1
   echo ""
 fi
+if [[ ! -d "$ROOT_DIR/nextjs-web/sync-server/node_modules" ]]; then
+  echo ">>> sync-server の依存をインストールしています（初回のみ）..."
+  (cd "$ROOT_DIR/nextjs-web/sync-server" && npm install) || exit 1
+  echo ""
+fi
 
 # ── 1. Tailscale ホスト名を取得（未ログインなら tailscale up で誘導）──
 if [[ -z "${TAILSCALE_HOST:-}" ]]; then
@@ -125,14 +130,14 @@ for ef in "$ROOT_DIR/.env" "$ROOT_DIR/nextjs-web/.env.local"; do
 done
 export NEXTAUTH_URL="https://${TAILSCALE_HOST}"
 
-# ── 3. Docker で依存サービスを起動 ──
+# ── 3. 依存サービスをネイティブ起動（PostgreSQL, MinIO, Sync Server）──
 echo ">>> 依存サービス起動 (PostgreSQL, MinIO, Sync Server)"
 if [[ "$DO_RESET" == true ]]; then
-  reset_docker
+  reset_native_services
 fi
-if ! run_docker_compose_up; then
+if ! run_native_services; then
   echo ""
-  echo "❌ Docker サービスの起動に失敗しました。上記のエラーを確認してください。"
+  echo "❌ 依存サービスの起動に失敗しました。上記のエラーを確認してください。"
   exit 1
 fi
 

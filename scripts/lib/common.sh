@@ -11,7 +11,6 @@ check_required() {
     [[ "$arg" == "tailscale" ]] && need_tailscale=true
   done
 
-  command -v docker >/dev/null 2>&1 || missing+=("docker")
   if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
     missing+=("node")
   fi
@@ -40,9 +39,6 @@ check_required() {
       echo "  ─────────────────────────────"
       for m in "${missing[@]}"; do
         case "$m" in
-          docker)    echo "  ${step}) Docker Desktop をインストール"
-                     echo "     https://docs.docker.com/desktop/install/mac-install/"
-                     echo ""; step=$((step+1)) ;;
           node)      echo "  ${step}) Node.js をインストール（npm 同梱）"
                      echo "     brew install node"
                      echo "     または https://nodejs.org/ からダウンロード"
@@ -62,9 +58,6 @@ check_required() {
       echo "  ─────────────────────────────"
       for m in "${missing[@]}"; do
         case "$m" in
-          docker)    echo "  ${step}) Docker Engine をインストール"
-                     echo "     https://docs.docker.com/engine/install/"
-                     echo ""; step=$((step+1)) ;;
           node)      echo "  ${step}) Node.js をインストール（npm 同梱）"
                      echo "     https://nodejs.org/ または nvm を使用"
                      echo ""; step=$((step+1)) ;;
@@ -259,30 +252,35 @@ _docker_engine_alive() {
 }
 
 # PostgreSQL が接続を受け付けるまで待つ
-# 本質: コンテナ稼働後に pg_isready で判定（Docker health は補助）。Windows でも確実に通す。
+# ネイティブ起動時は pg_isready をホストで実行。Docker 起動時は docker exec で判定。
 # 使用: wait_for_postgres || exit 1
 wait_for_postgres() {
   local max=300
+  local port="${POSTGRES_HOST_PORT:-18581}"
   echo "    PostgreSQL の起動を待機中..."
   for i in $(seq 1 "$max"); do
     [[ $((i % 10)) -eq 0 ]] && echo "    ... ${i}秒"
-    # コンテナが存在しない・未稼働のときは docker exec を叩かずスキップ（エラー抑制）
+    # 1) ネイティブ: ホストで pg_isready が使える場合はそれを優先
+    if command -v pg_isready >/dev/null 2>&1; then
+      if pg_isready -h 127.0.0.1 -p "$port" -U gachaboard -q 2>/dev/null; then
+        echo "    ✓ PostgreSQL 準備完了 (${i}秒)"
+        return 0
+      fi
+    fi
+    # 2) Docker: コンテナが稼働していれば docker exec で判定
     local running
     running=$(docker inspect -f '{{.State.Running}}' compound-postgres 2>/dev/null || echo "false")
-    if [[ "$running" != "true" ]]; then
-      sleep 1
-      continue
-    fi
-    # 接続可能なら完了（判定の主体は pg_isready。health は参考）
-    if docker exec compound-postgres pg_isready -U gachaboard -q 2>/dev/null; then
-      echo "    ✓ PostgreSQL 準備完了 (${i}秒)"
-      return 0
-    fi
-    local status
-    status=$(docker inspect -f '{{.State.Health.Status}}' compound-postgres 2>/dev/null || true)
-    if [[ "$status" == "healthy" ]]; then
-      echo "    ✓ PostgreSQL 準備完了 (${i}秒)"
-      return 0
+    if [[ "$running" == "true" ]]; then
+      if docker exec compound-postgres pg_isready -U gachaboard -q 2>/dev/null; then
+        echo "    ✓ PostgreSQL 準備完了 (${i}秒)"
+        return 0
+      fi
+      local status
+      status=$(docker inspect -f '{{.State.Health.Status}}' compound-postgres 2>/dev/null || true)
+      if [[ "$status" == "healthy" ]]; then
+        echo "    ✓ PostgreSQL 準備完了 (${i}秒)"
+        return 0
+      fi
     fi
     sleep 1
   done
@@ -319,7 +317,38 @@ _restart_docker_desktop() {
   return 1
 }
 
-# docker compose up -d を実行（postgres / sync-server / minio のみ。Next.js は --profile app で別起動）。
+# portable/scripts/start-services.sh で Postgres, MinIO, sync-server を起動する
+# 使用: run_native_services || exit 1
+run_native_services() {
+  local root="${GACHABOARD_ROOT:-.}"
+  export GACHABOARD_DATA_DIR="${root}/data"
+  mkdir -p "$GACHABOARD_DATA_DIR"
+  # ポートは .env から sync-env-ports.sh が既に読んでいる想定。ここで export しておく
+  local env_file="${root}/.env"
+  [[ -f "$env_file" ]] || env_file="${root}/nextjs-web/.env.local"
+  if [[ -f "$env_file" ]]; then
+    export POSTGRES_HOST_PORT=$(grep -E '^POSTGRES_HOST_PORT=' "$env_file" 2>/dev/null | cut -d= -f2- | tr -d '"\r') || true
+    export MINIO_API_HOST_PORT=$(grep -E '^MINIO_API_HOST_PORT=' "$env_file" 2>/dev/null | cut -d= -f2- | tr -d '"\r') || true
+    export MINIO_CONSOLE_HOST_PORT=$(grep -E '^MINIO_CONSOLE_HOST_PORT=' "$env_file" 2>/dev/null | cut -d= -f2- | tr -d '"\r') || true
+    export SYNC_SERVER_HOST_PORT=$(grep -E '^SYNC_SERVER_HOST_PORT=' "$env_file" 2>/dev/null | cut -d= -f2- | tr -d '"\r') || true
+  fi
+  export POSTGRES_HOST_PORT="${POSTGRES_HOST_PORT:-18581}"
+  export MINIO_API_HOST_PORT="${MINIO_API_HOST_PORT:-18583}"
+  export MINIO_CONSOLE_HOST_PORT="${MINIO_CONSOLE_HOST_PORT:-18584}"
+  export SYNC_SERVER_HOST_PORT="${SYNC_SERVER_HOST_PORT:-18582}"
+  bash "$root/portable/scripts/start-services.sh" "$root"
+}
+
+# ネイティブ起動したサービスを停止（--reset 用）
+# 使用: reset_native_services
+reset_native_services() {
+  echo ">>> リセット: 依存サービスを停止"
+  local root="${GACHABOARD_ROOT:-.}"
+  bash "$root/portable/scripts/stop-services.sh" "$root"
+  sleep 2
+}
+
+# docker compose up -d を実行（postgres / sync-server / minio のみ。web は --profile app で別起動）
 # 開発時はローカルで npm run dev するため、ここでは web コンテナは起動しない。
 run_docker_compose_up() {
   local max_compose_retries=3
@@ -421,7 +450,7 @@ kill_port_3000() {
   kill_app_port 18580
 }
 
-# リセット: Docker コンテナを停止
+# リセット: Docker コンテナを停止（Docker 利用時用。ネイティブ起動では reset_native_services を使用）
 reset_docker() {
   echo ">>> リセット: Docker コンテナを停止"
   docker compose down 2>/dev/null || true

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Gachaboard 起動（ローカルモード）
-# env を localhost 用に切り替え、Docker と Next.js を起動
+# env を localhost 用に切り替え、Postgres/MinIO/sync をネイティブ起動してから Next.js を起動
 #
 # オプション:
 #   --dev    npm run dev（開発モード・ホットリロード）
-#   --reset  Docker を一度停止してから起動（リセット＆再起動）
+#   --reset  依存サービスを一度停止してから起動（リセット＆再起動）
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -32,6 +32,11 @@ if [[ ! -d "$ROOT_DIR/nextjs-web/node_modules" ]]; then
   (cd "$ROOT_DIR/nextjs-web" && npm install) || exit 1
   echo ""
 fi
+if [[ ! -d "$ROOT_DIR/nextjs-web/sync-server/node_modules" ]]; then
+  echo ">>> sync-server の依存をインストールしています（初回のみ）..."
+  (cd "$ROOT_DIR/nextjs-web/sync-server" && npm install) || exit 1
+  echo ""
+fi
 
 echo ">>> 1. ポート変数を同期"
 bash "$SCRIPTS_DIR/lib/sync-env-ports.sh" 2>/dev/null || true
@@ -43,11 +48,11 @@ sync_env_to_root "$ROOT_DIR"
 
 echo ">>> 3. 依存サービス起動 (PostgreSQL, MinIO, Sync Server)"
 if [[ "$DO_RESET" == true ]]; then
-  reset_docker
+  reset_native_services
 fi
-if ! run_docker_compose_up; then
+if ! run_native_services; then
   echo ""
-  echo "❌ Docker サービスの起動に失敗しました。上記のエラーを確認してください。"
+  echo "❌ 依存サービスの起動に失敗しました。上記のエラーを確認してください。"
   exit 1
 fi
 
@@ -77,7 +82,7 @@ else
   npm run start &
 fi
 SERVER_PID=$!
-trap "kill $SERVER_PID 2>/dev/null || true; exit" EXIT INT TERM
+trap "kill $SERVER_PID 2>/dev/null || true; rm -f \"\${GACHABOARD_START_LOCK:-}\" 2>/dev/null || true; exit" EXIT INT TERM
 
 APP_URL="http://localhost:${PORT:-18580}"
 

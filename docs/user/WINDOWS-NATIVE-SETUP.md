@@ -1,6 +1,6 @@
 # Windows 起動（start.bat）
 
-Node.js のみで Gachaboard を起動する方法です。Docker 不要。**start.bat をダブルクリック** → 1（ローカル）または 2（Tailscale）を選択。
+**start.bat をダブルクリック** → 1（ローカル）または 2（Tailscale）を選択。Postgres / MinIO / sync-server は portable スクリプトで起動し、Next.js は Node.js で起動する。
 
 ---
 

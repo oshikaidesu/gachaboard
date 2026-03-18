@@ -23,9 +23,13 @@ import {
 import { SHAPE_TYPE, isTextFile, type TextFileShape } from "@shared/shapeDefs";
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
 import { getSafeAssetId } from "@/lib/safeUrl";
+import { convertToFileIcon } from "@/app/shapes";
 
 export type { TextFileShape } from "@shared/shapeDefs";
 export { isTextFile } from "@shared/shapeDefs";
+
+/** タッチで変換した直後の click 二重実行を防ぐため */
+const lastTouchEndByShapeId = new Map<string, number>();
 
 export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
   static override type = SHAPE_TYPE.TEXT_FILE;
@@ -86,6 +90,45 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
           name={getCreatedBy(shape)}
           avatarUrl={getCreatedByAvatarUrl(shape)}
           rank={getCreationRank(editor, shape)}
+          rightSlot={
+            <button
+              type="button"
+              title="アイコンで表示"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (lastTouchEndByShapeId.has(shape.id) && Date.now() - (lastTouchEndByShapeId.get(shape.id) ?? 0) < 400) {
+                  lastTouchEndByShapeId.delete(shape.id);
+                  return;
+                }
+                convertToFileIcon(editor, shape.id);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => {
+                e.stopPropagation();
+                convertToFileIcon(editor, shape.id);
+                lastTouchEndByShapeId.set(shape.id, Date.now());
+              }}
+              style={{
+                width: 20,
+                height: 20,
+                padding: 0,
+                border: "none",
+                borderRadius: 3,
+                background: "rgba(0,0,0,0.35)",
+                color: "#fff",
+                fontSize: 12,
+                cursor: "pointer",
+                touchAction: "manipulation",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                lineHeight: 1,
+              }}
+            >
+              ▢
+            </button>
+          }
         />
         <AssetLoader assetId={shape.props.assetId} fileName={shape.props.fileName}>
         <WheelGuard

@@ -21,7 +21,7 @@ import {
   getStrokeHexForColorStyle,
 } from "../common";
 import { SHAPE_TYPE, MEDIA_ICON_KINDS, type FileIconShape } from "@shared/shapeDefs";
-import { convertToMediaPlayer } from "@/app/shapes";
+import { convertFromFileIcon } from "@/app/shapes";
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
 import { useTheme } from "@/app/components/theme/ThemeProvider";
 import { getSafeAssetId } from "@/lib/safeUrl";
@@ -227,23 +227,23 @@ function FileIconShapeInner({ shape }: { shape: FileIconShape }) {
           avatarUrl={getCreatedByAvatarUrl(shape)}
           rank={getCreationRank(editor, shape)}
           rightSlot={
-            (MEDIA_ICON_KINDS as readonly string[]).includes(shape.props.kind) ? (
+            (shape.props.kind === "file" || (MEDIA_ICON_KINDS as readonly string[]).includes(shape.props.kind)) ? (
               <button
                 type="button"
-                title="プレイヤーで表示"
+                title={shape.props.kind === "file" ? "テキストで表示" : "プレイヤーで表示"}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (lastTouchEndByShapeId.has(shape.id) && Date.now() - (lastTouchEndByShapeId.get(shape.id) ?? 0) < 400) {
                     lastTouchEndByShapeId.delete(shape.id);
                     return;
                   }
-                  convertToMediaPlayer(editor, shape.id);
+                  convertFromFileIcon(editor, shape.id);
                 }}
                 onPointerDown={(e) => e.stopPropagation()}
                 onTouchStart={(e) => e.stopPropagation()}
                 onTouchEnd={(e) => {
                   e.stopPropagation();
-                  convertToMediaPlayer(editor, shape.id);
+                  convertFromFileIcon(editor, shape.id);
                   lastTouchEndByShapeId.set(shape.id, Date.now());
                 }}
                 style={{

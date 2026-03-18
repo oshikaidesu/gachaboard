@@ -39,26 +39,6 @@ for arg in "$@"; do
   fi
 done
 
-# ── 必須: Docker ──
-if ! command -v docker >/dev/null 2>&1; then
-  echo ""
-  echo "============================================"
-  echo "  Gachaboard を起動するには Docker が必要です"
-  echo "============================================"
-  echo ""
-  echo "  Mac: Docker Desktop をインストール"
-  echo "  https://docs.docker.com/desktop/install/mac-install/"
-  echo ""
-  echo "  Windows: start.bat を使用（Docker 不要）"
-  echo ""
-  echo "============================================"
-  echo ""
-  echo "Enter キーを押すと終了します..."
-  read -r
-  rm -f "$LOCK_FILE" 2>/dev/null || true
-  exit 1
-fi
-
 # ── .env の存在チェック ──
 if [[ ! -f ".env" ]] && [[ -f ".env.example" ]]; then
   cp .env.example .env
@@ -94,12 +74,14 @@ if [[ ! -f ".env" ]]; then
 fi
 
 # ── 起動モード選択 ──
-CAN_RUN_SCRIPT=false
-if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && command -v tailscale >/dev/null 2>&1; then
-  CAN_RUN_SCRIPT=true
+CAN_RUN_TAILSCALE=false
+CAN_RUN_LOCAL=false
+if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
+  CAN_RUN_LOCAL=true
+  command -v tailscale >/dev/null 2>&1 && CAN_RUN_TAILSCALE=true
 fi
 
-if [[ "$CAN_RUN_SCRIPT" == true ]]; then
+if [[ "$CAN_RUN_TAILSCALE" == true ]]; then
   if [[ ! -f "nextjs-web/.env.local" ]]; then
     echo ""
     echo "  nextjs-web/.env.local が未作成です。npm run setup:env を実行してください。"
@@ -109,7 +91,7 @@ if [[ "$CAN_RUN_SCRIPT" == true ]]; then
     rm -f "$LOCK_FILE" 2>/dev/null || true
     exit 1
   fi
-  echo "✓ 必須ツール インストール確認済み"
+  echo "✓ 必須ツール確認済み（Node.js, Tailscale）"
   echo ""
   echo "  起動モードを選んでください（Enter で 1 を選択）:"
   echo ""
@@ -133,49 +115,39 @@ if [[ "$CAN_RUN_SCRIPT" == true ]]; then
   fi
 fi
 
-# ── Docker 全コンテナモード（Node.js 不要）──
-echo ""
-echo "  起動モードを選んでください（Enter で 1 を選択）:"
-echo ""
-echo "    1) 起動（Docker 全コンテナ・本番）"
-echo "    2) ビルド再生成・開発モード … Node.js が必要です"
-echo ""
-read -r -p "  1 [1]: " choice
-choice="${choice:-1}"
-if [[ "$choice" != "1" ]]; then
+if [[ "$CAN_RUN_LOCAL" == true ]]; then
   echo ""
-  echo "  Node.js をインストールすると、ビルド再生成や開発モードを選べます。"
-  echo "  Mac: brew install node"
-  echo "  Windows: start.bat を使用"
+  echo "  Tailscale モードには tailscale が必要です。"
+  echo "  ローカルで起動するには: bash scripts/start/local.sh"
   echo ""
-  echo "Enter キーを押すと終了します..."
-  read -r
+  echo "  tailscale をインストール: brew install tailscale (Mac) / 各 OS の手順は https://tailscale.com/download"
+  echo ""
+  echo "  今すぐローカルモードで起動しますか？ [y/N]"
+  read -r -p "  " run_local
+  if [[ "$run_local" == "y" ]] || [[ "$run_local" == "Y" ]]; then
+    exec bash scripts/start/local.sh "$@"
+  fi
   rm -f "$LOCK_FILE" 2>/dev/null || true
   exit 0
 fi
 
+# ── Node.js 未インストール ──
 echo ""
-echo ">>> コンテナを起動中..."
-if ! docker compose --profile app up -d; then
+echo "============================================"
+echo "  Gachaboard を起動するには Node.js が必要です"
+echo "============================================"
+echo ""
+echo "  Mac:    brew install node"
+echo "  Linux:  https://nodejs.org/ または nvm でインストール"
+echo "  Windows: start.bat を使用"
+echo ""
+if command -v docker >/dev/null 2>&1; then
+  echo "  Docker で全コンテナ起動する場合: docker compose --profile app up -d"
   echo ""
-  echo "  起動に失敗しました。Docker が起動しているか確認してください。"
-  echo ""
-  echo "Enter キーを押すと終了します..."
-  read -r
-  rm -f "$LOCK_FILE" 2>/dev/null || true
-  exit 1
 fi
-
-PORT=$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2- | tr -d '"\r')
-PORT="${PORT:-18580}"
+echo "============================================"
 echo ""
-echo "  起動しました。ブラウザで http://localhost:${PORT} を開いてください。"
-echo ""
-echo "  よく使うコマンド:"
-echo "    停止:     docker compose --profile app down"
-echo "    本番:     cd nextjs-web && npm run build && cd .. の後 npm start"
-echo ""
-echo "Enter キーを押すとこのウィンドウを閉じます（アプリは起動したままです）..."
+echo "Enter キーを押すと閉じます..."
 read -r
 rm -f "$LOCK_FILE" 2>/dev/null || true
-exit 0
+exit 1

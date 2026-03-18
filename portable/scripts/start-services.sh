@@ -51,12 +51,24 @@ start_minio() {
     echo ">>> MinIO をダウンロードしています（初回のみ）..."
     case "$(uname -s)" in
       Linux)
-        curl -sSL -o "$BIN_DIR/minio" "https://dl.min.io/server/minio/release/linux-amd64/minio"
+        arch=$(uname -m)
+        case "$arch" in
+          x86_64)  minio_arch="linux-amd64" ;;
+          aarch64|arm64) minio_arch="linux-arm64" ;;
+          *) echo "❌ 未対応のアーキテクチャ: $arch"; return 1 ;;
+        esac
+        curl -sSL -o "$BIN_DIR/minio" "https://dl.min.io/server/minio/release/${minio_arch}/minio"
         chmod +x "$BIN_DIR/minio"
         MINIO_BIN="$BIN_DIR/minio"
         ;;
       Darwin)
-        curl -sSL -o "$BIN_DIR/minio" "https://dl.min.io/server/minio/release/darwin-amd64/minio"
+        arch=$(uname -m)
+        case "$arch" in
+          x86_64)  minio_arch="darwin-amd64" ;;
+          arm64)   minio_arch="darwin-arm64" ;;
+          *) echo "❌ 未対応のアーキテクチャ: $arch"; return 1 ;;
+        esac
+        curl -sSL -o "$BIN_DIR/minio" "https://dl.min.io/server/minio/release/${minio_arch}/minio"
         chmod +x "$BIN_DIR/minio"
         MINIO_BIN="$BIN_DIR/minio"
         ;;

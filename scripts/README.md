@@ -53,7 +53,7 @@ bash scripts/setup/env.sh
 
 ### Windows での起動
 
-- **start.bat**（Windows）: ダブルクリックでメニュー表示。1=ローカル, 2=Tailscale, 3=リセット。Docker 不要。
+- **start.bat**（Windows）: ダブルクリックでメニュー表示。1=ローカル, 2=Tailscale, 3=リセット。
 - **start.sh** / **start.command**（Mac/Linux）: 同一の `launcher.sh` を呼ぶ。Docker + Node.js 使用。
 
 ### 必須ツールの事前チェック
