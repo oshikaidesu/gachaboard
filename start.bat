@@ -1,23 +1,98 @@
-@echo off
+﻿@echo off
 chcp 65001 >nul 2>nul
 cd /d "%~dp0"
 
-wsl --status >nul 2>&1
-if errorlevel 1 (
-  echo.
-  echo ============================================
-  echo   WSL2 is not installed.
-  echo ============================================
-  echo.
-  echo   WSL2 is required on Windows. Run in Admin PowerShell:
-  echo     wsl --install -d Ubuntu
-  echo   Then reboot. See docs/user/WSL2-SETUP.md
-  echo.
-  echo ============================================
-  pause
-  exit /b 1
-)
+REM Fix smart quotes in PowerShell scripts (editor may corrupt them)
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\win\fix-quotes.ps1" >nul 2>nul
 
-wsl --cd "%~dp0" bash -c "sed -i 's/\r$//' scripts/setup/wsl2-install-deps.sh scripts/start/tailscale.sh scripts/start/launcher.sh scripts/lib/common.sh 2>/dev/null; bash scripts/start/launcher.sh %*"
+set "ARG2=%~2"
+set "ARG3=%~3"
+
+:menu
+echo.
+echo ============================================
+echo   Gachaboard - Start Menu
+echo ============================================
+echo.
+echo   1. Tailscale production (default)
+echo   2. Localhost production
+echo   3. Build only
+echo   4. Tailscale development
+echo   5. Local development
+echo   6. Reset and restart
+echo   0. Exit
+echo.
+set /p CHOICE="Enter number (1-6, 0) [Enter=1]: "
+if "%CHOICE%"=="" set "CHOICE=1"
+if "%CHOICE%"=="1" goto run_tailscale_prod
+if "%CHOICE%"=="2" goto run_local_prod
+if "%CHOICE%"=="3" goto run_build_only
+if "%CHOICE%"=="4" goto run_tailscale_dev
+if "%CHOICE%"=="5" goto run_local_dev
+if "%CHOICE%"=="6" goto run_reset
+if "%CHOICE%"=="0" goto end
+echo Invalid number.
+goto menu
+
+:run_tailscale_prod
+echo.
+echo [1] Tailscale production
+echo.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\win\run.ps1" -Tailscale %ARG2% %ARG3%
+goto done
+
+:run_local_prod
+echo.
+echo [2] Localhost production
+echo.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\win\run.ps1" %ARG2% %ARG3%
+goto done
+
+:run_build_only
+echo.
+echo [3] Build only
+echo.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\win\run.ps1" -BuildOnly %ARG2% %ARG3%
+goto done
+
+:run_tailscale_dev
+echo.
+echo [4] Tailscale development
+echo.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\win\run.ps1" -Tailscale -Dev %ARG2% %ARG3%
+goto done
+
+:run_local_dev
+echo.
+echo [5] Local development
+echo.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\win\run.ps1" -Dev %ARG2% %ARG3%
+goto done
+
+:run_reset
+echo.
+echo [6] Reset and restart
+echo.
+echo Stopping all services...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\win\reset-services.ps1"
+echo.
+if exist "data\postgres\postmaster.pid" (
+  del "data\postgres\postmaster.pid"
+  echo postmaster.pid removed
+)
+if exist "data\sync" (
+  rmdir /s /q "data\sync"
+  echo Sync data cleared
+)
+echo.
+echo Restarting...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\win\run.ps1" -Tailscale %ARG2% %ARG3%
+goto done
+
+:done
 echo.
 pause
+goto end
+
+:end
+exit /b 0

@@ -26,6 +26,9 @@ nextjs-web/sync-server/sync-data/
 # Docker データ保存先（./data）
 data/
 
+# Portable バイナリ（初回起動時にダウンロード）
+portable/bin/
+
 # デバッグ・テスト用ログ
 tailscale-*.log
 tailscale-*.txt
