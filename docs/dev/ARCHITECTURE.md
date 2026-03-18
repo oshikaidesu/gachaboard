@@ -1,6 +1,6 @@
 # アーキテクチャ概要
 
-Gachaboard のシステム構成とコンポーネントの関係。
+Gachaboardのシステム構成と、各コンポーネントの相関図です。
 
 ---
 
@@ -60,7 +60,7 @@ Gachaboard のシステム構成とコンポーネントの関係。
 | `/api/assets`, `/api/assets/[id]` | アセット一覧・アップロード・配信・変換 |
 | `/api/ogp` | OGP プレビュー取得 |
 
-### 2.3 ボード編集（CompoundBoard）
+### 2.3 ボード編集の仕組み（CompoundBoard）
 
 - **compound**: ホワイトボード本体（@cmpd/compound）
 - **useYjsStore**: Yjs + y-websocket で TLStore と Y.Doc を双方向同期
@@ -92,7 +92,7 @@ Gachaboard のシステム構成とコンポーネントの関係。
 | `yMap["comments"]` | メディアタイムラインコメント |
 | **Awareness** | カーソル・user・currentPageId（永続化しない） |
 
-永続化: IndexedDB（y-indexeddb）+ Board.snapshotData
+データの永続化には IndexedDB（y-indexeddb）と Board.snapshotData を使用しています。
 
 ### 3.3 ファイルストレージ
 
@@ -112,13 +112,12 @@ Gachaboard のシステム構成とコンポーネントの関係。
 
 ---
 
-## 5. インフラ（Docker Compose）
+## 5. インフラ（起動スクリプト）
 
-| サービス | ポート | 用途 |
-|----------|--------|------|
-| postgres | ホスト 18581→5432（コンテナ内） | PostgreSQL 16 |
-| sync-server | ホスト 18582→5858（コンテナ内） | y-websocket-server |
-| minio | 18583（API）, 18584（コンソール） | S3 互換ストレージ |
-| minio-init | - | バケット自動作成 |
+| サービス | ポート（ホスト） | 用途 |
+|----------|------------------|------|
+| PostgreSQL | 18581 | PostgreSQL 16（portable スクリプトで取得・起動、またはシステムの pg_ctl） |
+| sync-server | 18582 | y-websocket-server（nextjs-web/sync-server で node server.mjs） |
+| MinIO | 18583（API）, 18584（コンソール） | S3 互換ストレージ（portable スクリプトで取得・起動） |
 
-nextjs-web は compose 外。`npm run dev` でポート 3000（または `.env` の PORT、デフォルト 18580）で起動。
+nextjs-web は start スクリプト内で `npm run dev` または `npm run start` により、ポート 18580（または `.env` の PORT）で起動する。

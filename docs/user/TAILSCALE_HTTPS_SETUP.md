@@ -9,15 +9,9 @@ Tailscale の HTTPS 機能を用いて、Gachaboard を HTTPS で提供する手
 - Tailscale がインストールされ、マシンが Tailscale ネットワークに参加している
 - [Admin Console](https://login.tailscale.com/admin/dns) で **MagicDNS** と **HTTPS Certificates** を有効化済み（[手順](https://tailscale.com/docs/how-to/set-up-https-certificates)）
 
-### Docker で Tailscale からアクセスする場合
+### 他端末（Tailscale）からアクセスする場合
 
-Docker Compose のポートはデフォルトで `127.0.0.1` にしかバインドされていないため、**他端末（スマホ・外出先）から Tailscale でアクセスできません**。プロジェクトルートの `.env` に次を追加してから `docker compose up -d` し直してください。
-
-```env
-HOST_BIND=0.0.0.0
-```
-
-これで全インターフェース（Tailscale 含む）で待ち受けます。**Caddy をホストで動かし `reverse_proxy localhost:18580` で HTTPS 化しているだけの場合は、`HOST_BIND` はそのままで問題ありません**（Caddy が Tailscale から受け、localhost でコンテナに届くため）。`HOST_BIND=0.0.0.0` が必要なのは、Caddy を使わず Tailscale の IP:ポート（例: `http://100.x.x.x:18580`）に直接アクセスしたい場合です。
+**他端末（スマホ・外出先）から Tailscale でアクセスする**には、プロジェクトルートの `.env` に `HOST_BIND=0.0.0.0` を設定し、起動スクリプトを再実行してください。これで全インターフェースで待ち受けます。**Caddy をホストで動かし `reverse_proxy localhost:18580` で HTTPS 化しているだけの場合は、`HOST_BIND` はそのままで問題ありません**（Caddy が Tailscale から受け、localhost に転送するため）。
 
 ---
 
@@ -97,11 +91,7 @@ S3_PUBLIC_URL=https://<hostname>.ts.net/minio
 
 ## 起動手順
 
-1. Docker Compose で DB / MinIO / sync-server を起動（プロジェクトルートで）:
-
-   ```bash
-   docker compose up -d
-   ```
+1. 依存サービス（PostgreSQL / MinIO / sync-server）を起動。プロジェクトルートで `start.bat`（Windows）または `./start.sh` / `start.command`（Mac/Linux）を実行。
 
 2. Next.js を起動:
 

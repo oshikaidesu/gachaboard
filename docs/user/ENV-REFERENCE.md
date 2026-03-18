@@ -1,6 +1,6 @@
 # 環境変数リファレンス
 
-> Gachaboard で使用する環境変数の一覧です。**統合 .env**（推奨）: `cp .env.example .env` のうえ、先頭4項目を編集し、`npm run setup:env` を実行してください。ポート・DB・S3 等は自動設定されます。
+> Gachaboard で使う環境変数の一覧です。`cp .env.example .env` して先頭4項目を編集し、`npm run setup:env` を実行すると、ポート・DB・S3 等が自動で設定されます。
 
 ---
 
@@ -10,8 +10,8 @@
 |--------|------|-----|
 | `DISCORD_CLIENT_ID` | Discord OAuth の Client ID。[Discord Developer Portal](https://discord.com/developers/applications) でアプリ作成後、OAuth2 から取得 | `1234567890123456789` |
 | `DISCORD_CLIENT_SECRET` | Discord OAuth の Client Secret。同上 | `abcdef123456...` |
-| `NEXTAUTH_SECRET` | セッション暗号化用。任意の長いランダム文字列。`openssl rand -base64 32` で生成可 | `xYz123...` |
-| `NEXTAUTH_URL` | アプリのベース URL。**未設定可**：未設定時はリクエストの Host（Tailscale serve 等）から動的に解決するため、HTTPS のみ使うなら env で固定する必要はない。スクリプトやフォールバック用に設定してもよい。 | モード別は下表参照 |
+| `NEXTAUTH_SECRET` | セッション暗号化用。任意の長いランダム文字列。`openssl rand -base64 32` で生成できます。 | `xYz123...` |
+| `NEXTAUTH_URL` | アプリのベース URL。**未設定可**：未設定時はリクエストの Host（Tailscale serve 等）から自動的に判別するため、HTTPS のみ使うなら env で固定する必要はありません。スクリプトやフォールバック用に設定してもよい。 | モード別は下表参照 |
 | `DATABASE_URL` | PostgreSQL 接続文字列 | `postgresql://gachaboard:gachaboard@localhost:18581/gachaboard` |
 
 ---
@@ -22,7 +22,7 @@
 
 | 変数 | 設定場所 | デフォルト | 説明 |
 |------|----------|------------|------|
-| `HOST_BIND` | `.env`（プロジェクトルート） | `127.0.0.1` | Docker のポートバインド先。**Tailscale で他端末からアクセスする場合は `0.0.0.0` に設定**。`127.0.0.1` のままではローカル以外から接続できない。 |
+| `HOST_BIND` | `.env`（プロジェクトルート） | `127.0.0.1` | 各サービスの待機IPアドレス（バインド先）。**Tailscale で他端末からアクセスする場合は `0.0.0.0` に設定**。`127.0.0.1` のままではローカル以外から接続できない。 |
 | `PORT` | `nextjs-web/.env.local` | `18580` | Next.js のポート |
 | `POSTGRES_HOST_PORT` | `.env`（プロジェクトルート） | `18581` | PostgreSQL。`DATABASE_URL` のポートと一致させる |
 | `SYNC_SERVER_HOST_PORT` | `.env`（プロジェクトルート） | `18582` | sync-server。`NEXT_PUBLIC_SYNC_WS_URL` のポートと一致させる |
@@ -54,16 +54,16 @@
 
 ### S3 / MinIO（必須）
 
-ファイルアップロードには S3/MinIO が必須です。`env.local.template` にデフォルト値が入っています。`docker compose up -d` で MinIO を起動してください。
+ファイルアップロードには S3/MinIO が必須です。`env.local.template` にデフォルト値が入っています。MinIO は `start.bat` / `start.sh` 実行時に自動で起動します。
 
 | 変数名 | デフォルト | 説明 |
 |--------|------------|------|
-| `S3_BUCKET` | （空） | バケット名。Docker MinIO のデフォルトは `my-bucket` |
+| `S3_BUCKET` | （空） | バケット名。MinIO のデフォルトは `my-bucket` |
 | `AWS_ACCESS_KEY_ID` | （空） | MinIO の場合は `minioadmin` |
 | `AWS_SECRET_ACCESS_KEY` | （空） | MinIO の場合は `minioadmin` |
-| `S3_ENDPOINT` | （空） | Next.js が MinIO に接続する URL。`npm run dev` 時は `http://localhost:18583`、Next.js を Docker 内で動かすときは `http://minio:9000` |
+| `S3_ENDPOINT` | （空） | Next.js が MinIO に接続する URL。通常は `http://localhost:18583`（ポート変更時は `MINIO_API_HOST_PORT` に合わせる） |
 | `S3_REGION` | `us-east-1` | リージョン。MinIO は `us-east-1` 等でよい |
-| `S3_PUBLIC_URL` | `http://localhost:18583` | ブラウザが Presigned URL でアクセスするベース URL。**重要**: アップロード・配信ともクライアントは S3 に直接アクセスし、Next.js API が Presigned URL を発行することで認可している |
+| `S3_PUBLIC_URL` | `http://localhost:18583` | ブラウザが Presigned URL でアクセスするベース URL。**重要**: アップロード・配信ともクライアントは S3 に直接アクセスし、Next.js API が Presigned URL を発行してアクセスを許可します。 |
 
 ### 同期（sync-server / Hocuspocus）
 
@@ -71,11 +71,11 @@ sync-server は [Hocuspocus](https://github.com/ueberdosis/hocuspocus) ベース
 
 | 変数名 | デフォルト | 説明 |
 |--------|------------|------|
-| `SYNC_SERVER_URL` | `http://sync-server:5858` | サーバー内部から sync-server への URL。Docker 内では `sync-server`、ローカル単体では `http://localhost:18582` |
+| `SYNC_SERVER_URL` | `http://127.0.0.1:18582` | サーバー内部から sync-server への URL。通常は `http://localhost:18582`（`SYNC_SERVER_HOST_PORT` に合わせる） |
 | `NEXT_PUBLIC_SYNC_WS_URL` | `ws://localhost:18582` | クライアント用 WebSocket URL。localhost では直接接続。Tailscale 等では `/ws` 経由で Next.js が転送 |
-| `SYNC_SERVER_INTERNAL_URL` | `http://127.0.0.1:18582` | Next.js の `/ws` リライト先。`npm run dev` 時は localhost。Next.js を Docker 内で動かすときは `http://sync-server:5858` |
-| `SYNC_MAX_CLIENTS_PER_ROOM` | `100` | 1ボードあたりの最大同時 WebSocket 接続数。超過時は拒否。Docker では `docker-compose.yml` の sync-server の `environment` で渡す |
-| `YPERSISTENCE` | Docker 時は `/app/sync-data`、ローカル時は `sync-server/sync-data` | Y.Doc 永続化用 SQLite の配置ディレクトリ。ローカル時は sync-server の CWD 基準（例: `nextjs-web/sync-server` から起動なら `nextjs-web/sync-server/sync-data`）。Docker ではボリュームをマウントすること |
+| `SYNC_SERVER_INTERNAL_URL` | `http://127.0.0.1:18582` | Next.js の `/ws` リライト先。通常は `http://127.0.0.1:18582`（sync-server のホストポート） |
+| `SYNC_MAX_CLIENTS_PER_ROOM` | `100` | 1ボードあたりの最大同時 WebSocket 接続数。超過時は拒否。sync-server の環境変数で渡す（起動スクリプトが設定） |
+| `YPERSISTENCE` | `sync-server/sync-data`（CWD 基準） | Y.Doc 永続化用 SQLite の配置ディレクトリ。`nextjs-web/sync-server` から起動なら `nextjs-web/sync-server/sync-data` |
 
 ### 運用・チューニング
 

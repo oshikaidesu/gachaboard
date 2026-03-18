@@ -38,7 +38,7 @@
 1. `NEXTAUTH_URL` を本番の URL に設定（HTTPS 推奨）
 2. Discord OAuth の Redirect に本番の callback URL を追加
 3. `DATABASE_URL` を本番 DB に変更
-4. Docker または systemd でサービス起動
+4. start スクリプトで依存サービスを起動するか、systemd 等でサービス化
 
 ---
 
@@ -117,10 +117,10 @@ TAILSCALE_HOST=your-machine.tail12345.ts.net npm run env:tailscale
 
 **注意:** 環境変数を切り替えたあとは、Next.js を再起動（`Ctrl+C` → `npm run dev`）してください。`.env.local` はホットリロードの対象外です。
 
-**一括起動:** 環境変数切り替え・Docker 起動・Next.js 起動・ブラウザ起動をまとめて実行する場合:
-- Tailscale: `cd nextjs-web && npm run start:tailscale`
-- ローカル: `cd nextjs-web && npm run start:local`
-- リセット＆再起動: `npm run start:tailscale:reset` / `start:local:reset`（`--reset` で Docker 停止 → 再起動）
+**一括起動:** 環境変数切り替え・依存サービス起動・Next.js 起動・ブラウザ起動をまとめて実行する場合:
+- Tailscale: `npm run start:tailscale`（プロジェクトルート）
+- ローカル: `npm run start:local`（プロジェクトルート）
+- リセット＆再起動: `npm run start:tailscale:reset` / `start:local:reset`（`--reset` で依存サービス停止のうえ再起動）
 
 起動スクリプトの詳細は [SETUP.md](SETUP.md) の「起動スクリプトが自動で行うこと」を参照してください。
 
@@ -130,8 +130,8 @@ TAILSCALE_HOST=your-machine.tail12345.ts.net npm run env:tailscale
 
 `NEXTAUTH_URL` を Tailscale URL にすると、ブラウザは `ws://<Tailscaleホスト>:18580/ws/...`（または `.env` の `PORT` の値）に WebSocket 接続します。
 
-- **Docker で sync-server を起動している場合**: Next.js の rewrite が `/ws/*` を sync-server に転送するため、同一オリジン（Tailscale URL）経由で WebSocket も動作します。
-- **Docker を使用せず `npm run dev` のみで起動している場合**: `sync-server` のホスト名が解決できず、WebSocket が接続できないことがあります。その場合は `npm run env:local` に戻して localhost 経由で利用するか、sync-server を別途起動し `NEXT_PUBLIC_SYNC_WS_URL` を設定してください。
+- **start スクリプトで起動している場合**: Next.js の rewrite が `/ws/*` を sync-server に転送するため、同一オリジン（Tailscale URL）経由で WebSocket も動作します。
+- **`npm run dev` のみで、PostgreSQL 等をまだ起動していない場合**: sync-server に届かず WebSocket が接続できないことがあります。`start.bat` / `start.sh` で依存サービスを起動してから `npm run dev` するか、`npm run env:local` で localhost 経由にし、sync-server を別途起動して `NEXT_PUBLIC_SYNC_WS_URL` を設定してください。
 
 ## Tailscale 使用時の MinIO（ポート 9000）について
 

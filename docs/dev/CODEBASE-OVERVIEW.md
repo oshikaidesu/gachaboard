@@ -27,7 +27,7 @@
 | `/board/[boardId]/reaction-preset` | リアクションプリセット（ReactionPresetClient） |
 | `/invite/[token]` | 招待リンク（InviteClient） |
 
-- **サーバー/クライアント境界**: 各ページはサーバーコンポーネントで認証・権限確認・DB 取得を行い、結果をクライアントコンポーネント（`*Client`）に props で渡す。ボード本体は `BoardClient` → `CompoundBoard` でクライアント専用。
+- **サーバー/クライアント境界**: 各ページはサーバーコンポーネントで認証・権限確認・DB 取得をし、結果をクライアントコンポーネント（`*Client`）に props で渡す。ボード本体は `BoardClient` → `CompoundBoard` でクライアント側のみ。
 
 ### 1.2 状態管理
 

@@ -6,7 +6,7 @@
 
 ## プラットフォーム別まとめ
 
-| プラットフォーム | 起動入口 | Postgres / MinIO / sync-server | Next.js |
+| プラットフォーム | 起動方法 | Postgres / MinIO / sync-server | Next.js |
 |------------------|----------|--------------------------------|---------|
 | **Windows**      | start.bat → run.ps1 | portable/scripts/start-services.ps1 | ホストで npm run start / dev |
 | **Mac / Linux**  | start.sh → launcher.sh | portable/scripts/start-services.sh | ホストで npm run start / dev |

@@ -209,7 +209,7 @@
 | 用途 | 技術 | バージョン |
 |------|------|-----------|
 | オブジェクトストレージ | AWS S3 (@aws-sdk/client-s3) | ^3.1000.0 |
-| S3 互換（ローカル/小規模） | MinIO | Docker image |
+| S3 互換（ローカル/小規模） | MinIO | portable バイナリまたはシステムインストール |
 | 署名付き URL | @aws-sdk/s3-request-presigner | ^3.1000.0 |
 | メディア変換 | fluent-ffmpeg | ^2.1.3 |
 
@@ -239,7 +239,7 @@
 | **NextAuth** | Discord OAuth をそのまま利用。身内運用で追加 ID 連携が不要 | Discord 依存。プロバイダ障害時にログイン不可 |
 | **PostgreSQL + Prisma** | リレーション・制約を活かしたスキーマ。型安全な ORM。マイグレーション管理 | 現状 `prisma db push` 運用。本番では migrate 運用への移行検討 |
 | **S3 / MinIO** | MinIO で自前サーバー内に完結可能。S3 互換で AWS / R2 に切替え容易。Presigned URL で直接アップロード | MinIO は単一障害点。バックアップ・冗長化は別途検討 |
-| **fluent-ffmpeg** | 業界標準 ffmpeg の Node ラッパー。wav→mp3、動画 720p、波形 JSON を網羅 | ffmpeg バイナリ必須。大容量ファイルで同期変換タイムアウト（2 分）のリスク。ジョブ化は未対応 |
+| **fluent-ffmpeg** | 業界標準 ffmpeg の Node ラッパー。wav→mp3、動画 720p、波形 JSON に対応 | ffmpeg バイナリ必須。大容量ファイルで同期変換タイムアウト（2 分）のリスク。ジョブ化は未対応 |
 | **Tailscale** | P2P 暗号化トンネル。グローバル IP・ポート開放不要。無料 100 台 | ホスト PC 停止でサービス停止。スリープ無効化・UPS 検討が必要 |
 | **cheerio** | 軽量 HTML パース。OGP 取得にフルブラウザ不要 | 動的 JS レンダリングのサイトには対応不可。一部サイトで OGP 取得失敗 |
 | **Twemoji** | Twitter 系絵文字で一貫表示。CDN または自前ホスト可 | 外部 CDN 依存の場合は可用性に影響。自前ホストなら OK |
@@ -378,16 +378,17 @@ tldraw 組み込み型: image, note, geo, text, arrow, draw, highlight, line, fr
 
 ---
 
-## 15. Docker Compose サービス
+## 15. 依存サービス（起動スクリプト）
 
-| サービス | イメージ | ポート（ホスト→コンテナ内） | 備考 |
-|----------|----------|------------------------------|------|
-| **postgres** | postgres:16 | 127.0.0.1:18581 → 5432 | ユーザー: gachaboard |
-| **sync-server** | ビルド | 127.0.0.1:18582 → 5858 | y-websocket-server |
-| **minio** | minio/minio:latest | 18583（API）, 18584（コンソール） | S3 互換ストレージ |
-| **minio-init** | minio/mc | - | バケット `my-bucket` 自動作成 |
+PostgreSQL・MinIO・sync-server はリポジトリに含まれる起動スクリプト（`start.bat` / `start.sh` → portable スクリプト）で起動する。docker-compose は使用しない。
 
-nextjs-web は compose に含まず、`npm run dev` で別途起動（デフォルト PORT=18580。コンテナ内のみの場合は 3000）。
+| サービス | ポート（ホスト） | 備考 |
+|----------|------------------|------|
+| **PostgreSQL** | 18581 | portable でバイナリ取得、またはシステムの pg_ctl。データは `data/postgres` |
+| **sync-server** | 18582 | nextjs-web/sync-server で `node server.mjs`。Y.Doc は SQLite（data/sync）に永続化 |
+| **MinIO** | 18583（API）, 18584（コンソール） | portable でバイナリ取得。バケット `my-bucket` は起動時に自動作成 |
+
+nextjs-web は同じ起動スクリプト内で `npm run dev` または `npm run start` により起動（デフォルト PORT=18580）。
 
 ---
 

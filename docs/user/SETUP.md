@@ -1,6 +1,6 @@
 # セットアップガイド
 
-GitHub から clone して、自分のマシンで Gachaboard サーバーを立てるまでの手順です。
+GitHub から clone して、自分のマシンで Gachaboard サーバーを構築するまでの手順を説明します。
 
 ---
 
@@ -10,9 +10,9 @@ GitHub から clone して、自分のマシンで Gachaboard サーバーを立
 |------|------|----------|
 | **start.bat 1** | Windows（ローカル） | Node.js のみ。PostgreSQL・MinIO は自動ダウンロード |
 | **start.bat 2** | Windows（Tailscale） | Node.js + Tailscale |
-| **start.sh** / **start.command** | Mac / Linux | Docker Desktop + Node.js（同一スクリプト） |
+| **start.sh** / **start.command** | Mac / Linux | Node.js + PostgreSQL（同一スクリプト。MinIO はスクリプトで自動取得） |
 
-**初めての方は start.bat → 1 が最も簡単です。** → [WINDOWS-NATIVE-SETUP.md](WINDOWS-NATIVE-SETUP.md)
+**初めて利用する方は、start.bat を実行して 1 を選択する方法が最も簡単です。** → [WINDOWS-NATIVE-SETUP.md](WINDOWS-NATIVE-SETUP.md)
 
 ---
 
@@ -35,8 +35,8 @@ GitHub から clone して、自分のマシンで Gachaboard サーバーを立
 ## 前提条件
 
 - [ ] **Windows**: Node.js のみ。詳細は [WINDOWS-NATIVE-SETUP.md](WINDOWS-NATIVE-SETUP.md)
-- [ ] **Mac**: Docker Desktop + Node.js 18+
-- [ ] **Linux**: Docker + Node.js + Tailscale
+- [ ] **Mac**: Node.js 18+（PostgreSQL は `brew install postgresql@16` 等。未導入時はスクリプトが案内）
+- [ ] **Linux**: Node.js + PostgreSQL（未導入時はスクリプトが案内）+ Tailscale 利用時は tailscale / jq
 - [ ] **Discord アカウント**（ログインに使用）
 - [ ] **Tailscale アカウント**（無料、[tailscale.com](https://tailscale.com/)）※ localhost のみなら不要
 
@@ -58,9 +58,9 @@ cd gachaboard
 3. **OAuth2 → General** で **Client ID** と **Client Secret** をコピー
 4. **OAuth2 → Redirects** に以下を追加:
    - `http://localhost:18580/api/auth/callback/discord`（ローカル用）
-   - `https://<あなたのホスト名>.ts.net/api/auth/callback/discord`（Tailscale 用・起動後にターミナルに表示される）
+   - `https://<あなたのホスト名>.ts.net/api/auth/callback/discord`（Tailscale 用・起動後のターミナルで確認可能）
 
-> ホスト名は起動後にターミナルに表示されます。初回は localhost だけ追加しておき、Tailscale 起動後に追加してください。
+> ホスト名は起動後のターミナルで確認できます。初回は localhost のみを登録し、Tailscale 起動後に追加してください。
 
 ---
 
@@ -78,7 +78,7 @@ cp .env.example .env
 npm run setup:env    # .env → nextjs-web/.env.local のリンクも作成
 ```
 
-`.env`（正本は `nextjs-web/.env.local`）を開き、以下を入力:
+`.env`（実体は `nextjs-web/.env.local`）を開き、以下を入力:
 
 | 変数 | 取得元 | 必須 |
 |------|--------|:----:|
@@ -87,7 +87,7 @@ npm run setup:env    # .env → nextjs-web/.env.local のリンクも作成
 | `NEXTAUTH_SECRET` | `setup:env` で自動生成（空のままで OK） | ✅ |
 | `SERVER_OWNER_DISCORD_ID` | 管理者の Discord ID（空なら全員がワークスペース作成可） | - |
 
-> **`NEXTAUTH_URL` は設定不要です。** 起動スクリプトが Tailscale のホスト名を動的に取得して自動設定します。`.env` に書き込む必要はありません。
+> **`NEXTAUTH_URL` は設定不要です。** 起動スクリプトが Tailscale のホスト名を自動で取得し、設定に反映します。`.env` に書き込む必要はありません。
 
 それ以外の項目（ポート・DB・S3 等）はデフォルトのままで動きます。詳細は [ENV-REFERENCE.md](ENV-REFERENCE.md)。
 
@@ -99,7 +99,7 @@ npm run setup:env    # .env → nextjs-web/.env.local のリンクも作成
 2. **MagicDNS** を ON にする
 3. **HTTPS Certificates** を ON にする
 
-> これをやらないと `*.ts.net` のアドレスが解決できず、HTTPS も使えません。
+> この設定を行わないと `*.ts.net` のアドレスが解決できず、HTTPS も使えません。
 
 ---
 
@@ -146,7 +146,7 @@ npm run setup:env    # .env → nextjs-web/.env.local のリンクも作成
 4. サーバー主から共有された URL をブラウザで開く
 5. Discord でログイン → 共同編集開始
 
-> **参加者は `start.bat` を実行する必要はありません。** ブラウザでアクセスするだけです。
+> **参加者は `start.bat` を実行する必要はありません。** ブラウザでアクセスするだけで完了です。
 
 ---
 

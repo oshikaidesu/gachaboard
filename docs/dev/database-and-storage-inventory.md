@@ -14,7 +14,7 @@
 | **sync-server** | 18582 | Yjs WebSocket サーバー（リアルタイム共同編集） |
 | **MinIO** | 18583 | S3 互換ストレージ（ファイル本体） |
 
-最小構成（アプリ + DB）に、リアルタイム同期とファイルストレージを足した構成。`docker compose up -d` で postgres / sync-server / minio を起動。Next.js は `npm run dev` で別途起動。
+最小構成（アプリ + DB）に、リアルタイム同期とファイルストレージを足した構成。PostgreSQL・MinIO・sync-server は `start.bat` / `start.sh`（portable スクリプト）で起動。Next.js は同じ起動スクリプト内で `npm run dev` または `npm run start` で起動。
 
 ---
 
@@ -47,7 +47,7 @@ flowchart TB
 
 ## 2. PostgreSQL（Prisma）
 
-**接続**: `DATABASE_URL`（Docker: `postgresql://gachaboard:gachaboard@localhost:18581/gachaboard`）
+**接続**: `DATABASE_URL`（例: `postgresql://gachaboard:gachaboard@localhost:18581/gachaboard`）
 
 ### 2.1 スキーマ一覧
 
@@ -210,4 +210,4 @@ flowchart LR
 | ストレージ操作 | `nextjs-web/src/lib/storage.ts`, `nextjs-web/src/lib/s3.ts` |
 | S3 セッション IndexedDB | `nextjs-web/src/lib/s3UploadSessionStore.ts` |
 | Y.Doc 永続化 | `nextjs-web/src/app/hooks/useYjsStore.ts`（y-indexeddb） |
-| sync-server | `nextjs-web/sync-server/`（Docker はこちらを使用）。ルート `sync-server/` は同構成の別コピー |
+| sync-server | `nextjs-web/sync-server/`（起動スクリプトはこちらを使用）。ルート `sync-server/` は同構成の別コピー |
