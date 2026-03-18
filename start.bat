@@ -1,9 +1,10 @@
 ﻿@echo off
-chcp 65001 >nul 2>nul
+set "DEVNUL=nul"
+chcp 65001 >%DEVNUL% 2>%DEVNUL%
 cd /d "%~dp0"
 
 REM Fix smart quotes in PowerShell scripts (editor may corrupt them)
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\win\fix-quotes.ps1" >nul 2>nul
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\win\fix-quotes.ps1" >%DEVNUL% 2>%DEVNUL%
 
 set "ARG2=%~2"
 set "ARG3=%~3"
@@ -23,6 +24,7 @@ echo   6. Reset and restart
 echo   0. Exit
 echo.
 set /p CHOICE="Enter number (1-6, 0) [Enter=1]: "
+set "CHOICE=%CHOICE:~0,1%"
 if "%CHOICE%"=="" set "CHOICE=1"
 if "%CHOICE%"=="1" goto run_tailscale_prod
 if "%CHOICE%"=="2" goto run_local_prod
