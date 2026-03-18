@@ -141,10 +141,6 @@ echo "  Mac:    brew install node"
 echo "  Linux:  https://nodejs.org/ または nvm でインストール"
 echo "  Windows: start.bat を使用"
 echo ""
-if command -v docker >/dev/null 2>&1; then
-  echo "  Docker で全コンテナ起動する場合: docker compose --profile app up -d"
-  echo ""
-fi
 echo "============================================"
 echo ""
 echo "Enter キーを押すと閉じます..."

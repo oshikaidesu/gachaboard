@@ -17,7 +17,7 @@ ensure_env_symlink "$ROOT_DIR"
 echo ">>> 1. ポート変数を同期"
 bash "$SCRIPTS_DIR/lib/sync-env-ports.sh" 2>/dev/null || true
 echo ">>> 2. 依存サービス起動 (PostgreSQL, MinIO, Sync Server)"
-docker compose up -d --build
+run_native_services || exit 1
 wait_for_postgres || exit 1
 
 echo ">>> 3. パッケージ・DB セットアップ"

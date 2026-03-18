@@ -54,5 +54,5 @@ if (Test-Path $syncScriptPath) {
 }
 
 Write-Host ""
-Write-Host "✓ セットアップ完了。$EnvLocal を編集（Discord OAuth 等）してから docker compose up -d と npm run dev を実行してください。" -ForegroundColor Green
+Write-Host "✓ セットアップ完了。$EnvLocal を編集（Discord OAuth 等）してから start.bat で起動してください。" -ForegroundColor Green
 exit 0

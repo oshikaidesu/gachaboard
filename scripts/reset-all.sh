@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # 全データリセット（新規で使い直すとき用）
-# - Docker: コンテナとボリュームを削除（PostgreSQL / MinIO / sync-server のデータが消える）
-# - ローカルで sync-server を動かしている場合: sync-server の永続化ディレクトリを削除
+# 依存サービスを停止し、data/postgres, data/minio, data/sync および sync-server 永続化・一時ファイルを削除
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -12,9 +11,10 @@ cd "$ROOT_DIR"
 echo "=== Gachaboard 全データリセット ==="
 echo ""
 echo "以下が削除されます:"
-echo "  - Docker: PostgreSQL / MinIO / sync-server のボリューム（コンテナも停止）"
-echo "  - ローカル: nextjs-web/sync-server/sync-data（Hocuspocus SQLite）"
-echo "  - ローカル: nextjs-web/uploads/tmp（ffmpeg 一時ファイル）"
+echo "  - 依存サービス（PostgreSQL, MinIO, sync-server）の停止"
+echo "  - data/postgres, data/minio, data/sync"
+echo "  - nextjs-web/sync-server/sync-data（Hocuspocus SQLite）"
+echo "  - nextjs-web/uploads/tmp（ffmpeg 一時ファイル）"
 echo ""
 read -p "実行してよいですか? [y/N] " -n 1 -r
 echo
@@ -23,16 +23,22 @@ if [[ ! "$REPLY" =~ ^[yY]$ ]]; then
   exit 0
 fi
 
-reset_docker_volumes
+reset_native_services
 
-# ローカルで sync-server を動かしているときの永続化ディレクトリ
+DATA_DIR="${GACHABOARD_DATA_DIR:-$ROOT_DIR/data}"
+for dir in "$DATA_DIR/postgres" "$DATA_DIR/minio" "$DATA_DIR/sync"; do
+  if [[ -d "$dir" ]]; then
+    echo ">>> 削除: $dir"
+    rm -rf "$dir"
+  fi
+done
+
 SYNC_DATA="$ROOT_DIR/nextjs-web/sync-server/sync-data"
 if [[ -d "$SYNC_DATA" ]]; then
   echo ">>> 削除: $SYNC_DATA"
   rm -rf "$SYNC_DATA"
 fi
 
-# ffmpeg 一時ファイル
 UPLOADS_TMP="$ROOT_DIR/nextjs-web/uploads/tmp"
 if [[ -d "$UPLOADS_TMP" ]]; then
   echo ">>> 削除: $UPLOADS_TMP"

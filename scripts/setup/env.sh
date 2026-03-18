@@ -64,4 +64,4 @@ fi
 bash "$SCRIPTS_DIR/lib/sync-env-ports.sh" 2>/dev/null || true
 
 echo ""
-echo "✓ セットアップ完了。$ENV_LOCAL を編集（Discord OAuth 等）してから docker compose up -d と npm run dev を実行してください。"
+echo "✓ セットアップ完了。$ENV_LOCAL を編集（Discord OAuth 等）してから start.sh または start.bat で起動してください。"

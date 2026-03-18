@@ -44,10 +44,9 @@
 
 ---
 
-## docker-compose.yml の参照元
+## Docker 設定ファイル
 
-- start.bat / start.sh の標準フローでは、postgres / minio / sync-server は **portable スクリプト**で起動する。launcher.sh および tailscale.sh / local.sh は `docker compose` を呼ばない。
-- 手動で `docker compose up -d` を実行した場合: postgres / minio / sync-server / minio-init が起動する。**web** は `profiles: ["app"]` のため、`docker compose up -d` だけでは起動せず、`docker compose --profile app up -d` のときのみ起動する。ルートの package.json の `"up": "docker compose up -d"` は profile を指定していないため、web は起動しない。
+- リポジトリに docker-compose.yml および Dockerfile は含まれない。postgres / minio / sync-server は **portable スクリプト**で起動する。
 
 ---
 
