@@ -53,5 +53,5 @@
 
 ## 更新履歴
 
-- 2025-03: Mac/Linux の起動を portable/start-services.sh に変更。
-- 2025-03: 初版。
+- 2026-03: Mac/Linux の起動を portable/start-services.sh に変更。
+- 2026-03: 初版。

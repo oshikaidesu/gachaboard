@@ -1,6 +1,6 @@
 # Gachaboard nextjs-web コードベース概要
 
-2025年3月時点の nextjs-web コードベース概要です。
+2026年3月時点の nextjs-web コードベース概要です。
 
 ---
 
