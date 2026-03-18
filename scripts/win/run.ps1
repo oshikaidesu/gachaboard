@@ -1,4 +1,4 @@
-# Windows native startup (no WSL/Docker)
+﻿# Windows native startup (no WSL/Docker)
 # 起動 = 再起動: 既に Next.js が動いている場合はアプリポートを解放してから起動する。
 # -Tailscale: Tailscale HTTPS 用に NEXTAUTH_URL を設定し、Tailscale Serve を有効化
 # -Dev: npm run dev で開発モード起動（ホットリロード）
@@ -230,10 +230,24 @@ Write-Host ('URL: ' + $AppUrl) -ForegroundColor Green
 Write-Host ('Stop: Ctrl' + [char]43 + 'C') -ForegroundColor Gray
 Write-Host ''
 
+# Next.js の起動完了を待ってからブラウザを開く（バックグラウンドジョブ）
+$readyUrl = 'http://localhost:' + $AppPort
+$openUrl = $AppUrl
+Start-Job -ScriptBlock {
+  param($ReadyUrl, $OpenUrl)
+  for ($i = 0; $i -lt 120; $i++) {
+    try {
+      $r = Invoke-WebRequest -Uri $ReadyUrl -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
+      if ($r -and $r.StatusCode -in @(200, 302, 307)) {
+        Start-Process $OpenUrl
+        return
+      }
+    } catch {}
+    Start-Sleep -Seconds 1
+  }
+} -ArgumentList $readyUrl, $openUrl | Out-Null
+
 Set-Location $nextDir
-try {
-  Start-Process $AppUrl
-} catch {}
 if ($Dev) {
   npm run dev
 } else {

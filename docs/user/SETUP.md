@@ -191,6 +191,7 @@ npm run setup:env    # .env → nextjs-web/.env.local のリンクも作成
 
 | 症状 | 対処 |
 |------|------|
+| 「保護されていない通信」・混合コンテンツ | 起動時に Tailscale（2）を選んでいれば NEXTAUTH_URL は自動設定されます。Caddy なしのときも *.ts.net なら https に強制するため、Next.js を再起動すれば解消する想定です。 |
 | Discord ログイン後にエラー | Redirect URL が起動時に表示されたものと一致しているか確認 |
 | ERR_NAME_NOT_RESOLVED | Tailscale Admin Console で HTTPS Certificates が ON か確認 |
 | PostgreSQL 接続エラー | `start.bat` → 3（リセット）を選択して再起動 |
