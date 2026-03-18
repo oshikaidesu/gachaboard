@@ -237,7 +237,7 @@
 | **yjs** | CRDT でオフライン編集もマージ可能。競合解決が自動。y-websocket と相性が良い | ドラッグ中の全軌跡が CRDT に蓄積し Y.Doc 肥大化。per-record でも JSON オーバーヘッドあり |
 | **Hocuspocus + SQLite** | sync-server は Hocuspocus で SQLite 永続化。Awareness 対応。30 人規模なら十分 | 再起動時は SQLite から復元。同時接続数・ボード数増加時のメモリ・ディスク要監視。100 人超は別構成を検討 |
 | **NextAuth** | Discord OAuth をそのまま利用。身内運用で追加 ID 連携が不要 | Discord 依存。プロバイダ障害時にログイン不可 |
-| **PostgreSQL + Prisma** | リレーション・制約を活かしたスキーマ。型安全な ORM。マイグレーション管理 | 現状 `prisma db push` 運用。本番では migrate 運用への移行検討 |
+| **PostgreSQL + Prisma** | リレーション・制約を活かしたスキーマ。型安全な ORM。マイグレーション管理 | `prisma migrate deploy` でマイグレーション適用 |
 | **S3 / MinIO** | MinIO で自前サーバー内に完結可能。S3 互換で AWS / R2 に切替え容易。Presigned URL で直接アップロード | MinIO は単一障害点。バックアップ・冗長化は別途検討 |
 | **fluent-ffmpeg** | 業界標準 ffmpeg の Node ラッパー。wav→mp3、動画 720p、波形 JSON に対応 | ffmpeg バイナリ必須。大容量ファイルで同期変換タイムアウト（2 分）のリスク。ジョブ化は未対応 |
 | **Tailscale** | P2P 暗号化トンネル。グローバル IP・ポート開放不要。無料 100 台 | ホスト PC 停止でサービス停止。スリープ無効化・UPS 検討が必要 |

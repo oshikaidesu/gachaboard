@@ -25,7 +25,7 @@
    - MinIO: `minio.exe` がなければダウンロード → `data/minio` で起動
    - sync-server: `nextjs-web\sync-server` で `node server.mjs` を別プロセスとして起動（データは `data/sync`）
 3. Step 2 で `pg_isready` が通るまで待機
-4. Step 4 で `npx prisma generate` と `npx prisma db push`
+4. Step 4 で `npx prisma generate` と `npx prisma migrate deploy`
 5. Step 6 で `npm run start` または `npm run dev`
 
 ---

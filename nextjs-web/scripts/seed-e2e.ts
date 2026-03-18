@@ -2,7 +2,7 @@
  * E2E スクリーンショット用シードデータ
  *
  * 実行: cd nextjs-web && npm run seed:e2e
- * 前提: .env.local に DATABASE_URL、prisma db push 済み
+ * 前提: .env.local に DATABASE_URL、prisma migrate deploy 済み
  */
 import { config } from "dotenv";
 config({ path: ".env.local" });

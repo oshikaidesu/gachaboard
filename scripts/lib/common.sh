@@ -293,8 +293,8 @@ wait_for_postgres() {
 apply_prisma_schema() {
   local root_dir="${1:-.}"
   local web_dir="${root_dir}/nextjs-web"
-  echo ">>> スキーマ適用 (prisma generate / db push)"
-  (cd "$web_dir" && npx prisma generate && npx prisma db push)
+  echo ">>> スキーマ適用 (prisma generate / migrate deploy)"
+  (cd "$web_dir" && npx prisma generate && npx prisma migrate deploy)
 }
 
 # macOS: Docker Desktop を完全終了→再起動→Engine 準備完了まで待つ

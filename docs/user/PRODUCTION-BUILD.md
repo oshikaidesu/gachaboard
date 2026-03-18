@@ -33,7 +33,7 @@ cd ..
 ```bash
 cd nextjs-web
 npx prisma generate
-npx prisma db push   # 必要に応じて
+npx prisma migrate deploy   # 必要に応じて
 npm run build
 cd ..
 ```

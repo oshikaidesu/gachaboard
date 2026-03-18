@@ -1,4 +1,4 @@
-﻿# Windows native startup (no WSL/Docker)
+# Windows native startup (no WSL/Docker)
 # 起動 = 再起動: 既に Next.js が動いている場合はアプリポートを解放してから起動する。
 # -Tailscale: Tailscale HTTPS 用に NEXTAUTH_URL を設定し、Tailscale Serve を有効化
 # -Dev: npm run dev で開発モード起動（ホットリロード）
@@ -175,10 +175,10 @@ if (-not (Test-Path (Join-Path $syncDir 'node_modules'))) {
 
 # Prisma
 Write-Host ''
-Write-Host ('Step 4. prisma generate, db push') -ForegroundColor Cyan
+Write-Host ('Step 4. prisma generate, migrate deploy') -ForegroundColor Cyan
 Set-Location $nextDir
 npx prisma generate
-npx prisma db push
+npx prisma migrate deploy
 Set-Location $RootDir
 
 # Build（開発モードではスキップ、BuildOnly では常に実行）

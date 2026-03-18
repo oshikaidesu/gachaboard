@@ -116,7 +116,7 @@ PostgreSQL に繋がらない場合は終了コード 1 で終了します。
 ```bash
 cd nextjs-web
 npm install
-npx prisma db push   # 初回またはスキーマ変更時
+npx prisma migrate deploy   # 初回またはマイグレーション適用（既存 DB の場合は docs/user/24-7-OPERATION.md の「既存の DB」を参照）
 npm run dev
 ```
 

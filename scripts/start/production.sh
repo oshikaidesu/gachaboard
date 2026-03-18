@@ -24,7 +24,7 @@ echo ">>> 3. パッケージ・DB セットアップ"
 cd nextjs-web
 npm install --legacy-peer-deps
 npx prisma generate
-npx prisma db push
+npx prisma migrate deploy
 
 echo ">>> 4. 本番サーバー起動（既存ビルド）"
 # ビルドが必要な場合: npm run build

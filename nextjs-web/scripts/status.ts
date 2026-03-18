@@ -78,7 +78,7 @@ async function checkDb(databaseUrl: string | undefined): Promise<{ ok: boolean; 
       const usersRes = await client.query<{ n: string }>(`SELECT count(*)::text AS n FROM "User"`);
       users = usersRes.rows[0]?.n ?? "0";
     } catch {
-      users = "(スキーマ未適用の可能性 → npx prisma db push)";
+      users = "(スキーマ未適用の可能性 → npx prisma migrate deploy)";
     }
     await client.end();
     return { ok: true, detail: `公開テーブル数 ${tables} / User 行 ${users}` };
