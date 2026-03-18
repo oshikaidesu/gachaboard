@@ -27,6 +27,7 @@ import { useUrlPreviewAttacher } from "@/app/hooks/useUrlPreviewAttacher";
 import { useShapeDeletePositionCapture } from "@/app/hooks/useShapeDeletePositionCapture";
 import { useSnapshotSave } from "@/app/hooks/board/useSnapshotPersistence";
 import { DarkModeButton } from "./DarkModeButton";
+import { DownloadSelectedButton } from "./DownloadSelectedButton";
 import { BoardHeader } from "./BoardHeader";
 import { getSyncWsUrl, isSyncWsUrlValid } from "@/lib/syncWsUrl";
 import { useBoardSnapshotFetch } from "@/app/hooks/board/useBoardSnapshotFetch";
@@ -265,6 +266,7 @@ export default function CompoundBoard({
                   />
                 )}
                 <ConnectHandles />
+                <DownloadSelectedButton />
                 <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 z-10 rounded-full bg-black/50 px-4 py-1.5 text-xs text-white opacity-50 select-none dark:bg-white/20">
                   ファイルをドロップして配置
                 </div>
