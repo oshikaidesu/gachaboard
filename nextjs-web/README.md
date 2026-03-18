@@ -52,7 +52,6 @@ nextjs-web/
 ├── next.config.ts            # Next.js 設定
 ├── scripts/
 │   └── switch-env.sh         # NEXTAUTH_URL を local/tailscale で切り替え
-├── docker/                   # Next.js 用 Docker ファイル
 └── .env.local                # 環境変数（Git管理外）
 ```
 
@@ -89,9 +88,9 @@ nextjs-web/
 
 ---
 
-## ワンコマンド起動
+## ワンコマンド起動（プロジェクトルートで）
 
-env の切り替え + Docker + Next.js をまとめて起動:
+依存サービス（PostgreSQL・MinIO・sync-server）の起動と Next.js をまとめて実行:
 
 ```bash
 npm run start:tailscale   # Tailscale モード（デフォルト）
@@ -102,7 +101,7 @@ npm run start:local:reset
 
 ## 起動確認（手軽）
 
-`docker compose up -d` と `npm run dev` のあと、DB 接続と各サービスをまとめて確認:
+start スクリプトで起動したあと、DB 接続と各サービスをまとめて確認:
 
 ```bash
 npm run status
@@ -110,24 +109,18 @@ npm run status
 
 PostgreSQL に繋がらない場合は終了コード 1 で終了します。
 
-## ローカル開発（Docker なし）
+## 開発モードで Next.js だけ起動する場合
 
-Docker を使わずに直接起動する場合は PostgreSQL が別途必要。
+すでに `start.bat` / `start.sh` で依存サービスが起動しているときは、nextjs-web だけで:
 
 ```bash
 cd nextjs-web
 npm install
-npx prisma db push
+npx prisma db push   # 初回またはスキーマ変更時
 npm run dev
 ```
 
-sync-server と MinIO は Docker で起動する（`docker compose up -d`）。単体起動する場合:
-
-```bash
-cd nextjs-web/sync-server
-npm install
-PORT=18582 HOST=0.0.0.0 npm start
-```
+依存サービスをまだ起動していない場合は、先にプロジェクトルートで `start.bat`（Windows）または `./start.sh`（Mac/Linux）を実行してください。
 
 ---
 
@@ -150,6 +143,6 @@ PORT=18582 HOST=0.0.0.0 npm start
 
 **NEXTAUTH_URL の切り替え**: `npm run env:local` / `npm run env:tailscale`。Tailscale ホスト未指定時は自動検出を試みる。詳細は [../docs/user/ENV-AND-DEPLOYMENT-MODES.md](../docs/user/ENV-AND-DEPLOYMENT-MODES.md) を参照。
 
-**ストレージ**: S3/MinIO が必須。`env.local.template` にデフォルト値あり。`docker compose up -d` で MinIO を起動すること。
+**ストレージ**: S3/MinIO が必須。`env.local.template` にデフォルト値あり。MinIO は start スクリプト実行時に自動で起動する。
 
 **サーバーオーナー（運用）**: `SERVER_OWNER_DISCORD_ID` を設定すると、オーナー以外はワークスペースにアクセスできずトップへリダイレクト。Tailscale 運用でサーバー管理者 1 人をオーナーにする想定。詳細は [ownership-design.md](../docs/user/ownership-design.md)。
