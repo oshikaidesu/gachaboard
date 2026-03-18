@@ -47,15 +47,17 @@ fi
 # S3_ENDPOINT（内部用は常に localhost）
 update_env_var "S3_ENDPOINT" "http://localhost:${MINIO_API_HOST_PORT}"
 # S3_PUBLIC_URL: Tailscale（NEXTAUTH_URL が https）のときは空にして getS3PublicUrl() に https://ホスト/minio を導出させる
+# NEXT_PUBLIC_SYNC_WS_URL: Tailscale 時は空（クライアントが同一オリジン wss://host/ws を使用）
 NEXTAUTH_VAL=$(get_var NEXTAUTH_URL "")
 if echo "$NEXTAUTH_VAL" | grep -qE "^https://"; then
   update_env_var "S3_PUBLIC_URL" ""
+  update_env_var "NEXT_PUBLIC_SYNC_WS_URL" ""
 else
   update_env_var "S3_PUBLIC_URL" "http://localhost:${MINIO_API_HOST_PORT}"
+  update_env_var "NEXT_PUBLIC_SYNC_WS_URL" "ws://localhost:${SYNC_SERVER_HOST_PORT}"
 fi
 
-# NEXT_PUBLIC_SYNC_WS_URL, SYNC_SERVER_INTERNAL_URL
-update_env_var "NEXT_PUBLIC_SYNC_WS_URL" "ws://localhost:${SYNC_SERVER_HOST_PORT}"
+# SYNC_SERVER_INTERNAL_URL（内部用・常に localhost）
 update_env_var "SYNC_SERVER_INTERNAL_URL" "http://127.0.0.1:${SYNC_SERVER_HOST_PORT}"
 
 # NEXTAUTH_URL: localhost の場合のみ PORT を反映

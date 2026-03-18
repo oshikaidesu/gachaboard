@@ -1,6 +1,6 @@
 #!/bin/bash
-# 起動ランチャー（start.command / start.bat 共用）
-# Mac と Windows (WSL2) で同じ UX を提供
+# 起動ランチャー（start.sh / start.command 共用）
+# Mac と Linux で同じ UX を提供
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -49,8 +49,7 @@ if ! command -v docker >/dev/null 2>&1; then
   echo "  Mac: Docker Desktop をインストール"
   echo "  https://docs.docker.com/desktop/install/mac-install/"
   echo ""
-  echo "  Windows: start.bat を実行すると WSL2 内で Docker をセットアップします"
-  echo "  https://docs.microsoft.com/ja-jp/windows/wsl/"
+  echo "  Windows: start.bat を使用（Docker 不要）"
   echo ""
   echo "============================================"
   echo ""
@@ -147,7 +146,7 @@ if [[ "$choice" != "1" ]]; then
   echo ""
   echo "  Node.js をインストールすると、ビルド再生成や開発モードを選べます。"
   echo "  Mac: brew install node"
-  echo "  Windows: start.bat を実行すると WSL2 内でセットアップします"
+  echo "  Windows: start.bat を使用"
   echo ""
   echo "Enter キーを押すと終了します..."
   read -r

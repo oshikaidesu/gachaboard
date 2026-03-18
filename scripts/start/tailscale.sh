@@ -12,18 +12,6 @@ SCRIPTS_DIR="$(dirname "$SCRIPT_DIR")"
 ROOT_DIR="$(dirname "$SCRIPTS_DIR")"
 source "$SCRIPTS_DIR/lib/common.sh"
 cd "$ROOT_DIR"
-# WSL2: docker.io を優先し、Docker Desktop の設定を無視
-if [[ -f /proc/version ]] && grep -qi microsoft /proc/version 2>/dev/null; then
-  export PATH="/usr/bin:$PATH"
-  mkdir -p "$ROOT_DIR/.gachaboard"
-  DOCKER_WSL_DIR="$ROOT_DIR/.gachaboard/docker-wsl2"
-  if [[ -d "$ROOT_DIR/.docker-wsl2" ]] && [[ ! -d "$DOCKER_WSL_DIR" ]]; then
-    mv "$ROOT_DIR/.docker-wsl2" "$DOCKER_WSL_DIR"
-  fi
-  mkdir -p "$DOCKER_WSL_DIR"
-  [[ ! -f "$DOCKER_WSL_DIR/config.json" ]] && echo '{}' > "$DOCKER_WSL_DIR/config.json"
-  export DOCKER_CONFIG="$DOCKER_WSL_DIR"
-fi
 
 DO_RESET=false
 DO_DEV=false
@@ -43,10 +31,30 @@ if [[ "$DO_RESET" != true ]]; then
   fi
   if curl -s -o /dev/null -w "%{http_code}" "http://localhost:${CHECK_PORT}" 2>/dev/null | grep -qE "200|302|307"; then
     echo ""
-    echo "  Gachaboard は既に起動しています"
-    echo "  http://localhost:${CHECK_PORT}"
+    echo "  Gachaboard は既に起動しています（:${CHECK_PORT}）"
     echo ""
-    exit 0
+    echo "  1) ブラウザで開く（そのまま）"
+    echo "  2) 再起動する"
+    echo "  3) 終了"
+    echo ""
+    read -r -p "  1 / 2 / 3 [1]: " _already_choice
+    _already_choice="${_already_choice:-1}"
+    if [[ "$_already_choice" == "2" ]]; then
+      echo ""
+      echo ">>> 再起動します..."
+      kill_app_port "$CHECK_PORT"
+      sleep 2
+    elif [[ "$_already_choice" == "3" ]]; then
+      exit 0
+    else
+      _ts_host=$(detect_tailscale_host 2>/dev/null) || true
+      if [[ -n "$_ts_host" ]]; then
+        open_app_url "https://${_ts_host}"
+      else
+        open_app_url "http://localhost:${CHECK_PORT}"
+      fi
+      exit 0
+    fi
   fi
 fi
 
@@ -68,30 +76,17 @@ if [[ -z "${TAILSCALE_HOST:-}" ]]; then
   echo ">>> Tailscale ホスト名を取得中..."
   TAILSCALE_HOST=$(detect_tailscale_host) || true
 fi
+
 if [[ -z "${TAILSCALE_HOST:-}" ]]; then
   echo ""
   echo ">>> Tailscale にログインしていません。ログインを開始します..."
   echo "    ブラウザが開いたら認証を完了してください。"
   echo ""
-  # sudo は CMD からの WSL 起動だと TTY がなくパスワード入力できない。
-  # wsl -u root で root として直接実行すればパスワード不要。
   AUTH_KEY=""
   if [[ -f "$ROOT_DIR/.env" ]]; then
     AUTH_KEY=$(grep -E '^TAILSCALE_AUTH_KEY=' "$ROOT_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"'\''\r' | head -1)
   fi
-  WSL_EXE=""
-  for p in /mnt/c/Windows/System32/wsl.exe /mnt/c/WINDOWS/System32/wsl.exe; do
-    [[ -x "$p" ]] && WSL_EXE="$p" && break
-  done
-  if [[ -n "$WSL_EXE" ]]; then
-    if [[ -n "$AUTH_KEY" ]]; then
-      "$WSL_EXE" -u root -e tailscale up --auth-key="$AUTH_KEY" 2>/dev/null || true
-    else
-      "$WSL_EXE" -u root -e tailscale up 2>/dev/null || true
-    fi
-  else
-    sudo tailscale up 2>/dev/null || tailscale up 2>/dev/null || true
-  fi
+  sudo tailscale up 2>/dev/null || tailscale up 2>/dev/null || true
   echo ""
   echo "    ログイン完了を待機中（最大60秒）..."
   for i in $(seq 1 60); do
@@ -117,17 +112,18 @@ fi
 export TAILSCALE_HOST
 echo "    ✓ ホスト名: $TAILSCALE_HOST"
 
-# ── 2. env を Tailscale 用に切り替え ──
+# ── 2. ポート同期と NEXTAUTH_URL（動的・.env に書き込まない）──
 echo ">>> ポート変数を同期"
 bash "$SCRIPTS_DIR/lib/sync-env-ports.sh" 2>/dev/null || true
-echo ">>> env を Tailscale 用に切り替え"
-cd nextjs-web
-bash scripts/switch-env.sh tailscale
-cd "$ROOT_DIR"
-sync_env_to_root "$ROOT_DIR"
 
-# Caddyfile 生成（Caddy を使う人向け。Tailscale Serve だけなら不要なので失敗しても続行）
-CALLED_FROM_START=1 bash "$SCRIPTS_DIR/setup/tailscale-https.sh" 2>/dev/null || true
+# .env / .env.local に残った NEXTAUTH_URL を削除（getBaseUrl がリクエスト Host から動的解決するため不要）
+for ef in "$ROOT_DIR/.env" "$ROOT_DIR/nextjs-web/.env.local"; do
+  if [[ -f "$ef" ]] && grep -q '^NEXTAUTH_URL=' "$ef" 2>/dev/null; then
+    tmp=$(mktemp)
+    grep -v '^NEXTAUTH_URL=' "$ef" > "$tmp" && mv "$tmp" "$ef"
+  fi
+done
+export NEXTAUTH_URL="https://${TAILSCALE_HOST}"
 
 # ── 3. Docker で依存サービスを起動 ──
 echo ">>> 依存サービス起動 (PostgreSQL, MinIO, Sync Server)"
@@ -194,21 +190,15 @@ if [[ "$READY" == true ]]; then
   APP_PORT="${PORT:-18580}"
   SYNC_PORT=$(grep -E '^SYNC_SERVER_HOST_PORT=' "${ROOT_DIR}/.env" 2>/dev/null | cut -d= -f2- | tr -d '"\r')
   SYNC_PORT="${SYNC_PORT:-18582}"
+
   if command -v tailscale >/dev/null 2>&1; then
     echo ">>> Tailscale Serve を設定 (/ → :${APP_PORT}, /ws → :${SYNC_PORT})"
-    if _is_wsl2; then
-      for p in /mnt/c/Windows/System32/wsl.exe /mnt/c/WINDOWS/System32/wsl.exe; do
-        if [[ -x "$p" ]]; then
-          "$p" -u root -e tailscale set --operator="$USER" 2>/dev/null || true
-          break
-        fi
-      done
-    fi
     tailscale serve reset 2>/dev/null || true
     tailscale serve --bg "http://127.0.0.1:${APP_PORT}" 2>&1 || true
     MSYS_NO_PATHCONV=1 tailscale serve --bg --set-path='/ws' "http://127.0.0.1:${SYNC_PORT}" 2>&1 || true
     echo "    ✓ Tailscale Serve: HTTPS → localhost:${APP_PORT}, /ws → localhost:${SYNC_PORT}"
   fi
+  APP_URL="https://${TAILSCALE_HOST}"
   open_app_url "$APP_URL"
 fi
 
@@ -217,6 +207,7 @@ echo "============================================"
 echo "  ✓ Gachaboard 起動完了"
 echo "============================================"
 echo ""
+[[ -z "${APP_URL:-}" ]] && APP_URL="https://${TAILSCALE_HOST}"
 echo "  アクセスURL: $APP_URL （HTTPS）"
 echo "  他端末: Tailscale 接続後に同じ URL でアクセスできます"
 echo ""

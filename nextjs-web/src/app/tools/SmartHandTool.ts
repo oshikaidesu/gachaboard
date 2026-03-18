@@ -164,9 +164,13 @@ class SmartHandIdle extends StateNode {
     if (shape && !this.editor.isShapeOrAncestorLocked(shape)) {
       const util = this.editor.getShapeUtil(shape);
       if (this.editor.isShapeOfType(shape, "geo")) {
-        const createdById = (shape.meta as Record<string, unknown>)?.createdById as string | undefined;
-        if (createdById && createdById !== currentUserIdAtom.get()) {
-          return;
+        const meta = shape.meta as Record<string, unknown> | undefined;
+        const openEdit = meta?.openEdit === true;
+        if (!openEdit) {
+          const createdById = meta?.createdById as string | undefined;
+          if (createdById && createdById !== currentUserIdAtom.get()) {
+            return;
+          }
         }
       }
       if (util.canEdit(shape)) {

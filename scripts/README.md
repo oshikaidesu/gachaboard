@@ -16,22 +16,27 @@
 
 ```
 scripts/
-├── lib/          # 共通処理（直接実行しない）
+├── lib/          # 共通処理（Mac/Linux・直接実行しない）
 │   ├── common.sh         # Docker 起動、ポート解放、ブラウザ起動など
 │   └── sync-env-ports.sh # ポート変数から .env を自動同期
-├── start/        # 起動スクリプト
-│   ├── launcher.sh      # 起動ランチャー（Mac/Windows 共用・モード選択）
+├── start/        # 起動スクリプト（Mac/Linux）
+│   ├── launcher.sh      # 起動ランチャー（start.sh / start.command から呼ばれる）
 │   ├── tailscale.sh     # Tailscale モード（--dev, --reset）
 │   ├── local.sh         # ローカルモード（--dev, --reset）
-│   └── production.sh    # 本番（Mac/Linux）
-├── systemd/      # 自動再起動用（Linux）
-│   └── gachaboard-web.service.example  # systemd ユニットの例（docs/user/AUTO-RESTART.md 参照）
-└── setup/        # セットアップスクリプト
-    ├── env.sh              # .env 統合（Mac/Linux）
-    ├── env.ps1             # .env 統合（Windows）
-    ├── create-env-symlink.mjs  # シンボリックリンク作成（Mac/Windows 共通）
-    ├── run-env-setup.mjs   # setup:env エントリポイント
-    └── tailscale-https.sh  # Tailscale HTTPS (Caddy)
+│   └── production.sh    # 本番
+├── setup/        # セットアップ（Mac/Linux）
+│   ├── env.sh              # .env 統合（Mac/Linux）
+│   ├── env.ps1             # .env 統合（Windows）
+│   ├── create-env-symlink.mjs  # シンボリックリンク作成
+│   ├── run-env-setup.mjs   # setup:env エントリポイント
+│   └── tailscale-https.sh  # Tailscale HTTPS (Caddy)
+├── win/          # Windows 起動スクリプト（start.bat から呼ばれる）
+│   ├── run.ps1              # メイン起動（PostgreSQL/MinIO/sync-server + Next.js）
+│   ├── reset-services.ps1   # 全サービス停止
+│   ├── sync-env-tailscale.ps1  # Tailscale HTTPS 用 .env.local 更新
+│   └── setup-auto-start.ps1    # ログオン時自動起動のタスク登録
+└── systemd/      # 自動再起動用（Linux）
+    └── gachaboard-web.service.example  # docs/user/AUTO-RESTART.md 参照
 ```
 
 ## 使い方
@@ -39,7 +44,8 @@ scripts/
 `npm run` から呼ばれる（package.json 参照）。直接実行する場合:
 
 ```bash
-bash scripts/start/tailscale.sh        # ビルド済み起動
+./start.sh                            # Mac/Linux 共通（launcher → tailscale）
+bash scripts/start/tailscale.sh        # 直接呼び出し（ビルド済み起動）
 bash scripts/start/tailscale.sh --dev  # 開発モード
 bash scripts/start/tailscale.sh --reset
 bash scripts/setup/env.sh
@@ -47,7 +53,8 @@ bash scripts/setup/env.sh
 
 ### Windows での起動
 
-- **start.bat**（プロジェクトルート）: ダブルクリックで WSL2 を起動し、`launcher.sh` → `tailscale.sh` を実行。WSL2 が必須。
+- **start.bat**（Windows）: ダブルクリックでメニュー表示。1=ローカル, 2=Tailscale, 3=リセット。Docker 不要。
+- **start.sh** / **start.command**（Mac/Linux）: 同一の `launcher.sh` を呼ぶ。Docker + Node.js 使用。
 
 ### 必須ツールの事前チェック
 

@@ -28,10 +28,13 @@ export function useArrowCascadeDelete() {
     editor.store.listen(
       (entry) => {
         const removedRecords = Object.values(entry.changes.removed);
+        // 型変換（delete+create 同ID）で置き換えられたシェイプは除外
+        const replacedIds = new Set(Object.keys(entry.changes.added ?? {}));
         const nonArrowRemovedIds = new Set<TLShapeId>(
           removedRecords
             .filter((r) => r.typeName === "shape" && (r as { type?: string }).type !== "arrow")
             .map((r) => r.id as TLShapeId)
+            .filter((id) => !replacedIds.has(id))
         );
         if (nonArrowRemovedIds.size === 0) return;
 

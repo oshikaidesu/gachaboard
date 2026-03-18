@@ -1,13 +1,7 @@
 #!/usr/bin/env bash
 # 起動スクリプト共通処理
 
-# WSL2 かどうか判定
-_is_wsl2() {
-  [[ -f /proc/version ]] && grep -qi microsoft /proc/version 2>/dev/null
-}
-
 # 必須ツールの存在チェック。未インストールなら催促して return 1
-# WSL2 の場合、自動インストールを案内・実行する
 # 使用: check_required [tailscale] || exit 1
 #   tailscale … Tailscale モード用に tailscale コマンドも必須にする
 check_required() {
@@ -39,45 +33,6 @@ check_required() {
       esac
     done
     echo ""
-
-    # WSL2: 自動インストールを実行（プロンプトなし、start.bat から一発起動）
-    if _is_wsl2; then
-      if [[ "${CHECK_REQUIRED_INSTALL_ATTEMPTED:-0}" == "1" ]]; then
-        echo "  インストール後も不足があります。手動で docs/user/WSL2-SETUP.md を参照してください。"
-        echo "============================================"
-        echo ""
-        return 1
-      fi
-      echo "  📦 不足しているツールをインストールしています..."
-      echo "     詳細: docs/user/WSL2-SETUP.md"
-      echo ""
-      export CHECK_REQUIRED_INSTALL_ATTEMPTED=1
-      local root_dir="${GACHABOARD_ROOT:-.}"
-      local setup_script="${root_dir}/scripts/setup/wsl2-install-deps.sh"
-      if [[ -f "$setup_script" ]]; then
-        local install_ok=false
-        for p in /mnt/c/Windows/System32/wsl.exe /mnt/c/WINDOWS/System32/wsl.exe; do
-          if [[ -x "$p" ]]; then
-            "$p" -u root -e bash -c "cd \"$root_dir\" && bash scripts/setup/wsl2-install-deps.sh" && install_ok=true
-            break
-          fi
-        done
-        [[ "$install_ok" != true ]] && bash "$setup_script" && install_ok=true
-        if [[ "$install_ok" == true ]]; then
-          echo ""
-          echo "  インストール完了。起動を再試行します..."
-          echo "============================================"
-          echo ""
-          check_required "$@"
-          return $?
-        fi
-      else
-        echo "  セットアップスクリプトが見つかりません: $setup_script"
-      fi
-      echo "============================================"
-      echo ""
-      return 1
-    fi
 
     local step=1
     if [[ "$(uname)" == "Darwin" ]]; then
@@ -208,7 +163,7 @@ check_env_exists() {
 }
 
 # .env (root) を nextjs-web/.env.local へのシンボリックリンクにする。
-# Mac / Linux / WSL2 共通。1ファイルで管理し二重管理を防ぐ。
+# Mac / Linux 共通。1ファイルで管理し二重管理を防ぐ。
 # 使用: ensure_env_symlink "$ROOT_DIR"
 ROOT_ONLY_KEYS=""
 
@@ -247,6 +202,27 @@ sync_env_to_root() {
   [[ -f "$env_local" ]] || return 0
   [[ -L "$env_root" ]] && return 0
   cp "$env_local" "$env_root"
+}
+
+# 指定した tailscale バイナリからホスト名を取得
+# 使用: detect_tailscale_host_from "/mnt/c/Program Files/Tailscale/tailscale.exe"
+detect_tailscale_host_from() {
+  local ts_bin="$1"
+  [[ -z "$ts_bin" ]] && return 1
+  local json
+  json=$("$ts_bin" status --json --peers=false 2>/dev/null) || return 1
+  [[ -z "$json" ]] && return 1
+  local dns
+  if command -v jq >/dev/null 2>&1; then
+    dns=$(echo "$json" | jq -r '.Self.DNSName // empty')
+  else
+    dns=$(echo "$json" | grep -o '"DNSName"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+  fi
+  if [[ -n "$dns" && "$dns" != "null" ]]; then
+    echo "${dns%.}"
+    return 0
+  fi
+  return 1
 }
 
 # Tailscale ホスト名を取得（jq 不要）
@@ -289,6 +265,7 @@ wait_for_postgres() {
   local max=300
   echo "    PostgreSQL の起動を待機中..."
   for i in $(seq 1 "$max"); do
+    [[ $((i % 10)) -eq 0 ]] && echo "    ... ${i}秒"
     # コンテナが存在しない・未稼働のときは docker exec を叩かずスキップ（エラー抑制）
     local running
     running=$(docker inspect -f '{{.State.Running}}' compound-postgres 2>/dev/null || echo "false")
@@ -373,28 +350,6 @@ run_docker_compose_up() {
           fi
         done
       fi
-    elif _is_wsl2; then
-      echo ""
-      echo ">>> Docker Engine が未起動です。起動しています..."
-      for p in /mnt/c/Windows/System32/wsl.exe /mnt/c/WINDOWS/System32/wsl.exe; do
-        if [[ -x "$p" ]]; then
-          "$p" -u root -e service docker start 2>/dev/null || true
-          break
-        fi
-      done
-      echo "    Engine の起動を待機中（最大60秒）..."
-      for i in $(seq 1 60); do
-        if _docker_engine_alive; then
-          echo "    ✓ Docker Engine 起動完了 (${i}秒)"
-          break
-        fi
-        sleep 1
-        if [[ $i -eq 60 ]]; then
-          echo ""
-          echo "❌ Docker に接続できません。WSL で sudo service docker start を実行してください。"
-          return 1
-        fi
-      done
     else
       echo ""
       echo "❌ Docker に接続できません。Docker を起動してから再試行してください。"
@@ -404,24 +359,7 @@ run_docker_compose_up() {
 
   # 2. データは常にプロジェクト直下 ./data（オプション廃止）
   local root="${GACHABOARD_ROOT:-.}"
-  if _is_wsl2; then
-    export PATH="/usr/bin:$PATH"
-    [[ -n "$root" ]] && {
-      mkdir -p "${root}/.gachaboard/docker-wsl2"
-      [[ ! -f "${root}/.gachaboard/docker-wsl2/config.json" ]] && echo '{}' > "${root}/.gachaboard/docker-wsl2/config.json"
-      export DOCKER_CONFIG="${root}/.gachaboard/docker-wsl2"
-    }
-    export DOCKER_BUILDKIT=0
-    if [[ "$root" == /mnt/d/* ]]; then
-      export GACHABOARD_DATA_DIR="/mnt/d/gachaboard-data"
-    elif [[ "$root" == /mnt/* ]]; then
-      export GACHABOARD_DATA_DIR="$HOME/gachaboard-data"
-    else
-      export GACHABOARD_DATA_DIR="${root}/data"
-    fi
-  else
-    export GACHABOARD_DATA_DIR="${root}/data"
-  fi
+  export GACHABOARD_DATA_DIR="${root}/data"
   mkdir -p "$GACHABOARD_DATA_DIR"
 
   # 3. 古いコンテナを掃除してから docker compose up -d --build を実行
@@ -451,10 +389,6 @@ run_docker_compose_up() {
         if ! _restart_docker_desktop; then
           return 1
         fi
-      elif _is_wsl2; then
-        for p in /mnt/c/Windows/System32/wsl.exe /mnt/c/WINDOWS/System32/wsl.exe; do
-          [[ -x "$p" ]] && "$p" -u root -e service docker start 2>/dev/null; break
-        done
       else
         echo ""
         echo "❌ Docker Engine に接続できません。Docker を起動してから再試行してください。"

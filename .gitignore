@@ -2,9 +2,8 @@
 Caddyfile
 config/Caddyfile
 
-# ランタイム（起動ロック、Docker WSL 設定）
+# ランタイム（起動ロック）
 .gachaboard/
-.docker-wsl2
 .gachaboard-start.lock
 
 # 環境変数（シークレット含む）

@@ -133,7 +133,7 @@
 
 - **next/image**: 未使用。OGP は `<img>`。`next.config.ts` の `images.remotePatterns` は Discord CDN のみ許可。
 - **キャッシュ**: `useAssetStatus.ts` で `fetch(..., { cache: "no-store" })`。`revalidate` や `unstable_cache` の利用はなし。
-- **N+1 / 重いクエリ**: 多くの API は findUnique / findMany を 1 リクエストあたり 1〜2 回に留めている。**snapshot/route.ts** では同一リクエスト内で `board.findUnique` が条件分岐ごとに複数回あり、整理でクエリ削減の余地あり。
+- **N+1 / 重いクエリ**: 多くの API は findUnique / findMany を 1 リクエストあたり 1〜2 回に留めている。**snapshot/route.ts** では GET/PUT/PATCH の 3 ハンドラで同じ E2E 分岐＋board 取得ロジックが重複しており、共通化でコード削減の余地あり。
 
 ### 4.3 本番ビルド
 
@@ -149,6 +149,6 @@
 |--------|------|
 | 高 | tsconfig の exclude からメディア系シェイプを外し型チェックを通す、または any を減らす |
 | 中 | @deprecated の `isValidUploadId` / `isValidChunkIndex` を削除または利用箇所を整理 |
-| 中 | snapshot/route.ts の board.findUnique を 1 回にまとめてクエリ削減 |
+| 中 | snapshot/route.ts の board 取得ロジックを共通ヘルパーに集約 |
 | 低 | 単体テスト（Vitest 等）の導入検討 |
 | 低 | .env.example を用意するか README で env.local.template の旨を明示 |
