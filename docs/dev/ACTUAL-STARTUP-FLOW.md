@@ -11,9 +11,9 @@
 | **Windows**      | start.bat → run.ps1 | portable/scripts/start-services.ps1 | ホストで npm run start / dev |
 | **Mac / Linux**  | start.sh → launcher.sh | portable/scripts/start-services.sh | ホストで npm run start / dev |
 
-**Windows** は run.ps1 が `portable\scripts\start-services.ps1` を呼ぶ。Postgres は `pg_ctl` が見つからなければ `portable\bin` にダウンロードして使う。MinIO も同様に `portable\bin\minio.exe`。sync-server は `nextjs-web\sync-server` で `node server.mjs` として起動する。run.ps1 は docker を一切使わない。
+**Windows** は run.ps1 が `portable\scripts\start-services.ps1` を呼び出す。Postgres は `pg_ctl` が見つからなければ `portable\bin` にダウンロードして起動する。MinIO も同様に `portable\bin\minio.exe` をダウンロードして起動する。sync-server は `nextjs-web\sync-server` で `node server.mjs` として起動する。run.ps1 は docker を参照しない。
 
-**Mac/Linux** は tailscale.sh / local.sh が `run_native_services`（common.sh の関数）経由で `portable/scripts/start-services.sh` を呼ぶ。Postgres はシステムの `pg_ctl` を使う（無ければインストール案内が出る）。MinIO はシステムにコマンドがなければ `portable/bin` に自動ダウンロードする（darwin-amd64 / darwin-arm64 / linux-amd64 / linux-arm64 に対応）。common.sh の `check_required` は node / curl（Tailscale モード時は tailscale も）をチェックする。
+**Mac/Linux** は tailscale.sh / local.sh が common.sh の `run_native_services` 関数経由で `portable/scripts/start-services.sh` を呼び出す。Postgres はシステムの `pg_ctl` を使う（なければインストール案内が出る）。MinIO はシステムにコマンドがなければ `portable/bin` に自動ダウンロードする（darwin-amd64 / darwin-arm64 / linux-amd64 / linux-arm64 対応）。common.sh の `check_required` は node / curl、Tailscale モード時は tailscale も確認する。
 
 ---
 

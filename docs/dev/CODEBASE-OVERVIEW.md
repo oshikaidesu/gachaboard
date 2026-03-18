@@ -1,6 +1,6 @@
 # Gachaboard nextjs-web コードベース概要
 
-並列エージェントによる探索結果をまとめたドキュメント（2025年3月時点）。
+2025年3月時点の nextjs-web コードベース概要です。
 
 ---
 
@@ -27,13 +27,13 @@
 | `/board/[boardId]/reaction-preset` | リアクションプリセット（ReactionPresetClient） |
 | `/invite/[token]` | 招待リンク（InviteClient） |
 
-- **サーバー/クライアント境界**: 各ページはサーバーコンポーネントで認証・権限・DB 取得を行い、結果をクライアントコンポーネント（`*Client`）に props で渡す。ボード本体は `BoardClient` → `CompoundBoard` でクライアント専用。
+- **サーバー/クライアント境界**: 各ページはサーバーコンポーネントで認証・権限確認・DB 取得を行い、結果をクライアントコンポーネント（`*Client`）に props で渡す。ボード本体は `BoardClient` → `CompoundBoard` でクライアント専用。
 
 ### 1.2 状態管理
 
 - **React Context**: `ThemeProvider`、`BoardContext`、`BoardCommentProvider`、`BoardReactionProvider`。認証は next-auth の `SessionProvider`（AuthProvider 内）。
 - **Zustand**: 未使用。
-- **ボードの実体状態**: `CompoundBoard` 内の `useYjsStore` が Yjs の `Y.Doc` と compound の TLStore を双方向同期。IndexedDB 永続化（`useYjsPersistence`）と WebSocket 同期（`useYjsSync`）、Awareness（`useYjsAwareness`）を組み合わせた協調編集状態。
+- **ボードの実体状態**: `CompoundBoard` 内の `useYjsStore` が Yjs の `Y.Doc` と compound の TLStore を双方向同期する。IndexedDB 永続化（`useYjsPersistence`）・WebSocket 同期（`useYjsSync`）・Awareness（`useYjsAwareness`）を組み合わせてリアルタイム協調編集を実現している。
 - **サーバー/クライアント境界**: セッションは `getServerSession(authOptions)` でサーバー、`useSession` 等でクライアント。ボード・ワークスペースのメタ情報やアクセス可否はサーバーで Prisma と `assertWorkspaceAccess` / `assertBoardAccess` で判定。
 
 ### 1.3 API・データ
@@ -49,7 +49,7 @@
 
 - **DB**: Prisma + PostgreSQL（`src/lib/db/db.ts`、`env.DATABASE_URL`）
 - **S3**: `@aws-sdk/client-s3`。アップロードは init → presign → クライアントから S3 直アップロード → complete。セッションは DB に保存。
-- **WebSocket**: 同期用に y-websocket。`getSyncWsUrl()`（`src/lib/syncWsUrl.ts`）で URL 取得。ローカルでは `NEXT_PUBLIC_SYNC_WS_URL`、それ以外は同一オリジンの `/ws`。
+- **WebSocket**: 同期用に y-websocket を使用。`getSyncWsUrl()`（`src/lib/syncWsUrl.ts`）で URL を取得し、ローカルでは `NEXT_PUBLIC_SYNC_WS_URL`、それ以外は同一オリジンの `/ws` を使う。
 
 ### 1.4 技術スタック
 
@@ -133,7 +133,7 @@
 
 - **next/image**: 未使用。OGP は `<img>`。`next.config.ts` の `images.remotePatterns` は Discord CDN のみ許可。
 - **キャッシュ**: `useAssetStatus.ts` で `fetch(..., { cache: "no-store" })`。`revalidate` や `unstable_cache` の利用はなし。
-- **N+1 / 重いクエリ**: 多くの API は findUnique / findMany を 1 リクエストあたり 1〜2 回に留めている。**snapshot/route.ts** では GET/PUT/PATCH の 3 ハンドラで同じ E2E 分岐＋board 取得ロジックが重複しており、共通化でコード削減の余地あり。
+- **N+1 / 重いクエリ**: 多くの API は findUnique / findMany を 1 リクエストあたり 1〜2 回に留めている。**snapshot/route.ts** では GET/PUT/PATCH の 3 ハンドラで同じ E2E 分岐＋board 取得ロジックが重複しており、共通ヘルパーにまとめるとコードを減らせそう。
 
 ### 4.3 本番ビルド
 

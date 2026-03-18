@@ -56,7 +56,7 @@ brew install tailscale jq
 ```
 
 - **tailscale**: ホスト名取得や `npm run env:tailscale` の自動検出に必要
-- **jq**: `tailscale status --json` の結果をパースするために使用
+- **jq**: `tailscale status --json` の出力をパースするのに使う
 
 インストール後、`tailscale status` が使えるようになります。
 

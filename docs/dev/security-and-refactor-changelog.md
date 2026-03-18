@@ -1,6 +1,6 @@
 # セキュリティ・リファクタリング変更履歴
 
-認証・DB・API 周りのセキュリティ改善とライブラリ活用のための組み替えを記録する。
+認証・DB・API 周りのセキュリティ改善とリファクタリングの変更履歴です。
 
 ---
 
@@ -188,7 +188,7 @@
 ## Phase 9: YouTube iframe sandbox & assetId バリデーション
 
 ### 9-1. YouTube iframe sandbox 属性の追加
-- **問題**: `OgpPreview.tsx` の YouTube embed iframe に `sandbox` 属性がなく、埋め込みコンテンツが親ウィンドウをナビゲートしたりポップアップを開く余地があった
+- **問題**: `OgpPreview.tsx` の YouTube embed iframe に `sandbox` 属性がなく、埋め込みコンテンツが親ウィンドウに遷移したりポップアップを開いたりできる状態だった
 - **対策**: `sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"` を追加し、必要最小限の機能のみ許可
 
 ### 9-2. assetId CSS injection / パストラバーサル防止
@@ -211,7 +211,7 @@
 
 ## Phase 10: バックエンド assetId バリデーション
 
-- **目的**: フロントの検証をバイパスして直接 API を叩かれた場合の防御の二重化
+- **目的**: フロントの検証をバイパスして直接 API を叩かれた場合に備え、バックエンド側でも同等のバリデーションを行う
 - **対策**: `src/lib/validators.ts` に `assetIdSchema`（Zod）を追加。フロントの `getSafeAssetId` と同等ルール
 - **適用箇所**:
   - `api/assets/[assetId]/file/route.ts` - HEAD, GET

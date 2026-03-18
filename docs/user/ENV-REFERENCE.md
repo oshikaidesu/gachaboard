@@ -63,7 +63,7 @@
 | `AWS_SECRET_ACCESS_KEY` | （空） | MinIO の場合は `minioadmin` |
 | `S3_ENDPOINT` | （空） | Next.js が MinIO に接続する URL。`npm run dev` 時は `http://localhost:18583`、Next.js を Docker 内で動かすときは `http://minio:9000` |
 | `S3_REGION` | `us-east-1` | リージョン。MinIO は `us-east-1` 等でよい |
-| `S3_PUBLIC_URL` | `http://localhost:18583` | ブラウザが Presigned URL でアクセスするベース URL。**重要**: アップロード・配信ともクライアントは S3 に直接アクセスし、認可は Next.js API が Presigned URL 発行で行う |
+| `S3_PUBLIC_URL` | `http://localhost:18583` | ブラウザが Presigned URL でアクセスするベース URL。**重要**: アップロード・配信ともクライアントは S3 に直接アクセスし、Next.js API が Presigned URL を発行することで認可している |
 
 ### 同期（sync-server / Hocuspocus）
 
@@ -87,7 +87,7 @@ sync-server は [Hocuspocus](https://github.com/ueberdosis/hocuspocus) ベース
 
 ## 本番デプロイ時の必須変更
 
-本番で使用する前に、以下の認証情報をデフォルトから変更してください。詳細は [SECURITY.md](../../SECURITY.md) の「本番デプロイ時の推奨事項」を参照してください。
+本番で使用する前に、以下の認証情報をデフォルトから変更してください。詳細は [SECURITY.md](../../SECURITY.md) の「本番デプロイ時の推奨事項」を参照。
 
 | 対象 | 環境変数 | 説明 |
 |------|----------|------|

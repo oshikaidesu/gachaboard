@@ -1,6 +1,6 @@
 # DB・ストレージ一覧
 
-> **目的**: プロジェクト内のすべてのデータ保存・永続化レイヤーを網羅的に一覧化する。  
+> プロジェクト内のデータ保存・永続化レイヤーをすべてまとめています。  
 > **作成日**: 2026-03-08
 
 ---
@@ -108,7 +108,7 @@ flowchart TB
 - **アップロード**: クライアント → init API（認可）→ Presigned PUT URL → S3 に直接アップロード
 - **配信**: クライアント → file/thumbnail API（認可）→ 302 リダイレクト → Presigned GET URL → S3 から直接取得
 - **波形**: waveform API は fetch が CORS で弾かれるため Next.js 経由でプロキシ（データは小さい）
-- Next.js は認可と Presigned URL 発行のみ。実データは S3 とクライアント間で直接転送
+- Next.js は認可と Presigned URL の発行のみ。実データの送受信は S3 とクライアントが直接やりとりする
 
 ### 4.3 MinIO CORS
 
