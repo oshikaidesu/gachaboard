@@ -317,15 +317,57 @@ export async function placeholderShape(
 
 const FILE_ICON_SIZE = 96;
 
+type TLShapeId = import("@cmpd/tlschema").TLShapeId;
+
+const CENTER_BINDING = {
+  type: "binding" as const,
+  normalizedAnchor: { x: 0.5, y: 0.5 },
+  isExact: false,
+  isPrecise: false,
+};
+
+/** 指定シェイプに接続している矢印の ID と接続端（start/end）を収集。型変換で binding→point になる前に呼ぶ。 */
+function getArrowsBoundToShape(
+  editor: Editor,
+  shapeId: TLShapeId
+): { id: TLShapeId; end: "start" | "end" }[] {
+  const result: { id: TLShapeId; end: "start" | "end" }[] = [];
+  for (const s of editor.getCurrentPageShapes()) {
+    if (s.type !== "arrow") continue;
+    const props = s.props as { start?: { type?: string; boundShapeId?: TLShapeId }; end?: { type?: string; boundShapeId?: TLShapeId } };
+    if (props.start?.type === "binding" && props.start.boundShapeId === shapeId) result.push({ id: s.id as TLShapeId, end: "start" });
+    if (props.end?.type === "binding" && props.end.boundShapeId === shapeId) result.push({ id: s.id as TLShapeId, end: "end" });
+  }
+  return result;
+}
+
+/** 型変換で point にされた（またはまだ binding の）矢印を、同じシェイプに再 bind する。 */
+function rebindArrowsToShape(editor: Editor, shapeId: TLShapeId, boundArrows: { id: TLShapeId; end: "start" | "end" }[]): void {
+  const binding = { ...CENTER_BINDING, boundShapeId: shapeId };
+  for (const { id: arrowId, end } of boundArrows) {
+    const arrow = editor.getShape(arrowId);
+    if (!arrow || arrow.type !== "arrow") continue;
+    const props = arrow.props as { start?: { type?: string }; end?: { type?: string }; [k: string]: unknown };
+    const current = end === "start" ? props.start : props.end;
+    if (current?.type === "binding" && (current as { boundShapeId?: TLShapeId }).boundShapeId === shapeId) continue;
+    editor.updateShapes([
+      { id: arrowId, type: "arrow", props: { ...props, [end]: binding } },
+    ]);
+  }
+}
+
 /**
  * audio-player / video-player を file-icon（アイコン表示）に変換する。
  * tldraw は updateShape で type を変更できないため、削除→作成で実現する。
+ * 削除時に矢印の binding が point に変わるため、作成後に再 bind する。
  */
 export function convertToFileIcon(editor: Editor, shapeId: string): boolean {
-  const shape = editor.getShape(shapeId as import("@cmpd/tlschema").TLShapeId);
+  const sid = shapeId as TLShapeId;
+  const shape = editor.getShape(sid);
   if (!shape) return false;
   if (shape.type !== SHAPE_TYPE.AUDIO && shape.type !== SHAPE_TYPE.VIDEO) return false;
 
+  const boundArrows = getArrowsBoundToShape(editor, sid);
   const p = shape.props as { assetId?: string; fileName?: string; mimeType?: string };
   const assetId = p.assetId ?? "";
   const fileName = p.fileName ?? "";
@@ -335,9 +377,9 @@ export function convertToFileIcon(editor: Editor, shapeId: string): boolean {
   const meta = shape.meta ?? {};
 
   editor.batch(() => {
-    editor.deleteShapes([shapeId as import("@cmpd/tlschema").TLShapeId]);
+    editor.deleteShapes([sid]);
     editor.createShape({
-      id: shapeId as import("@cmpd/tlschema").TLShapeId,
+      id: sid,
       type: SHAPE_TYPE.FILE_ICON,
       x,
       y,
@@ -351,6 +393,7 @@ export function convertToFileIcon(editor: Editor, shapeId: string): boolean {
         h: FILE_ICON_SIZE,
       } as FileIconShape["props"],
     });
+    rebindArrowsToShape(editor, sid, boundArrows);
   });
   return true;
 }
@@ -358,15 +401,18 @@ export function convertToFileIcon(editor: Editor, shapeId: string): boolean {
 /**
  * file-icon（kind: audio / video）を audio-player / video-player に変換する。
  * tldraw は updateShape で type を変更できないため、削除→作成で実現する。
+ * 削除時に矢印の binding が point に変わるため、作成後に再 bind する。
  */
 export function convertToMediaPlayer(editor: Editor, shapeId: string): boolean {
-  const shape = editor.getShape(shapeId as import("@cmpd/tlschema").TLShapeId);
+  const sid = shapeId as TLShapeId;
+  const shape = editor.getShape(sid);
   if (!shape || shape.type !== SHAPE_TYPE.FILE_ICON) return false;
 
   const p = shape.props as FileIconShape["props"];
   const kind = p.kind;
   if (!(MEDIA_ICON_KINDS as readonly string[]).includes(kind)) return false;
 
+  const boundArrows = getArrowsBoundToShape(editor, sid);
   const assetId = p.assetId ?? "";
   const fileName = p.fileName ?? "";
   const mimeType = p.mimeType ?? "";
@@ -375,9 +421,9 @@ export function convertToMediaPlayer(editor: Editor, shapeId: string): boolean {
 
   if (kind === "audio") {
     editor.batch(() => {
-      editor.deleteShapes([shapeId as import("@cmpd/tlschema").TLShapeId]);
+      editor.deleteShapes([sid]);
       editor.createShape({
-        id: shapeId as import("@cmpd/tlschema").TLShapeId,
+        id: sid,
         type: SHAPE_TYPE.AUDIO,
         x,
         y,
@@ -390,15 +436,16 @@ export function convertToMediaPlayer(editor: Editor, shapeId: string): boolean {
           h: AUDIO_DEFAULT_H,
         } as AudioShape["props"],
       });
+      rebindArrowsToShape(editor, sid, boundArrows);
     });
   } else {
     const w = 480;
     const videoAreaH = Math.round(w / (16 / 9));
     const defaultH = videoAreaH + VIDEO_UI_OVERHEAD + MIN_COMMENT_LIST_H;
     editor.batch(() => {
-      editor.deleteShapes([shapeId as import("@cmpd/tlschema").TLShapeId]);
+      editor.deleteShapes([sid]);
       editor.createShape({
-        id: shapeId as import("@cmpd/tlschema").TLShapeId,
+        id: sid,
         type: SHAPE_TYPE.VIDEO,
         x,
         y,
@@ -411,6 +458,7 @@ export function convertToMediaPlayer(editor: Editor, shapeId: string): boolean {
           h: defaultH,
         } as VideoShape["props"],
       });
+      rebindArrowsToShape(editor, sid, boundArrows);
     });
   }
   return true;

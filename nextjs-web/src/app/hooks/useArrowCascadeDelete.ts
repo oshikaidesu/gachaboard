@@ -28,46 +28,49 @@ export function useArrowCascadeDelete() {
     editor.store.listen(
       (entry) => {
         const removedRecords = Object.values(entry.changes.removed);
-        // 型変換（delete+create 同ID）で置き換えられたシェイプは除外
-        const replacedIds = new Set(Object.keys(entry.changes.added ?? {}));
-        const nonArrowRemovedIds = new Set<TLShapeId>(
+        const candidateRemovedIds = new Set<TLShapeId>(
           removedRecords
             .filter((r) => r.typeName === "shape" && (r as { type?: string }).type !== "arrow")
             .map((r) => r.id as TLShapeId)
-            .filter((id) => !replacedIds.has(id))
         );
-        if (nonArrowRemovedIds.size === 0) return;
+        if (candidateRemovedIds.size === 0) return;
 
-        const arrowIds = new Set<TLShapeId>();
+        // 同一トランザクションで added にあれば置き換えとみなす
+        const replacedInSameEntry = new Set(Object.keys(entry.changes.added ?? {}));
+        const nonArrowRemovedIds = new Set<TLShapeId>(
+          [...candidateRemovedIds].filter((id) => !replacedInSameEntry.has(id))
+        );
 
-        // (1) 削除レコード内の矢印をチェック
-        for (const record of removedRecords) {
-          if (record.typeName !== "shape" || (record as { type?: string }).type !== "arrow") continue;
-          if (arrowRefersTo((record as { props: ArrowProps }).props, nonArrowRemovedIds)) {
-            // すでに削除済みなので追加不要
+        // バッチで remove→add が別イベントで届く場合に備え、マイクロタスク後に「今も存在しないID」だけを本当の削除対象にする
+        queueMicrotask(() => {
+          const trulyRemovedIds = new Set<TLShapeId>(
+            [...nonArrowRemovedIds].filter((id) => !editor.getShape(id))
+          );
+          if (trulyRemovedIds.size === 0) return;
+
+          const arrowIds = new Set<TLShapeId>();
+
+          // (2) ページに残っている矢印をチェック
+          for (const shape of editor.getCurrentPageShapes()) {
+            if (shape.type !== "arrow") continue;
+            if (arrowRefersTo(shape.props as ArrowProps, trulyRemovedIds)) {
+              arrowIds.add(shape.id);
+            }
           }
-        }
 
-        // (2) ページに残っている矢印をチェック
-        for (const shape of editor.getCurrentPageShapes()) {
-          if (shape.type !== "arrow") continue;
-          if (arrowRefersTo(shape.props as ArrowProps, nonArrowRemovedIds)) {
-            arrowIds.add(shape.id);
+          // (3) 更新された矢印の旧 props をチェック（binding → point 変換を検出）
+          for (const [before] of Object.values(entry.changes.updated ?? {})) {
+            if (before.typeName !== "shape" || (before as { type?: string }).type !== "arrow") continue;
+            if (arrowRefersTo((before as { props: ArrowProps }).props, trulyRemovedIds)) {
+              const id = before.id as TLShapeId;
+              if (editor.getShape(id)) arrowIds.add(id);
+            }
           }
-        }
 
-        // (3) 更新された矢印の旧 props をチェック（binding → point 変換を検出）
-        for (const [before] of Object.values(entry.changes.updated)) {
-          if (before.typeName !== "shape" || (before as { type?: string }).type !== "arrow") continue;
-          if (arrowRefersTo((before as { props: ArrowProps }).props, nonArrowRemovedIds)) {
-            const id = before.id as TLShapeId;
-            if (editor.getShape(id)) arrowIds.add(id);
+          if (arrowIds.size > 0) {
+            editor.deleteShapes([...arrowIds]);
           }
-        }
-
-        if (arrowIds.size > 0) {
-          editor.deleteShapes([...arrowIds]);
-        }
+        });
       },
       { source: "user", scope: "document" }
     );
