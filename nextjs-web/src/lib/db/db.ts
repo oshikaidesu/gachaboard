@@ -3,7 +3,11 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { env } from "@/lib/env";
 
 function createPrismaClient() {
-  const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
+  const adapter = new PrismaPg({
+    connectionString: env.DATABASE_URL,
+    connectionTimeoutMillis: 5_000,
+    idleTimeoutMillis: 60_000,
+  });
   return new PrismaClient({ adapter, log: ["warn", "error"] });
 }
 

@@ -35,6 +35,21 @@ export function getS3StorageFullError(err: unknown): { status: 507; message: str
 
 let _s3Client: S3Client | null = null;
 
+/** 接続・ネットワーク系エラーかどうか。長時間運用で stale になった接続のエラーを検出する。 */
+function isConnectionError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  const code = err && typeof err === "object" && "code" in err ? String((err as { code?: string }).code) : "";
+  return (
+    /ECONNRESET|ETIMEDOUT|ECONNREFUSED|socket hang up|network|connect/i.test(msg) ||
+    /ECONNRESET|ETIMEDOUT|ECONNREFUSED|ENOTFOUND/i.test(code)
+  );
+}
+
+/** 接続エラー時にシングルトンを破棄し、次回 getClient() で新しいクライアントを作る。長時間運用時の stale 接続対策。 */
+export function resetS3ClientOnError(err: unknown): void {
+  if (isConnectionError(err)) _s3Client = null;
+}
+
 function getClient(): S3Client {
   if (_s3Client) return _s3Client;
   const config: ConstructorParameters<typeof S3Client>[0] = {
@@ -50,6 +65,15 @@ function getClient(): S3Client {
   }
   _s3Client = new S3Client(config);
   return _s3Client;
+}
+
+async function withClient<T>(fn: (client: S3Client) => Promise<T>): Promise<T> {
+  try {
+    return await fn(getClient());
+  } catch (e) {
+    resetS3ClientOnError(e);
+    throw e;
+  }
 }
 
 /**
@@ -93,71 +117,76 @@ export function s3KeyWaveform(storageKey: string): string {
 
 /** Multipart アップロードを開始 */
 export async function createMultipartUpload(storageKey: string, mimeType: string) {
-  const client = getClient();
-  const Key = s3KeyAssets(storageKey);
-  const cmd = new CreateMultipartUploadCommand({
-    Bucket: bucket(),
-    Key,
-    ContentType: mimeType,
+  return withClient(async (client) => {
+    const Key = s3KeyAssets(storageKey);
+    const cmd = new CreateMultipartUploadCommand({
+      Bucket: bucket(),
+      Key,
+      ContentType: mimeType,
+    });
+    const res = await client.send(cmd);
+    return { uploadId: res.UploadId!, key: Key };
   });
-  const res = await client.send(cmd);
-  return { uploadId: res.UploadId!, key: Key };
 }
 
 /** アップロード済みパート一覧を取得 */
 export async function listParts(key: string, uploadId: string): Promise<{ PartNumber: number; ETag: string }[]> {
-  const client = getClient();
-  const parts: { PartNumber: number; ETag: string }[] = [];
-  let marker: string | undefined;
-  for (;;) {
-    const res = await client.send(new ListPartsCommand({
-      Bucket: bucket(),
-      Key: key,
-      UploadId: uploadId,
-      PartNumberMarker: marker,
-    }));
-    for (const p of res.Parts ?? []) {
-      if (p.PartNumber != null && p.ETag) parts.push({ PartNumber: p.PartNumber, ETag: p.ETag });
+  return withClient(async (client) => {
+    const parts: { PartNumber: number; ETag: string }[] = [];
+    let marker: string | undefined;
+    for (;;) {
+      const res = await client.send(new ListPartsCommand({
+        Bucket: bucket(),
+        Key: key,
+        UploadId: uploadId,
+        PartNumberMarker: marker,
+      }));
+      for (const p of res.Parts ?? []) {
+        if (p.PartNumber != null && p.ETag) parts.push({ PartNumber: p.PartNumber, ETag: p.ETag });
+      }
+      if (!res.IsTruncated) break;
+      marker = res.NextPartNumberMarker;
     }
-    if (!res.IsTruncated) break;
-    marker = res.NextPartNumberMarker;
-  }
-  return parts;
+    return parts;
+  });
 }
 
 /** Part 用 Presigned PUT URL を取得（MinIO 実エンドポイントで署名 → 公開 URL に書き換え） */
 export async function getPresignedPutUrl(key: string, uploadId: string, partNumber: number): Promise<string> {
-  const client = getClient();
-  const cmd = new UploadPartCommand({
-    Bucket: bucket(),
-    Key: key,
-    UploadId: uploadId,
-    PartNumber: partNumber,
+  return withClient(async (client) => {
+    const cmd = new UploadPartCommand({
+      Bucket: bucket(),
+      Key: key,
+      UploadId: uploadId,
+      PartNumber: partNumber,
+    });
+    const url = await getSignedUrl(client, cmd, { expiresIn: 3600 });
+    return await rewritePresignedUrl(url);
   });
-  const url = await getSignedUrl(client, cmd, { expiresIn: 3600 });
-  return await rewritePresignedUrl(url);
 }
 
 /** Multipart アップロードを完了 */
 export async function completeMultipartUpload(key: string, uploadId: string, parts: { PartNumber: number; ETag: string }[]) {
-  const client = getClient();
-  const completed: CompletedPart[] = parts.map((p) => ({ PartNumber: p.PartNumber, ETag: p.ETag }));
-  await client.send(new CompleteMultipartUploadCommand({
-    Bucket: bucket(),
-    Key: key,
-    UploadId: uploadId,
-    MultipartUpload: { Parts: completed },
-  }));
+  return withClient(async (client) => {
+    const completed: CompletedPart[] = parts.map((p) => ({ PartNumber: p.PartNumber, ETag: p.ETag }));
+    await client.send(new CompleteMultipartUploadCommand({
+      Bucket: bucket(),
+      Key: key,
+      UploadId: uploadId,
+      MultipartUpload: { Parts: completed },
+    }));
+  });
 }
 
 /** Multipart アップロードを中止 */
 export async function abortMultipartUpload(key: string, uploadId: string) {
-  const client = getClient();
-  await client.send(new AbortMultipartUploadCommand({
-    Bucket: bucket(),
-    Key: key,
-    UploadId: uploadId,
-  }));
+  return withClient(async (client) => {
+    await client.send(new AbortMultipartUploadCommand({
+      Bucket: bucket(),
+      Key: key,
+      UploadId: uploadId,
+    }));
+  });
 }
 
 /** Presigned GET のオプション */
@@ -174,50 +203,55 @@ export async function getPresignedGetUrl(
   expiresIn = 3600,
   opts?: PresignedGetOptions
 ): Promise<string> {
-  const client = getClient();
-  const cmd = new GetObjectCommand({
-    Bucket: bucket(),
-    Key: key,
-    ...(opts?.responseContentDisposition && { ResponseContentDisposition: opts.responseContentDisposition }),
-    ...(opts?.responseContentType && { ResponseContentType: opts.responseContentType }),
+  return withClient(async (client) => {
+    const cmd = new GetObjectCommand({
+      Bucket: bucket(),
+      Key: key,
+      ...(opts?.responseContentDisposition && { ResponseContentDisposition: opts.responseContentDisposition }),
+      ...(opts?.responseContentType && { ResponseContentType: opts.responseContentType }),
+    });
+    const url = await getSignedUrl(client, cmd, { expiresIn });
+    return await rewritePresignedUrl(url);
   });
-  const url = await getSignedUrl(client, cmd, { expiresIn });
-  return await rewritePresignedUrl(url);
 }
 
 /** ファイルを S3 にアップロード（PutObject） */
 export async function putObject(key: string, body: Buffer | Uint8Array | ReadableStream, contentType?: string) {
-  const client = getClient();
-  await client.send(new PutObjectCommand({
-    Bucket: bucket(),
-    Key: key,
-    Body: body,
-    ContentType: contentType,
-  }));
+  return withClient(async (client) => {
+    await client.send(new PutObjectCommand({
+      Bucket: bucket(),
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    }));
+  });
 }
 
 /** S3 からオブジェクトを取得（ストリーム） */
 export async function getObjectStream(key: string, range?: string) {
-  const client = getClient();
-  const res = await client.send(
-    new GetObjectCommand({ Bucket: bucket(), Key: key, ...(range && { Range: range }) })
-  );
-  return res;
+  return withClient(async (client) => {
+    return await client.send(
+      new GetObjectCommand({ Bucket: bucket(), Key: key, ...(range && { Range: range }) })
+    );
+  });
 }
 
 /** S3 オブジェクトを削除 */
 export async function deleteS3Object(key: string) {
-  const client = getClient();
-  await client.send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }));
+  return withClient(async (client) => {
+    await client.send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }));
+  });
 }
 
 /** S3 オブジェクトの存在チェック */
 export async function headS3Object(key: string): Promise<boolean> {
   try {
-    const client = getClient();
-    await client.send(new HeadObjectCommand({ Bucket: bucket(), Key: key }));
-    return true;
-  } catch {
+    return await withClient(async (client) => {
+      await client.send(new HeadObjectCommand({ Bucket: bucket(), Key: key }));
+      return true;
+    });
+  } catch (e) {
+    resetS3ClientOnError(e);
     return false;
   }
 }

@@ -9,7 +9,10 @@ cd "$ROOT_DIR"
 mkdir -p "${ROOT_DIR}/.gachaboard"
 LOCK_FILE="${ROOT_DIR}/.gachaboard/start.lock"
 
-# ── 二重起動防止 ──
+# ── 二重起動防止（起動 = 再起動: 既存があれば停止してから起動）──
+APP_PORT="18580"
+[[ -f ".env" ]] && [[ "$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2- | tr -d '\"\r')" =~ ^[0-9]+$ ]] && APP_PORT="$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2- | tr -d '\"\r')"
+
 take_lock() {
   if ( set -o noclobber; echo $$ > "$LOCK_FILE" ) 2>/dev/null; then
     return 0
@@ -21,14 +24,40 @@ take_lock() {
   rm -f "$LOCK_FILE" 2>/dev/null || true
   ( set -o noclobber; echo $$ > "$LOCK_FILE" ) 2>/dev/null
 }
+
+# 既存の Next.js を止めてロックを奪い、再 take_lock して起動を続ける
+do_restart_and_retry_lock() {
+  local lock_pid="$1"
+  echo ""
+  echo ">>> 既存の起動を停止してから再起動します..."
+  if command -v lsof >/dev/null 2>&1; then
+    local pids
+    pids=$(lsof -ti :"$APP_PORT" 2>/dev/null) || true
+    if [[ -n "$pids" ]]; then
+      echo ">>> ポート $APP_PORT を解放中（既存プロセスを停止）"
+      echo "$pids" | xargs kill -9 2>/dev/null || true
+      sleep 2
+    fi
+  fi
+  if [[ -n "$lock_pid" ]] && kill -0 "$lock_pid" 2>/dev/null; then
+    kill -9 "$lock_pid" 2>/dev/null || true
+  fi
+  rm -f "$LOCK_FILE" 2>/dev/null || true
+  sleep 1
+}
+
 if ! take_lock; then
-  echo ""
-  echo "  Gachaboard は既に起動中です。"
-  echo "  このウィンドウは閉じて、先に起動した方のターミナルをご利用ください。"
-  echo ""
-  echo "Enter キーを押すと閉じます..."
-  read -r
-  exit 1
+  LOCK_PID=$(cat "$LOCK_FILE" 2>/dev/null)
+  do_restart_and_retry_lock "$LOCK_PID"
+  if ! take_lock; then
+    echo ""
+    echo "  Gachaboard は既に起動中です。"
+    echo "  このウィンドウは閉じて、先に起動した方のターミナルをご利用ください。"
+    echo ""
+    echo "Enter キーを押すと閉じます..."
+    read -r
+    exit 1
+  fi
 fi
 export GACHABOARD_START_LOCK="$LOCK_FILE"
 
