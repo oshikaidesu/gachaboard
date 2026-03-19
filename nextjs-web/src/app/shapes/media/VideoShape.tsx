@@ -53,6 +53,10 @@ import {
   CHECKER_BG_DARK,
   HEADER_HEIGHT,
   VIDEO_UI_OVERHEAD,
+  VIDEO_DEFAULT_W,
+  VIDEO_DEFAULT_H,
+  VIDEO_MAX_W,
+  VIDEO_MAX_H,
 } from "./mediaConstants";
 import type { ApiComment } from "@shared/apiTypes";
 
@@ -88,7 +92,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
 
   const editor = useEditor();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { ref: visRef } = useVisibility<HTMLDivElement>();
+  const { ref: visRef, visible } = useVisibility<HTMLDivElement>({ rootMargin: "300px" });
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -348,7 +352,7 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
             ▶
           </button>
         )}
-        {stableSrc && (
+        {visible && stableSrc ? (
         <video
           ref={videoRef}
           src={stableSrc}
@@ -389,7 +393,18 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
           onPause={() => setPlaying(false)}
           onEnded={() => setPlaying(false)}
         />
-        )}
+        ) : safeAssetId ? (
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            backgroundImage: `url(/api/assets/${safeAssetId}/thumbnail)`,
+            backgroundSize: "contain",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+          }}
+        />
+        ) : null}
       </div>
 
       {/* コントロールエリア */}
@@ -562,13 +577,41 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<VideoShape & TLBaseBoxShape
   }
 
   override onResize = (shape: VideoShape & TLBaseBoxShape, info: Parameters<typeof resizeBox>[1]) => {
-    const defaultW = 480;
-    const defaultVideoAreaH = Math.round(defaultW / (16 / 9));
-    const defaultH = defaultVideoAreaH + VIDEO_UI_OVERHEAD + MIN_COMMENT_LIST_H;
-    return resizeBox(shape, info, {
-      minWidth: defaultW,
-      minHeight: defaultH,
+    const { scaleX, scaleY, handle } = info;
+    const p = shape.props as import("@shared/shapeDefs").VideoProps;
+    const result = resizeBox(shape, info, {
+      minWidth: VIDEO_DEFAULT_W,
+      minHeight: VIDEO_DEFAULT_H,
+      maxWidth: VIDEO_MAX_W,
+      maxHeight: VIDEO_MAX_H,
     });
+    // max クランプ時、resizeBox は位置を補正しないため、アンカーを固定するよう自前で補正
+    const rawW = p.w * scaleX;
+    const rawH = p.h * scaleY;
+    const clampedW = (result.props as import("@shared/shapeDefs").VideoProps).w;
+    const clampedH = (result.props as import("@shared/shapeDefs").VideoProps).h;
+    const hitMax = rawW > VIDEO_MAX_W || rawH > VIDEO_MAX_H;
+    if (!hitMax) return result;
+    const rot = shape.rotation ?? 0;
+    const cos = Math.cos(rot);
+    const sin = Math.sin(rot);
+    let dx = 0;
+    let dy = 0;
+    if (["top", "top_left", "top_right"].includes(handle)) {
+      dy += rawH - clampedH;
+    }
+    if (["left", "top_left", "bottom_left"].includes(handle)) {
+      dx += rawW - clampedW;
+    }
+    if (handle === "top") {
+      dx += (rawW - clampedW) / 2;
+    }
+    if (handle === "left") {
+      dy += (rawH - clampedH) / 2;
+    }
+    const x = result.x + dx * cos - dy * sin;
+    const y = result.y + dx * sin + dy * cos;
+    return { x, y, props: result.props };
   };
 
   override hideSelectionBoundsBg = () => true;

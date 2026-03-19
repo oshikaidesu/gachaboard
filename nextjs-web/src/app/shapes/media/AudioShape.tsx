@@ -52,6 +52,8 @@ import {
   BASE_HEIGHT,
   AUDIO_DEFAULT_W,
   AUDIO_DEFAULT_H,
+  AUDIO_MAX_W,
+  AUDIO_MAX_H,
 } from "./mediaConstants";
 
 export type { AudioShape } from "@shared/shapeDefs";
@@ -71,7 +73,6 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
   const border = isDarkMode ? BORDER_DARK : BORDER_LIGHT;
   const trackBg = isDarkMode ? GRAY_DARK : GRAY_LIGHT;
   const skeletonBg = isDarkMode ? SKELETON_DARK : SKELETON_LIGHT;
-  const errorColor = isDarkMode ? "#94a3b8" : "#9ca3af";
   const btnBg = isDarkMode ? "#334155" : "#f3f4f6";
   const btnBorder = isDarkMode ? "#475569" : "#e5e7eb";
 
@@ -84,7 +85,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
 
   const editor = useEditor();
   const audioRef = useRef<HTMLAudioElement>(null);
-  const { ref: visRef } = useVisibility<HTMLDivElement>();
+  const { ref: visRef, visible } = useVisibility<HTMLDivElement>({ rootMargin: "300px" });
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -223,15 +224,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
       </div>
 
       {/* 波形 */}
-      {waveStatus === "loading" && (
-        <div style={{
-          height: WAVEFORM_HIT_HEIGHT,
-          borderRadius: 4,
-          background: skeletonBg,
-          backgroundSize: "200% 100%",
-        }} />
-      )}
-      {waveStatus === "ready" && (
+      {waveStatus === "ready" ? (
         <WaveformCanvas
           peaks={peaks}
           currentTime={currentTime}
@@ -240,10 +233,29 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
           onSeek={seekTo}
           unplayedBarColor={trackBg}
         />
-      )}
-      {waveStatus === "error" && (
-        <div style={{ height: WAVEFORM_HIT_HEIGHT, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ fontSize: 10, color: errorColor }}>波形を読み込めませんでした</span>
+      ) : (
+        <div
+          style={{
+            height: WAVEFORM_HIT_HEIGHT,
+            borderRadius: 4,
+            background: trackBg,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 3,
+          }}
+        >
+          {[...Array(12)].map((_, i) => (
+            <div
+              key={i}
+              style={{
+                width: 4,
+                height: 8 + (i % 3) * 6,
+                borderRadius: 2,
+                background: skeletonBg,
+              }}
+            />
+          ))}
         </div>
       )}
 
@@ -324,8 +336,8 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         deleting={deleting}
       />
 
-      {/* hidden audio element - src が空のときは要素を出さず NotSupportedError を防ぐ */}
-      {src && (
+      {/* hidden audio element - visible かつ src があるときのみマウント（読み込みを見せない） */}
+      {visible && src && (
       <audio
         ref={audioRef}
         src={src}
@@ -450,10 +462,40 @@ export class AudioShapeUtil extends BaseBoxShapeUtil<AudioShape> {
   }
 
   override onResize = (shape: AudioShape, info: Parameters<typeof resizeBox>[1]) => {
-    return resizeBox(shape, info, {
+    const { scaleX, scaleY, handle } = info;
+    const result = resizeBox(shape, info, {
       minWidth: AUDIO_DEFAULT_W,
       minHeight: AUDIO_DEFAULT_H,
+      maxWidth: AUDIO_MAX_W,
+      maxHeight: AUDIO_MAX_H,
     });
+    // max クランプ時、resizeBox は位置を補正しないため、アンカーを固定するよう自前で補正
+    const rawW = shape.props.w * scaleX;
+    const rawH = shape.props.h * scaleY;
+    const clampedW = result.props.w;
+    const clampedH = result.props.h;
+    const hitMax = rawW > AUDIO_MAX_W || rawH > AUDIO_MAX_H;
+    if (!hitMax) return result;
+    const rot = shape.rotation ?? 0;
+    const cos = Math.cos(rot);
+    const sin = Math.sin(rot);
+    let dx = 0;
+    let dy = 0;
+    if (["top", "top_left", "top_right"].includes(handle)) {
+      dy += rawH - clampedH;
+    }
+    if (["left", "top_left", "bottom_left"].includes(handle)) {
+      dx += rawW - clampedW;
+    }
+    if (handle === "top") {
+      dx += (rawW - clampedW) / 2;
+    }
+    if (handle === "left") {
+      dy += (rawH - clampedH) / 2;
+    }
+    const x = result.x + dx * cos - dy * sin;
+    const y = result.y + dx * sin + dy * cos;
+    return { x, y, props: result.props };
   };
 
   override hideSelectionBoundsBg = () => true;

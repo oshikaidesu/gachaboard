@@ -1,6 +1,5 @@
 "use client";
 
-import { useBoardContext } from "@/app/components/board/BoardContext";
 import { useAssetStatus } from "@/app/hooks/media/useAssetStatus";
 import { getSafeAssetId } from "@/lib/safeUrl";
 
@@ -18,12 +17,10 @@ type Props = {
  */
 export function AssetLoader({ assetId, children, converted, fileName }: Props) {
   const status = useAssetStatus(assetId, converted);
-  const { boardId, workspaceId } = useBoardContext();
 
   if (status === "ready") return <>{children}</>;
 
   if (status === "unavailable") {
-    const showRestoreLink = boardId && workspaceId;
     return (
       <div
         style={{
@@ -33,37 +30,22 @@ export function AssetLoader({ assetId, children, converted, fileName }: Props) {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          gap: 8,
+          gap: 4,
           borderRadius: 8,
-          background: "rgba(0,0,0,0.06)",
+          background: "rgba(0,0,0,0.04)",
           color: "#94a3b8",
-          fontSize: 12,
+          fontSize: 11,
           fontFamily: "system-ui, sans-serif",
           pointerEvents: "auto",
           position: "relative",
           zIndex: 1,
         }}
       >
-        <span style={{ opacity: 0.6, fontSize: 16 }}>⚠</span>
-        <span>ファイルが削除されたか存在しません</span>
+        <span style={{ opacity: 0.5, fontSize: 24 }}>📄</span>
         {fileName?.trim() && (
-          <span style={{ fontSize: 11, opacity: 0.9, maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            「{fileName}」
+          <span style={{ maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {fileName}
           </span>
-        )}
-        {showRestoreLink && (
-          <button
-            type="button"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              window.location.href = `/board/${boardId}/trash`;
-            }}
-            className="mt-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700 cursor-pointer"
-            style={{ pointerEvents: "auto", position: "relative", zIndex: 2 }}
-          >
-            ゴミ箱から復元する
-          </button>
         )}
       </div>
     );
@@ -71,7 +53,7 @@ export function AssetLoader({ assetId, children, converted, fileName }: Props) {
 
   const isTranscoding = status === "transcoding";
   const safeId = getSafeAssetId(assetId);
-  const thumbUrl = isTranscoding && safeId ? `url(/api/assets/${safeId}/thumbnail)` : "none";
+  const thumbUrl = safeId ? `url(/api/assets/${safeId}/thumbnail)` : "none";
 
   return (
     <div style={{
@@ -81,15 +63,15 @@ export function AssetLoader({ assetId, children, converted, fileName }: Props) {
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
-      gap: 8,
+      gap: 4,
       borderRadius: 8,
-      backgroundColor: isTranscoding ? "transparent" : "rgba(0,0,0,0.06)",
+      backgroundColor: "rgba(0,0,0,0.04)",
       backgroundImage: thumbUrl,
-      backgroundSize: isTranscoding && safeId ? "cover" : undefined,
-      backgroundPosition: isTranscoding && safeId ? "center" : undefined,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
       backgroundRepeat: "no-repeat",
       color: "#94a3b8",
-      fontSize: 12,
+      fontSize: 11,
       fontFamily: "system-ui, sans-serif",
       position: "relative",
       overflow: "hidden",
@@ -98,36 +80,17 @@ export function AssetLoader({ assetId, children, converted, fileName }: Props) {
         <div style={{
           position: "absolute",
           inset: 0,
-          background: "rgba(0,0,0,0.45)",
+          background: "rgba(0,0,0,0.35)",
         }} />
       )}
-      {isTranscoding ? (
-        <>
-          <TranscodingSpinner />
-          <span style={{ color: "#e2e8f0", fontWeight: 500, position: "relative" }}>変換中...</span>
-          <span style={{ fontSize: 10, color: "#cbd5e1", position: "relative" }}>再生用に最適化しています</span>
-        </>
-      ) : (
-        <>
-          <span style={{ opacity: 0.6, fontSize: 16 }}>⏳</span>
-          <span>読み込み中...</span>
-        </>
+      <span style={{ opacity: 0.5, fontSize: 24, position: "relative" }}>
+        {isTranscoding ? "⏳" : "📄"}
+      </span>
+      {fileName?.trim() && (
+        <span style={{ maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", position: "relative" }}>
+          {fileName}
+        </span>
       )}
-    </div>
-  );
-}
-
-function TranscodingSpinner() {
-  return (
-    <div style={{
-      width: 32,
-      height: 32,
-      border: "3px solid #e2e8f0",
-      borderTop: "3px solid #6366f1",
-      borderRadius: "50%",
-      animation: "spin 1s linear infinite",
-    }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

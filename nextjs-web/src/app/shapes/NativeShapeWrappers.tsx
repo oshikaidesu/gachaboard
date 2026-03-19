@@ -131,7 +131,7 @@ const CHECKER_STYLE: React.CSSProperties = {
 
 /** 配置時の長辺基準（mediaUtils.IMAGE_LONG_SIDE と一致） */
 const IMAGE_BASE_LONG_SIDE = 320;
-const IMAGE_MIN_SIZE = Math.round(IMAGE_BASE_LONG_SIDE * 0.5);
+const IMAGE_MIN_SIZE = Math.round(IMAGE_BASE_LONG_SIDE * 0.25);
 const IMAGE_MAX_SIZE = IMAGE_BASE_LONG_SIDE * 4;
 
 export class WrappedImageShapeUtil extends ImageShapeUtil {

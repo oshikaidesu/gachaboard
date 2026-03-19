@@ -33,6 +33,10 @@ export type { FileIconShape } from "@shared/shapeDefs";
 const FILE_ICON_DEFAULT_W = 96;
 const FILE_ICON_DEFAULT_H = 96;
 
+/** 最大寸法（デフォルトの4倍） */
+const FILE_ICON_MAX_W = FILE_ICON_DEFAULT_W * 4;
+const FILE_ICON_MAX_H = FILE_ICON_DEFAULT_H * 4;
+
 /** タッチで変換した直後の click 二重実行を防ぐため */
 const lastTouchEndByShapeId = new Map<string, number>();
 
@@ -190,10 +194,40 @@ export class FileIconShapeUtil extends BaseBoxShapeUtil<FileIconShape> {
   }
 
   override onResize = (shape: FileIconShape, info: Parameters<typeof resizeBox>[1]) => {
-    return resizeBox(shape, info, {
+    const { scaleX, scaleY, handle } = info;
+    const result = resizeBox(shape, info, {
       minWidth: FILE_ICON_DEFAULT_W,
       minHeight: FILE_ICON_DEFAULT_H,
+      maxWidth: FILE_ICON_MAX_W,
+      maxHeight: FILE_ICON_MAX_H,
     });
+    // max クランプ時、resizeBox は位置を補正しないため、アンカーを固定するよう自前で補正
+    const rawW = shape.props.w * scaleX;
+    const rawH = shape.props.h * scaleY;
+    const clampedW = result.props.w;
+    const clampedH = result.props.h;
+    const hitMax = rawW > FILE_ICON_MAX_W || rawH > FILE_ICON_MAX_H;
+    if (!hitMax) return result;
+    const rot = shape.rotation ?? 0;
+    const cos = Math.cos(rot);
+    const sin = Math.sin(rot);
+    let dx = 0;
+    let dy = 0;
+    if (["top", "top_left", "top_right"].includes(handle)) {
+      dy += rawH - clampedH;
+    }
+    if (["left", "top_left", "bottom_left"].includes(handle)) {
+      dx += rawW - clampedW;
+    }
+    if (handle === "top") {
+      dx += (rawW - clampedW) / 2;
+    }
+    if (handle === "left") {
+      dy += (rawH - clampedH) / 2;
+    }
+    const x = result.x + dx * cos - dy * sin;
+    const y = result.y + dx * sin + dy * cos;
+    return { x, y, props: result.props };
   };
 
   override component(shape: FileIconShape) {

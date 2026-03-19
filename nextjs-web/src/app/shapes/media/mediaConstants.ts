@@ -57,7 +57,15 @@ export const BASE_HEIGHT = 190;
 export const AUDIO_DEFAULT_W = 460;
 export const AUDIO_DEFAULT_H = BASE_HEIGHT + MIN_COMMENT_LIST_H;
 
+/** 音声シェイプの最大寸法（デフォルトの2.5倍） */
+export const AUDIO_MAX_W = AUDIO_DEFAULT_W * 2.5;
+export const AUDIO_MAX_H = AUDIO_DEFAULT_H * 2.5;
+
 /** 動画シェイプのデフォルト寸法（最大サイズ計算で配置時サイズがない場合のフォールバック） */
 export const VIDEO_DEFAULT_W = 480;
 const VIDEO_DEFAULT_VIDEO_AREA_H = Math.round(VIDEO_DEFAULT_W / (16 / 9));
 export const VIDEO_DEFAULT_H = VIDEO_DEFAULT_VIDEO_AREA_H + VIDEO_UI_OVERHEAD + MIN_COMMENT_LIST_H;
+
+/** 動画シェイプの最大寸法（デフォルトの2.5倍） */
+export const VIDEO_MAX_W = VIDEO_DEFAULT_W * 2.5;
+export const VIDEO_MAX_H = VIDEO_DEFAULT_H * 2.5;

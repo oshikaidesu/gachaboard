@@ -4,7 +4,7 @@ import { useCallback, useRef, useEffect } from "react";
 import { Editor, type TLRecord, type TLAsset, type TLAssetId } from "@cmpd/compound";
 import { createDelayedActionQueue } from "@/lib/delayedActionQueue";
 
-const TRASH_DELAY_MS = 10 * 60 * 1000; // 10分（Undo の猶予）
+const TRASH_DELAY_MS = 3 * 60 * 1000; // 3分（Undo の猶予）
 const TRASH_STAGGER_MS = 50; // 一括実行時のリクエスト間隔（サーバー負荷分散）
 
 // ---------- 型ガード ----------------------------------------------------------
@@ -69,12 +69,30 @@ function getAssetRecords(changes: Record<string, TLRecord>): Record<string, TLRe
   );
 }
 
+/**
+ * 指定の DB アセット ID を参照するシェイプが、現在のストアにまだ存在するか。
+ * コピーで同じ assetId を持つシェイプが複数ある場合、最後の一つが消えるまで trash しない。
+ */
+function isAssetStillReferenced(editor: Editor, dbAssetId: string): boolean {
+  for (const shape of editor.getCurrentPageShapes()) {
+    const aid = (shape.props as { assetId?: string }).assetId;
+    if (!aid) continue;
+    if (aid === dbAssetId) return true;
+    if (aid.startsWith("asset:")) {
+      const assetRecord = editor.store.get(aid as TLAssetId) as TLAsset | undefined;
+      const src = (assetRecord?.props as { src?: string } | undefined)?.src ?? "";
+      if (src.includes(`/api/assets/${dbAssetId}/file`)) return true;
+    }
+  }
+  return false;
+}
+
 // ---------- フック ------------------------------------------------------------
 
 /**
  * シェイプ削除時にアセットをゴミ箱へ移動し、最終位置 (x, y) を DB に保存するフック。
  *
- * 10分の猶予: 即座に trash せず、10分後に実行。その間に Undo されたらキャンセル。
+ * 3分の猶予: 即座に trash せず、3分後に実行。その間に Undo されたらキャンセル。
  * タブを閉じる場合は即時フラッシュ。詳細は docs/database-and-storage-inventory.md 参照。
  *
  * 対応シェイプ:
@@ -114,7 +132,10 @@ export function useShapeDeletePositionCapture() {
         const removedAssets = getAssetRecords(entry.changes.removed);
         for (const shape of removedShapes) {
           const dbAssetId = resolveDbAssetId(shape, removedAssets, editor);
-          if (dbAssetId) queue.schedule(dbAssetId, { x: shape.x, y: shape.y });
+          if (!dbAssetId) continue;
+          // 同じ assetId を参照するシェイプが他に残っている場合は trash しない
+          if (isAssetStillReferenced(editor, dbAssetId)) continue;
+          queue.schedule(dbAssetId, { x: shape.x, y: shape.y });
         }
 
         const addedShapes = Object.values(entry.changes.added).filter(hasAssetId);

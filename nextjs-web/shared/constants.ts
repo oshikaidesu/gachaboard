@@ -7,9 +7,9 @@
 export const POLLING_INTERVAL_ASSET_LOADER = 1500;
 
 /** 404/410 を受け取ったとき、unavailable にするまでにリトライする最大回数 */
-export const ASSET_404_RETRY_COUNT = 5;
+export const ASSET_404_RETRY_COUNT = 10;
 /** 404/410 を受け取ったとき、unavailable にするまでの最大待機時間（ミリ秒） */
-export const ASSET_404_RETRY_MS = 15000;
+export const ASSET_404_RETRY_MS = 30000;
 
 /** テキストファイルプレビューの最大バイト数 */
 export const MAX_TEXT_PREVIEW_BYTES = 10240;

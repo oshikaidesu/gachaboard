@@ -10,6 +10,7 @@ import { toolbarItem } from "@cmpd/compound";
 import {
   GeoShapeGeoStyle,
   createShapeId,
+  Box2d,
 } from "@cmpd/editor";
 import { brushModeAtom } from "@/app/tools/SmartHandTool";
 import {
@@ -33,6 +34,31 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
     // ショートカットを無効化（ツールロック・Cmd+S・Cmd+E など誤爆防止）
     for (const id of ACTIONS_DISABLE_KBD_IDS) {
       if (next[id]) next[id] = { ...next[id], kbd: undefined };
+    }
+    // 複製（Cmd/Ctrl+D）を GEO シェイプのみに制限（他シェイプは依存関係でバグが発生するため）
+    if (next["duplicate"]) {
+      const origDuplicate = next["duplicate"];
+      next["duplicate"] = {
+        ...origDuplicate,
+        onSelect() {
+          const ids = editor.getSelectedShapeIds();
+          if (ids.length === 0) return;
+          const allGeo = ids.every((id) => {
+            const shape = editor.getShape(id);
+            return shape && editor.isShapeOfType(shape, "geo");
+          });
+          if (!allGeo) return; // GEO 以外が含まれる場合は何もしない
+          const bounds = ids
+            .map((id) => editor.getShapePageBounds(id))
+            .filter((b): b is NonNullable<typeof b> => b != null);
+          const commonBounds = Box2d.Common(bounds);
+          const offset = editor.getInstanceState().canMoveCamera
+            ? { x: commonBounds.width + 10, y: 0 }
+            : { x: 16 / editor.getZoomLevel(), y: 16 / editor.getZoomLevel() };
+          editor.mark("duplicate shapes");
+          editor.duplicateShapes(ids, offset);
+        },
+      };
     }
     return next;
   },
