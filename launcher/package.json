@@ -5,14 +5,15 @@
   "main": "src/main/index.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder",
-    "build:win": "electron-builder --win",
-    "build:mac": "electron-builder --mac",
-    "build:linux": "electron-builder --linux"
+    "build": "node scripts/build-icon.js && electron-builder",
+    "build:win": "node scripts/build-icon.js && electron-builder --win",
+    "build:mac": "node scripts/build-icon.js && electron-builder --mac",
+    "build:linux": "node scripts/build-icon.js && electron-builder --linux"
   },
   "author": "",
   "license": "Apache-2.0",
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "electron": "^33.0.0",
     "electron-builder": "^25.0.0"
   },
@@ -27,13 +28,16 @@
       "assets/**/*"
     ],
     "win": {
+      "icon": "assets/icon.png",
       "target": ["portable", "nsis"]
     },
     "mac": {
+      "icon": "assets/icon.png",
       "target": ["dmg"],
       "category": "public.app-category.productivity"
     },
     "linux": {
+      "icon": "assets/icon.png",
       "target": ["AppImage"]
     }
   }

@@ -34,6 +34,14 @@ npm run build:linux  # Linux (AppImage)
 
 ビルドした exe（例: `Gachaboard 1.0.0.exe`）を **プロジェクトフォルダのルート** に配置して配布。ユーザーはプロジェクトを clone または ZIP で取得し、そのフォルダに exe を置いて **exe をダブルクリック**で起動。exe のディレクトリがアプリルートとして使われます。cwd が合わない場合は run-launcher.bat を補助として使えます。
 
+## リリース（GitHub Releases）
+
+`v*` タグを push すると `.github/workflows/release-build.yml` が実行され、以下が自動ビルド・アップロードされます:
+
+- `gachaboard-dist.zip` … プロジェクト一式（node_modules 除く）
+- `Gachaboard 1.0.0.exe` … ポータブル版（インストール不要）
+- `Gachaboard Setup 1.0.0.exe` … NSIS インストーラー版
+
 ## 更新
 
 アプリ内の「最新版は Releases で確認」リンクから [Releases](https://github.com/oshikaidesu/gachaboard/releases) を開けます。新しいバージョンの exe をダウンロードして、既存のプロジェクトフォルダ内の exe を上書きすれば、`.env.local` や `data/` はそのまま保持されます。

@@ -25,11 +25,11 @@ check_required() {
     echo ""
     echo "  ❌ 未インストール:"
     for m in "${missing[@]}"; do
-      case "$m" in
-        node) echo "     - Node.js（npm 同梱）" ;;
-        tailscale) echo "     - Tailscale（tailscale CLI）" ;;
-        *)    echo "     - $m" ;;
-      esac
+        case "$m" in
+          node) echo "     - Node.js（npm 同梱）" ;;
+          tailscale) echo "     - Tailscale（tailscale CLI）" ;;
+          *)    echo "     - $m" ;;
+        esac
     done
     echo ""
 

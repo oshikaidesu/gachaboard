@@ -73,3 +73,23 @@
 - NextAuth v5 (Auth.js) への移行
 - y-websocket v3 へのアップグレード
 - Prisma 7.4.2 へのアップデート
+
+---
+
+## 6. Edge.js による Node.js 不要化（将来）
+
+**目的**: ユーザーが Node.js をインストールせずに起動できるようにする。
+
+**Edge.js**: https://edgejs.org/ — Node.js 互換ランタイム（WASIX ベース）。`edge npm`, `edge npx`, `edge node` で既存の npm プロジェクトをそのまま実行可能。
+
+**現状（2025年3月時点）**:
+- **Windows バイナリ未提供**: edgejs-nightlies には darwin-arm64, linux-amd64, wasix のみ。Windows はロードマップ（0.x）で予定。
+- Mac/Linux では Edge.js があれば Node 不要で起動可能な実装を試したが、Windows 未対応のため一旦 revert した。
+
+**対応時の実装方針**:
+1. `scripts/lib/common.sh` に `init_runtime()` を追加: `edge` があれば `NPM_CMD=edge npm` 等、なければ `npm`/`npx`/`node` を使用
+2. `check_required` で node の代わりに edge も許容（Linux/Mac のみ。Windows は edge バイナリが出るまで node 必須）
+3. `scripts/start/*.sh`, `portable/scripts/start-services.sh` で `$NPM_CMD` / `$NPX_CMD` / `$NODE_CMD` を使用
+4. `scripts/win/run.ps1` に Edge.js 検出を追加（Windows バイナリ提供後）
+
+**参考**: 過去に実装した差分は future-considerations の本節で把握可能。

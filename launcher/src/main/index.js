@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Tray, shell, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, shell, Menu, dialog } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { spawn } = require('child_process');
@@ -7,7 +7,13 @@ const crypto = require('crypto');
 const http = require('http');
 
 // キャッシュ競合回避: 専用 userData を設定（Windows の "Unable to move the cache" エラー対策）
-app.setPath('userData', path.join(app.getPath('appData'), 'gachaboard-launcher'));
+// 開発時はプロジェクト直下に置き、Cursor 等の他 Electron プロセスとの競合を避ける
+if (app.isPackaged) {
+  app.setPath('userData', path.join(app.getPath('appData'), 'gachaboard-launcher'));
+} else {
+  const devRoot = path.resolve(__dirname, '../../..');
+  app.setPath('userData', path.join(devRoot, '.gachaboard-launcher'));
+}
 
 // 二重起動防止（同じ userData を複数プロセスで使うとキャッシュエラーになる）
 const gotLock = app.requestSingleInstanceLock();
@@ -68,9 +74,23 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   mainWindow.once('ready-to-show', () => mainWindow.show());
   mainWindow.on('close', (e) => {
-    if (!app.isQuitting && tray) {
+    if (app.isQuitting) return;
+    if (tray) {
       e.preventDefault();
-      mainWindow.hide();
+      if (serverProcess) {
+        const result = dialog.showMessageBoxSync(mainWindow, {
+          type: 'question',
+          buttons: ['終了する', 'キャンセル'],
+          defaultId: 1,
+          cancelId: 1,
+          title: 'Gachaboard',
+          message: 'サーバーが停止します。よろしいですか？',
+        });
+        if (result === 0) quitApp(true);
+        /* result === 1: キャンセル → ウィンドウはそのまま */
+      } else {
+        mainWindow.hide();
+      }
     }
   });
 }
@@ -99,7 +119,18 @@ function updateTrayMenu() {
   tray?.setContextMenu(contextMenu);
 }
 
-function quitApp() {
+function quitApp(skipConfirmation) {
+  if (serverProcess && !skipConfirmation) {
+    const result = dialog.showMessageBoxSync(mainWindow || null, {
+      type: 'question',
+      buttons: ['終了する', 'キャンセル'],
+      defaultId: 1,
+      cancelId: 1,
+      title: 'Gachaboard を終了',
+      message: 'サーバーが停止します。よろしいですか？',
+    });
+    if (result !== 0) return;
+  }
   app.isQuitting = true;
   stopServer();
   tray?.destroy();
@@ -271,17 +302,20 @@ ipcMain.handle('start-server', async () => {
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
   });
+  const safeSend = (channel, ...args) => {
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+      mainWindow.webContents.send(channel, ...args);
+    }
+  };
   serverProcess.stdout?.on('data', (chunk) => {
-    const text = chunk.toString();
-    mainWindow?.webContents.send('server-log', text);
+    safeSend('server-log', chunk.toString());
   });
   serverProcess.stderr?.on('data', (chunk) => {
-    const text = chunk.toString();
-    mainWindow?.webContents.send('server-log', text);
+    safeSend('server-log', chunk.toString());
   });
   serverProcess.on('exit', (code) => {
     serverProcess = null;
-    mainWindow?.webContents.send('server-exit', code);
+    safeSend('server-exit', code);
   });
   return { ok: true };
 });

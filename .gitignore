@@ -4,6 +4,9 @@ config/Caddyfile
 
 # ランタイム（起動ロック）
 .gachaboard/
+.gachaboard-launcher/
+launcher/assets/icon.png
+launcher/dist/
 .gachaboard-start.lock
 
 # 環境変数（シークレット含む）

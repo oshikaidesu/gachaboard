@@ -111,18 +111,22 @@ function showIdleState() {
   openBrowserBtn.style.display = 'none';
   stopServerBtn.style.display = 'none';
   logArea.textContent = '';
+  const hint = document.getElementById('tailscale-hint');
+  if (hint) hint.textContent = '外部から参加してもらう場合は、Tailscaleをインストールし、起動後に表示されるURLを共有してください。';
 }
 
 function showRunningState(url) {
   isServerRunning = true;
   startServerBtn.textContent = '再起動';
-  statusText.textContent = '起動しました';
+  statusText.textContent = '起動後はブラウザが開きます';
   statusText.classList.remove('stopped');
   startArea.style.display = 'block';
   currentUrlSpan.textContent = url;
   urlArea.style.display = 'block';
   openBrowserBtn.style.display = 'inline-block';
   stopServerBtn.style.display = 'inline-block';
+  const hint = document.getElementById('tailscale-hint');
+  if (hint) hint.textContent = '外部から参加してもらう場合は、Tailscaleをインストールし、以下のURLを共有してください。';
 }
 
 async function startServerFlow() {
