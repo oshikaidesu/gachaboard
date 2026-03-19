@@ -10,6 +10,10 @@ import {
   DEFAULT_REACTION_EMOJI_LIST,
   FIXED_EMOJI_LIST,
 } from "@shared/constants";
+import {
+  mergeReactionEmojiPresets,
+  parseEmojiPresetFromRaw,
+} from "@/lib/reactionPresetMerge";
 import { ThemeToggle } from "@/app/components/theme/ThemeToggle";
 import { getSyncWsUrl } from "@/lib/syncWsUrl";
 import { useSyncToken } from "@/app/hooks/board/useSyncToken";
@@ -72,7 +76,19 @@ export default function ReactionPresetClient({
       token: typeof syncToken === "string" ? syncToken : "",
     });
     providerRef.current = provider;
+
+    const yMap = provider.document.getMap<string>(REACTION_EMOJI_PRESET_MAP_KEY);
+    const applyRemoteUpdate = () => {
+      const raw = yMap.get(REACTION_EMOJI_PRESET_EMOJIS_KEY);
+      const remote = parseEmojiPresetFromRaw(raw ?? undefined);
+      if (!remote) return;
+      setText(getCustomEmojis(remote).join(""));
+    };
+    applyRemoteUpdate();
+    yMap.observe(applyRemoteUpdate);
+
     return () => {
+      yMap.unobserve(applyRemoteUpdate);
       provider.disconnect();
       provider.destroy();
       persistence.destroy();
@@ -102,9 +118,13 @@ export default function ReactionPresetClient({
     setSaving(true);
     setSaved(false);
 
+    let toSave = fullEmojis;
     if (providerRef.current) {
       const yMap = providerRef.current.document.getMap<string>(REACTION_EMOJI_PRESET_MAP_KEY);
-      yMap.set(REACTION_EMOJI_PRESET_EMOJIS_KEY, JSON.stringify(fullEmojis));
+      const raw = yMap.get(REACTION_EMOJI_PRESET_EMOJIS_KEY);
+      const remote = parseEmojiPresetFromRaw(raw ?? undefined);
+      toSave = mergeReactionEmojiPresets(fullEmojis, remote);
+      yMap.set(REACTION_EMOJI_PRESET_EMOJIS_KEY, JSON.stringify(toSave));
     }
 
     const res = await fetch(
@@ -112,16 +132,24 @@ export default function ReactionPresetClient({
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reactionEmojiPreset: fullEmojis }),
+        body: JSON.stringify({ reactionEmojiPreset: toSave }),
       }
     );
     setSaving(false);
-    if (res.ok) setSaved(true);
+    if (res.ok) {
+      setSaved(true);
+      setText(getCustomEmojis(toSave).join(""));
+    }
   }, [boardId, workspaceId, fullEmojis]);
 
   const copyEmojis = useCallback(() => {
     copyToClipboard(fullEmojis.join(""));
   }, [fullEmojis, copyToClipboard]);
+
+  const removeEmoji = useCallback((emoji: string) => {
+    if (FIXED_EMOJI_LIST.includes(emoji)) return;
+    setText(customEmojis.filter((e) => e !== emoji).join(""));
+  }, [customEmojis]);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 bg-background p-8">
@@ -167,6 +195,26 @@ export default function ReactionPresetClient({
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
           絵文字以外の文字は無視されます。{customEmojis.length}件のカスタム絵文字
         </p>
+        {customEmojis.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {customEmojis.map((emoji) => (
+              <span
+                key={emoji}
+                className="inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-base dark:border-zinc-600 dark:bg-zinc-800"
+              >
+                {emoji}
+                <button
+                  type="button"
+                  onClick={() => removeEmoji(emoji)}
+                  className="ml-0.5 rounded p-0.5 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600 dark:hover:bg-zinc-600 dark:hover:text-zinc-200"
+                  aria-label={`${emoji} を削除`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </section>
 
       <div className="flex flex-wrap gap-3">
