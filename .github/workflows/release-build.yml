@@ -2,6 +2,9 @@
 # 使い方: タグを push するか、Actions から手動実行
 name: Release Build
 
+permissions:
+  contents: write
+
 on:
   push:
     tags:
@@ -90,6 +93,5 @@ jobs:
           files: |
             release-files/gachaboard-dist.zip
             release-files/*.exe
-          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
