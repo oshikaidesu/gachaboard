@@ -21,6 +21,7 @@
     "dev:tailscale:reset": "bash scripts/start/tailscale.sh --dev --reset",
     "dev:local": "bash scripts/start/local.sh --dev",
     "dev:local:reset": "bash scripts/start/local.sh --dev --reset",
+    "launcher": "cd launcher && npm run start",
     "setup:env": "node scripts/setup/run-env-setup.mjs",
     "env:sync": "bash scripts/lib/sync-env-ports.sh",
     "setup:tailscale-https": "bash scripts/setup/tailscale-https.sh",
