@@ -60,13 +60,12 @@ flowchart TB
 | **Asset** | アップロードファイルメタ | `workspaceId` + `boardId?`。`storageKey` で実体参照 |
 | **S3UploadSession** | S3 マルチパート再開用 | `uploadId` 一意。完了後に削除 |
 
-#### Asset trash の 10 分猶予
+#### Asset trash と Undo 対応
 
-キャンバス上のシェイプ削除時、アセットは**即座に trash されない**。10 分の猶予を持たせる。その間に Undo されたら trash をキャンセルする。タブを閉じる / ボード離脱時は即時フラッシュ。
+キャンバス上のシェイプ削除時、アセットは**即座に trash** される。
 
-- **理由**: Undo（元に戻す）時に DB がすでに trash 済みだと、ファイル API が 404 を返し「ファイルが削除されました」となる問題を避けるため
-- **実装**: `useShapeDeletePositionCapture`
-- **補足**: 削除してからゴミ箱に反映されるまで最大 10 分かかる場合がある。同期エラーではない
+- **Undo 対応**: trash 済みアセットへの file/thumbnail アクセス要求があった場合、API が自動で復元してから配信する。そのため Undo 時に 404 にならない
+- **実装**: `useShapeDeletePositionCapture`（即時 trash）、`api/assets/[assetId]/file` および `thumbnail`（アクセス時の自動復元）
 
 | **AuditLog** | 監査ログ | `action`, `target`, `metadata` |
 

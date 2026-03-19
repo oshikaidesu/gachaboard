@@ -4,7 +4,7 @@ import { useCallback, useRef, useEffect } from "react";
 import { Editor, type TLRecord, type TLAsset, type TLAssetId } from "@cmpd/compound";
 import { createDelayedActionQueue } from "@/lib/delayedActionQueue";
 
-const TRASH_DELAY_MS = 3 * 60 * 1000; // 3分（Undo の猶予）
+const TRASH_DELAY_MS = 0; // 即時 trash。Undo 時は file/thumbnail API がアクセス検知で自動復元する
 const TRASH_STAGGER_MS = 50; // 一括実行時のリクエスト間隔（サーバー負荷分散）
 
 // ---------- 型ガード ----------------------------------------------------------
@@ -92,7 +92,7 @@ function isAssetStillReferenced(editor: Editor, dbAssetId: string): boolean {
 /**
  * シェイプ削除時にアセットをゴミ箱へ移動し、最終位置 (x, y) を DB に保存するフック。
  *
- * 3分の猶予: 即座に trash せず、3分後に実行。その間に Undo されたらキャンセル。
+ * 即時 trash: Undo 時は file/thumbnail API がアクセス検知で自動復元するため遅延不要。
  * タブを閉じる場合は即時フラッシュ。詳細は docs/database-and-storage-inventory.md 参照。
  *
  * 対応シェイプ:

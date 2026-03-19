@@ -20,7 +20,10 @@ export async function GET(_req: NextRequest, { params }: Params) {
       if (!ctx) return new NextResponse(null, { status: 401 });
     }
     const asset = await db.asset.findUnique({ where: { id: assetId } });
-    if (!asset || asset.deletedAt) return new NextResponse(null, { status: 404 });
+    if (!asset) return new NextResponse(null, { status: 404 });
+    if (asset.deletedAt) {
+      await db.asset.update({ where: { id: assetId }, data: { deletedAt: null } });
+    }
 
     const key = s3KeyThumbnail(asset.storageKey);
     const exists = await headS3Object(key);

@@ -13,7 +13,10 @@ async function resolveKey(
   forceDownload: boolean
 ): Promise<{ key: string; mimeType: string } | null> {
   const asset = await db.asset.findUnique({ where: { id: assetId } });
-  if (!asset || asset.deletedAt) return null;
+  if (!asset) return null;
+  if (asset.deletedAt) {
+    await db.asset.update({ where: { id: assetId }, data: { deletedAt: null } });
+  }
 
   const isVideo = asset.mimeType?.startsWith("video/");
 
@@ -44,7 +47,10 @@ export async function HEAD(req: NextRequest, { params }: Params) {
     const converted = searchParams.get("converted") === "1";
 
     const asset = await db.asset.findUnique({ where: { id: assetId } });
-    if (!asset || asset.deletedAt) return new NextResponse(null, { status: 404 });
+    if (!asset) return new NextResponse(null, { status: 404 });
+    if (asset.deletedAt) {
+      await db.asset.update({ where: { id: assetId }, data: { deletedAt: null } });
+    }
 
     const noStore = { "Cache-Control": "no-store" };
     if (asset.mimeType?.startsWith("video/") && !converted) {
