@@ -41,13 +41,16 @@ export async function GET(_req: NextRequest, { params }: Params) {
     joinedAt: workspace.createdAt.toISOString(),
   };
 
-  const memberItems: ApiWorkspaceMember[] = workspace.members.map((m) => ({
-    userId: m.user.id,
-    discordName: m.user.discordName,
-    avatarUrl: m.user.avatarUrl,
-    role: "member" as const,
-    joinedAt: m.createdAt.toISOString(),
-  }));
+  const ownerId = workspace.ownerUserId;
+  const memberItems: ApiWorkspaceMember[] = workspace.members
+    .filter((m) => m.userId !== ownerId)
+    .map((m) => ({
+      userId: m.user.id,
+      discordName: m.user.discordName,
+      avatarUrl: m.user.avatarUrl,
+      role: "member" as const,
+      joinedAt: m.createdAt.toISOString(),
+    }));
 
   const members = [ownerItem, ...memberItems];
   const canKickMembers = canKick(workspace, ctx.session.user.id);
