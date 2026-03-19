@@ -22,6 +22,11 @@ jobs:
 
       - name: Install & Build
         working-directory: nextjs-web
+        env:
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+          NEXTAUTH_SECRET: build-placeholder-secret-32chars!!
+          DISCORD_CLIENT_ID: 0
+          DISCORD_CLIENT_SECRET: x
         run: |
           npm ci --legacy-peer-deps
           npx prisma generate
