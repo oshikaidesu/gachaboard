@@ -39,6 +39,20 @@ export const SHAPE_TYPE = {
 /** file-icon から audio-player / video-player へ変換可能な kind */
 export const MEDIA_ICON_KINDS = ["audio", "video"] as const;
 
+/**
+ * プレイヤー／テキスト表示ボタンが出る拡張子の一覧（参考）。
+ * 映像→video-player、音→audio-player、テキスト→text-file に変換可能なものだけ。
+ * 実際の表示判定は canShowFileIconConvertButton で行う。
+ */
+export const CONVERT_BUTTON_EXTENSIONS = {
+  /** 映像（video-player）: MIME が video/* のもの */
+  video: ["mp4", "webm", "mov", "avi", "mkv", "wmv", "flv", "m4v", "mpeg", "mpg", "3gp"],
+  /** 音（audio-player）: isPlayableAudio に該当する MIME */
+  audio: ["mp3", "wav", "ogg", "m4a", "aac", "flac", "webm"],
+  /** テキスト（text-file）: isTextFile に該当する拡張子 */
+  text: ["txt", "md", "log", "csv", "json", "yaml", "yml", "toml", "xml", "js", "ts", "jsx", "tsx", "py", "go", "rs", "cpp", "c", "java", "html", "css", "sh", "bash", "zsh"],
+} as const;
+
 // ---------- declare module（compound 用） ----------
 // カスタムシェイプの props を compound に登録
 
@@ -158,13 +172,22 @@ export const SHAPE_DEFS: Record<string, ShapeDef> = {
  * MIME とファイル名から最適なカスタムシェイプ型を返す。
  * image/video はネイティブアセットで扱うため null を返す。
  * PDF は画像取り出し処理を避け file-icon で表示する。
+ * PSD もプレビュー不可のため file-icon で表示する。
+ * .ai（Illustrator）も file-icon で表示する。
  */
 export function resolveShapeType(
   mime: string,
   fileName: string,
 ): { type: string; def: ShapeDef } | null {
+  if (mime === "image/vnd.adobe.photoshop") {
+    return { type: SHAPE_TYPE.FILE_ICON, def: SHAPE_DEFS[SHAPE_TYPE.FILE_ICON] };
+  }
   if (mime.startsWith("image/")) {
     return null;
+  }
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  if (mime === "application/illustrator" || ext === "ai") {
+    return { type: SHAPE_TYPE.FILE_ICON, def: SHAPE_DEFS[SHAPE_TYPE.FILE_ICON] };
   }
   if (mime === "application/pdf") {
     return { type: SHAPE_TYPE.FILE_ICON, def: SHAPE_DEFS[SHAPE_TYPE.FILE_ICON] };
@@ -178,6 +201,21 @@ export function resolveShapeType(
     }
   }
   return { type: SHAPE_TYPE.FILE_ICON, def: SHAPE_DEFS[SHAPE_TYPE.FILE_ICON] };
+}
+
+/**
+ * file-icon で「プレイヤーで表示」「テキストで表示」ボタンを出すかどうか。
+ * 映像・音・テキストのカスタムシェイプに変換可能な場合のみ true。
+ */
+export function canShowFileIconConvertButton(
+  kind: string,
+  mimeType: string,
+  fileName: string,
+): boolean {
+  if ((MEDIA_ICON_KINDS as readonly string[]).includes(kind)) return true;
+  if (kind !== "file") return false;
+  const resolved = resolveShapeType(mimeType, fileName);
+  return resolved?.type === SHAPE_TYPE.TEXT_FILE;
 }
 
 /** SHAPE_DEFS の全型名を配列で返す（sync-server スキーマ自動生成用） */

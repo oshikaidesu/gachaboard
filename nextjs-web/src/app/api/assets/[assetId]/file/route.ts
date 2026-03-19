@@ -61,7 +61,20 @@ export async function HEAD(req: NextRequest, { params }: Params) {
     if (!resolved) return new NextResponse(null, { status: 404 });
 
     const exists = await headS3Object(resolved.key);
-    if (!exists) return new NextResponse(null, { status: 404 });
+    if (!exists) {
+      // 音声の変換済み .mp3 がまだ無い場合、作成直後は 202（変換中）を返す（動画と同様）
+      const isWavConverted =
+        converted &&
+        (asset.mimeType === "audio/wav" || (asset.fileName && asset.fileName.endsWith(".wav")));
+      if (isWavConverted) {
+        const TRANSCODE_TIMEOUT_MS = 2 * 60 * 1000;
+        const elapsed = Date.now() - new Date(asset.createdAt).getTime();
+        if (elapsed < TRANSCODE_TIMEOUT_MS) {
+          return new NextResponse(null, { status: 202, headers: noStore });
+        }
+      }
+      return new NextResponse(null, { status: 404 });
+    }
     return new NextResponse(null, { status: 200, headers: noStore });
   } catch (err) {
     console.error("[HEAD /api/assets/file] assetId:", assetId, err);

@@ -28,12 +28,11 @@ import { convertToFileIcon } from "@/app/shapes";
 import { useBoardContext } from "@/app/components/board/BoardContext";
 import { useVisibility } from "@/app/hooks/useVisibility";
 import { useMediaPlayerComments, MIN_COMMENT_LIST_H } from "@/app/hooks/media/useMediaPlayerComments";
-import { formatTime } from "@/lib/formatTime";
 import { useTheme } from "@/app/components/theme/ThemeProvider";
 import { getSafeAssetId } from "@/lib/safeUrl";
 import { MediaCommentInput } from "./MediaCommentInput";
 import { MediaCommentList } from "./MediaCommentList";
-import { SeekBar } from "./SeekBar";
+import { VideoControlsBar } from "./VideoControlsBar";
 import {
   BLUE,
   TRACK_BG_LIGHT,
@@ -52,141 +51,17 @@ import {
   CHECKER_DARK,
   CHECKER_BG_LIGHT,
   CHECKER_BG_DARK,
-  CONTROLS_HEIGHT,
   HEADER_HEIGHT,
-  SEEK_BAR_HIT_HEIGHT,
+  VIDEO_UI_OVERHEAD,
 } from "./mediaConstants";
 import type { ApiComment } from "@shared/apiTypes";
 
 export type { VideoShape } from "@shared/shapeDefs";
 export { MIN_COMMENT_LIST_H } from "@/app/hooks/media/useMediaPlayerComments";
+export { VIDEO_UI_OVERHEAD } from "./mediaConstants";
 
 /** タッチで変換した直後の click 二重実行を防ぐため */
 const lastTouchEndByShapeId = new Map<string, number>();
-
-/**
- * 動画エリア以外の UI（ヘッダー・コントロール・コメント入力欄）の合計高さ。
- * シェイプの h = 動画エリアの高さ + VIDEO_UI_OVERHEAD になる。
- *
- * 内訳:
- *   Header   : HEADER_HEIGHT(26) + borderBottom(1) = 27
- *   Controls : borderTop(1) + padTop(6) + seekbar(28) + gap(6) + buttons(26) + padBot(8) = 75
- *   Comment  : input(~30) + padBot(6) = 36
- *   Border   : WheelGuard の border-box border 上下各 1px = 2
- */
-export const VIDEO_UI_OVERHEAD =
-  (HEADER_HEIGHT + 1) +
-  (1 + 6 + SEEK_BAR_HIT_HEIGHT + 6 + (CONTROLS_HEIGHT - 10) + 8) +
-  (30 + 6) +
-  2;
-
-// ---------- 音量スライダー（PointerCapture 方式） ----------
-
-function VolumeSlider({
-  value,
-  onChange,
-  accentColor = BLUE,
-  trackBg,
-  width = 80,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  accentColor?: string;
-  trackBg: string;
-  width?: number;
-}) {
-  const barRef = useRef<HTMLDivElement>(null);
-  const [dragging, setDragging] = useState(false);
-
-  const calcValue = useCallback(
-    (clientX: number) => {
-      const bar = barRef.current;
-      if (!bar) return value;
-      const rect = bar.getBoundingClientRect();
-      return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    },
-    [value]
-  );
-
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    setDragging(true);
-    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
-    onChange(calcValue(e.clientX));
-  };
-
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    if (!dragging) return;
-    onChange(calcValue(e.clientX));
-  };
-
-  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    setDragging(false);
-  };
-
-  const pct = Math.max(0, Math.min(100, value * 100));
-
-  return (
-    <div
-      ref={barRef}
-      data-volume-slider
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onMouseDown={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
-      style={{
-        position: "relative",
-        width,
-        height: 28,
-        display: "flex",
-        alignItems: "center",
-        cursor: "pointer",
-        touchAction: "none",
-        pointerEvents: "auto",
-      }}
-    >
-      {/* トラック背景 */}
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          height: 4,
-          borderRadius: 2,
-          background: trackBg,
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            width: `${pct}%`,
-            height: "100%",
-            background: accentColor,
-            borderRadius: 2,
-            transition: dragging ? "none" : "width 0.05s linear",
-          }}
-        />
-      </div>
-      {/* つまみ */}
-      <div
-        style={{
-          position: "absolute",
-          left: `calc(${pct}% - 6px)`,
-          width: 12,
-          height: 12,
-          borderRadius: "50%",
-          background: accentColor,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-          transition: dragging ? "none" : "left 0.05s linear",
-          pointerEvents: "none",
-        }}
-      />
-    </div>
-  );
-}
 
 // ---------- メインプレイヤー ----------
 
@@ -530,95 +405,20 @@ function VideoPlayer({ shape }: { shape: VideoShape }) {
           borderTop: `1px solid ${borderSubtle}`,
         }}
       >
-        {/* シークバー＋ボタン＋入力（まとめて flexShrink: 0） */}
-        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-          <SeekBar currentTime={currentTime} duration={duration} onSeek={seekTo} comments={comments} trackBg={trackBg} />
-
-          {/* ボタン行 */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            height: CONTROLS_HEIGHT - 10,
-          }}
-        >
-          {/* 再生/一時停止 */}
-          <button
-            onClick={togglePlay}
-            onMouseDown={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => { e.stopPropagation(); togglePlay(); }}
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: "50%",
-              background: BLUE,
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-              color: "#fff",
-              fontSize: 10,
-              touchAction: "none",
-            }}
-          >
-            {playing ? "⏸" : "▶"}
-          </button>
-
-          {/* 時刻表示 */}
-          <span
-            style={{
-              fontSize: 10,
-              color: textMuted,
-              fontVariantNumeric: "tabular-nums",
-              flexShrink: 0,
-            }}
-          >
-            {formatTime(currentTime)} / {formatTime(duration)}
-          </span>
-
-          {/* 音量コントロール */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              marginLeft: "auto",
-            }}
-          >
-            <button
-              onClick={toggleMute}
-              onMouseDown={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.stopPropagation()}
-              onTouchEnd={(e) => { e.stopPropagation(); toggleMute(); }}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontSize: 12,
-                padding: 0,
-                lineHeight: 1,
-                color: textMuted,
-                touchAction: "none",
-              }}
-            >
-              {muted || volume === 0 ? "🔇" : volume < 0.5 ? "🔉" : "🔊"}
-            </button>
-            <VolumeSlider
-              value={muted ? 0 : volume}
-              onChange={handleVolumeChange}
-              accentColor={BLUE}
-              trackBg={trackBg}
-              width={80}
-            />
-          </div>
-        </div>
-        </div>
+        <VideoControlsBar
+          currentTime={currentTime}
+          duration={duration}
+          onSeek={seekTo}
+          comments={comments}
+          trackBg={trackBg}
+          textMuted={textMuted}
+          playing={playing}
+          onTogglePlay={togglePlay}
+          volume={volume}
+          muted={muted}
+          onToggleMute={toggleMute}
+          onVolumeChange={handleVolumeChange}
+        />
 
         {/* コメント入力 */}
         <div style={{ padding: "0 10px 6px", flexShrink: 0 }}>
@@ -765,7 +565,10 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<VideoShape & TLBaseBoxShape
     const defaultW = 480;
     const defaultVideoAreaH = Math.round(defaultW / (16 / 9));
     const defaultH = defaultVideoAreaH + VIDEO_UI_OVERHEAD + MIN_COMMENT_LIST_H;
-    return resizeBox(shape, info, { minWidth: defaultW, minHeight: defaultH });
+    return resizeBox(shape, info, {
+      minWidth: defaultW,
+      minHeight: defaultH,
+    });
   };
 
   override hideSelectionBoundsBg = () => true;

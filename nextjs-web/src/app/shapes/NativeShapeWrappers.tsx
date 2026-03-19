@@ -19,6 +19,7 @@ import {
   TLArrowShape,
   TLDefaultColorStyle,
   type TLShape,
+  type TLImageShape,
   useEditor,
 } from "@cmpd/compound";
 import {
@@ -39,67 +40,6 @@ import { currentUserIdAtom } from "@/app/components/board/currentUserAtom";
 
 /** タッチで切り替えた直後の click 二重実行を防ぐため（geo オープン切替ボタン用） */
 const lastTouchEndByGeoShapeId = new Map<string, number>();
-
-// ---------- GEO 用: コンテンツ駆動のラベルサイズ計測（compound の getLabelSize と同様だが maxWidth を固定） ----
-const GEO_LABEL_PADDING = 16;
-const GEO_MIN_SIZE_WITH_LABEL = 17 * 3;
-const GEO_CONTENT_MAX_WIDTH = 800;
-
-const GEO_TEXT_PROPS = {
-  lineHeight: 1.35,
-  fontWeight: "normal" as const,
-  fontVariant: "normal" as const,
-  fontStyle: "normal" as const,
-  padding: "0px",
-};
-const GEO_FONT_FAMILIES: Record<string, string> = {
-  draw: "var(--tl-font-draw)",
-  sans: "var(--tl-font-sans)",
-  serif: "var(--tl-font-serif)",
-  mono: "var(--tl-font-mono)",
-};
-const GEO_LABEL_FONT_SIZES: Record<string, number> = {
-  s: 18,
-  m: 22,
-  l: 26,
-  xl: 32,
-};
-const GEO_SIZES: Record<string, number> = {
-  s: 2,
-  m: 3.5,
-  l: 5,
-  xl: 10,
-};
-
-function getLabelSizeForContent(
-  editor: Editor,
-  shape: TLGeoShape
-): { w: number; h: number } {
-  const text = shape.props.text;
-  if (!text) return { w: 0, h: 0 };
-  const font = shape.props.font ?? "draw";
-  const size = shape.props.size ?? "m";
-  const minSize = editor.textMeasure.measureText("w", {
-    ...GEO_TEXT_PROPS,
-    fontFamily: GEO_FONT_FAMILIES[font] ?? GEO_FONT_FAMILIES.draw,
-    fontSize: GEO_LABEL_FONT_SIZES[size] ?? GEO_LABEL_FONT_SIZES.m,
-    maxWidth: 100,
-  });
-  const measured = editor.textMeasure.measureText(text, {
-    ...GEO_TEXT_PROPS,
-    fontFamily: GEO_FONT_FAMILIES[font] ?? GEO_FONT_FAMILIES.draw,
-    fontSize: GEO_LABEL_FONT_SIZES[size] ?? GEO_LABEL_FONT_SIZES.m,
-    minWidth: minSize.w + "px",
-    maxWidth: Math.max(
-      Math.ceil(minSize.w + (GEO_SIZES[size] ?? GEO_SIZES.m)),
-      GEO_CONTENT_MAX_WIDTH
-    ),
-  });
-  return {
-    w: measured.w + GEO_LABEL_PADDING * 2,
-    h: measured.h + GEO_LABEL_PADDING * 2,
-  };
-}
 
 // ---------- 共通ラップヘルパー ---------------------------------------------------
 
@@ -183,20 +123,85 @@ function renderWithExtras(
 
 const CHECKER_STYLE: React.CSSProperties = {
   backgroundImage:
-    "linear-gradient(45deg, #ddd 25%, transparent 25%), linear-gradient(-45deg, #ddd 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ddd 75%), linear-gradient(-45deg, transparent 75%, #ddd 75%)",
-  backgroundSize: "12px 12px",
-  backgroundPosition: "0 0, 0 6px, 6px -6px, -6px 0px",
+    "conic-gradient(#c0c0c0 0deg 90deg, #ddd 90deg 180deg, #c0c0c0 180deg 270deg, #ddd 270deg 360deg)",
+  backgroundSize: "100% 100%",
+  backgroundRepeat: "no-repeat",
   backgroundColor: "#c0c0c0",
 };
+
+/** 配置時の長辺基準（mediaUtils.IMAGE_LONG_SIDE と一致） */
+const IMAGE_BASE_LONG_SIDE = 320;
+const IMAGE_MIN_SIZE = Math.round(IMAGE_BASE_LONG_SIDE * 0.5);
+const IMAGE_MAX_SIZE = IMAGE_BASE_LONG_SIDE * 4;
 
 export class WrappedImageShapeUtil extends ImageShapeUtil {
   override isAspectRatioLocked = () => true;
 
+  override onBeforeUpdate = (prev: TLImageShape, next: TLImageShape): TLImageShape | undefined => {
+    const assetId = next.props.assetId;
+    if (!assetId) return undefined;
+    const asset = this.editor.getAsset(assetId);
+    if (!asset) return undefined;
+    const ap = asset.props as { w?: number; h?: number };
+    const aw = ap.w ?? 1;
+    const ah = ap.h ?? 1;
+    if (aw <= 0 || ah <= 0) return undefined;
+    const assetRatio = aw / ah;
+    const { w, h } = next.props;
+    const shapeRatio = w / h;
+    const eps = 1e-6;
+    if (Math.abs(shapeRatio - assetRatio) < eps) return undefined;
+    const correctedH = w / assetRatio;
+    return { ...next, props: { ...next.props, h: correctedH } };
+  };
+
   override onResize = (shape: Parameters<ImageShapeUtil["component"]>[0], info: Parameters<ImageShapeUtil["onResize"]>[1]) => {
-    return resizeBox(shape, info, {
-      minWidth: 1,
-      minHeight: 1,
-    });
+    const { scaleX, scaleY, handle, ...rest } = info;
+    const clampedScaleX = Math.max(0.01, scaleX);
+    const clampedScaleY = Math.max(0.01, scaleY);
+    let scale = clampedScaleX;
+    if (["top", "bottom"].includes(handle)) scale = clampedScaleY;
+    else if (["left", "right"].includes(handle)) scale = clampedScaleX;
+    else scale = Math.abs(clampedScaleX) >= Math.abs(clampedScaleY) ? clampedScaleX : clampedScaleY;
+    const ux = scale;
+    const uy = scale;
+    const result = resizeBox(
+      shape,
+      { ...rest, handle, scaleX: ux, scaleY: uy },
+      {
+        minWidth: IMAGE_MIN_SIZE,
+        minHeight: IMAGE_MIN_SIZE,
+        maxWidth: IMAGE_MAX_SIZE,
+        maxHeight: IMAGE_MAX_SIZE,
+      }
+    );
+    // max クランプ時、resizeBox は位置を補正しないため、アンカーを固定するよう自前で補正
+    const rawW = shape.props.w * ux;
+    const rawH = shape.props.h * uy;
+    const clampedW = result.props.w;
+    const clampedH = result.props.h;
+    const hitMax = rawW > IMAGE_MAX_SIZE || rawH > IMAGE_MAX_SIZE;
+    if (!hitMax) return result;
+    const rot = shape.rotation ?? 0;
+    const cos = Math.cos(rot);
+    const sin = Math.sin(rot);
+    let dx = 0;
+    let dy = 0;
+    if (["top", "top_left", "top_right"].includes(handle)) {
+      dy += rawH - clampedH;
+    }
+    if (["left", "top_left", "bottom_left"].includes(handle)) {
+      dx += rawW - clampedW;
+    }
+    if (handle === "top") {
+      dx += (rawW - clampedW) / 2;
+    }
+    if (handle === "left") {
+      dy += (rawH - clampedH) / 2;
+    }
+    const x = result.x + dx * cos - dy * sin;
+    const y = result.y + dx * sin + dy * cos;
+    return { x, y, props: result.props };
   };
 
   override component(shape: Parameters<ImageShapeUtil["component"]>[0]) {
@@ -289,115 +294,47 @@ export class WrappedTextShapeUtil extends TextShapeUtil {
 
 // ---------- 個別実装（独自ロジックあり） ------------------------------------
 
+const GEO_DEFAULT_WIDTH = 200;
+const GEO_DEFAULT_HEIGHT = 120;
+const GEO_MIN_SIZE = 80;
+const GEO_MAX_WIDTH = GEO_DEFAULT_WIDTH * 4;
+const GEO_MAX_HEIGHT = GEO_DEFAULT_HEIGHT * 4;
+
 export class WrappedGeoShapeUtil extends GeoShapeUtil {
   override getDefaultProps(): TLGeoShape["props"] {
-    return { ...super.getDefaultProps(), w: 200, h: 120 };
+    return { ...super.getDefaultProps(), w: GEO_DEFAULT_WIDTH, h: GEO_DEFAULT_HEIGHT };
   }
 
-  override onBeforeCreate = (shape: TLGeoShape): TLGeoShape | undefined => {
-    let base: TLGeoShape | undefined;
-    if (!shape.props.text) {
-      if (shape.props.growY) {
-        base = { ...shape, props: { ...shape.props, growY: 0 } };
-      } else {
-        base = undefined;
-      }
-    } else {
-      const prevHeight = shape.props.h;
-      const nextHeight = getLabelSizeForContent(this.editor, shape).h;
-      let growY: number | null = null;
-      if (nextHeight > prevHeight) {
-        growY = nextHeight - prevHeight;
-      } else if (shape.props.growY) {
-        growY = 0;
-      }
-      if (growY !== null) {
-        base = { ...shape, props: { ...shape.props, growY } };
-      } else {
-        base = undefined;
-      }
-    }
-    const merged: TLGeoShape = {
-      ...(base ?? shape),
-      props: {
-        ...(base?.props ?? shape.props),
-        color: getColorForShape(shape.id),
-        fill: "solid",
-        dash: "solid",
-        font: "mono",
-      },
+  override onBeforeCreate = (shape: TLGeoShape): TLGeoShape | undefined => ({
+    ...shape,
+    props: {
+      ...shape.props,
+      color: getColorForShape(shape.id),
+      fill: "solid",
+      dash: "solid",
+      font: "mono",
+    },
+  });
+
+  override onResize = (
+    shape: TLGeoShape,
+    info: Parameters<GeoShapeUtil["onResize"]>[1]
+  ) => {
+    const effectiveH = shape.props.h + (shape.props.growY ?? 0);
+    const shapeWithEffectiveH = {
+      ...shape,
+      props: { ...shape.props, h: effectiveH },
     };
-    return merged;
-  };
-
-  override onBeforeUpdate = (prev: TLGeoShape, next: TLGeoShape): TLGeoShape | undefined => {
-    const prevText = prev.props.text;
-    const nextText = next.props.text;
-    if (
-      prevText === nextText &&
-      prev.props.font === next.props.font &&
-      prev.props.size === next.props.size
-    ) {
-      return undefined;
-    }
-    if (prevText && !nextText) {
-      return {
-        ...next,
-        props: { ...next.props, growY: 0 },
-      };
-    }
-    const prevWidth = prev.props.w;
-    const prevTotalH = prev.props.h + (prev.props.growY ?? 0);
-    const nextSize = getLabelSizeForContent(this.editor, next);
-    const nextWidth = nextSize.w;
-    const nextHeight = nextSize.h;
-
-    if (!prevText && nextText && nextText.length === 1) {
-      let w = nextWidth;
-      let h = nextHeight;
-      if (
-        prev.props.w < GEO_MIN_SIZE_WITH_LABEL &&
-        prev.props.h < GEO_MIN_SIZE_WITH_LABEL
-      ) {
-        w = Math.max(w, GEO_MIN_SIZE_WITH_LABEL);
-        h = Math.max(h, GEO_MIN_SIZE_WITH_LABEL);
-        w = Math.max(w, h);
-        h = Math.max(w, h);
-      }
-      return {
-        ...next,
-        props: { ...next.props, w, h, growY: 0 },
-      };
-    }
-
-    if (nextHeight > prevTotalH) {
-      return {
-        ...next,
-        props: {
-          ...next.props,
-          growY: nextHeight - prev.props.h,
-          w: Math.max(next.props.w, nextWidth),
-        },
-      };
-    }
-    if (nextHeight < prevTotalH) {
-      return {
-        ...next,
-        props: {
-          ...next.props,
-          h: nextHeight,
-          growY: 0,
-          w: nextWidth,
-        },
-      };
-    }
-    if (nextWidth !== prevWidth) {
-      return {
-        ...next,
-        props: { ...next.props, w: nextWidth },
-      };
-    }
-    return undefined;
+    const result = resizeBox(shapeWithEffectiveH, info, {
+      minWidth: GEO_MIN_SIZE,
+      minHeight: GEO_MIN_SIZE,
+      maxWidth: GEO_MAX_WIDTH,
+      maxHeight: GEO_MAX_HEIGHT,
+    });
+    return {
+      ...result,
+      props: { ...result.props, growY: 0 },
+    } as ReturnType<GeoShapeUtil["onResize"]>;
   };
 
   override component(shape: TLGeoShape) {
@@ -447,6 +384,18 @@ export class WrappedGeoShapeUtil extends GeoShapeUtil {
           if ((e.target as HTMLElement).closest?.("[data-ogp-preview]")) e.stopPropagation();
         }}
       >
+        <style>{`
+          .geo-colored-stroke-layer > .tl-html-container {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+          }
+          .geo-colored-stroke-layer > .tl-svg-container {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+          }
+        `}</style>
         <CreatorLabel
           name={createdBy}
           avatarUrl={getCreatedByAvatarUrl(shape)}
@@ -540,7 +489,7 @@ export class WrappedGeoShapeUtil extends GeoShapeUtil {
         <div className="geo-svg-only" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 0, pointerEvents: "none" }}>
           {greyFill}
         </div>
-        <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 1, pointerEvents: "none" }}>
+        <div className="geo-colored-stroke-layer" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 1, pointerEvents: "none" }}>
           {coloredStroke}
         </div>
         {/* OGP プレビュー + リアクションパネルを下部に配置。リンク・×ボタンをクリック可能にするため pointerEvents: auto。 */}

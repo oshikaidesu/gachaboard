@@ -48,9 +48,13 @@ export function isPlayableAudio(mimeType: string): boolean {
   return PLAYABLE_AUDIO_MIMES.has(base);
 }
 
+/** PSD はプレビュー不可のためファイルアイコン扱い */
+const FILE_ICON_IMAGE_MIMES = new Set(["image/vnd.adobe.photoshop"]);
+
 /** MIME タイプから Asset.kind を導出 */
 export function getAssetKind(mimeType: string): string {
   if (mimeType === "image/gif") return "gif";
+  if (FILE_ICON_IMAGE_MIMES.has(mimeType)) return "file";
   if (mimeType.startsWith("image/")) return "image";
   if (mimeType.startsWith("video/")) return "video";
   if (isPlayableAudio(mimeType)) return "audio";

@@ -87,6 +87,7 @@ export function AssetLoader({ assetId, children, converted, fileName }: Props) {
       backgroundImage: thumbUrl,
       backgroundSize: isTranscoding && safeId ? "cover" : undefined,
       backgroundPosition: isTranscoding && safeId ? "center" : undefined,
+      backgroundRepeat: "no-repeat",
       color: "#94a3b8",
       fontSize: 12,
       fontFamily: "system-ui, sans-serif",

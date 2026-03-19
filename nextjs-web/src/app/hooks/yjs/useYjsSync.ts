@@ -14,16 +14,10 @@ import {
   parseYMapValue,
   recordsFromYMap,
   type RecordsDiffLike,
+  type StoreLike,
 } from "@/lib/yjsSyncHelpers";
 
-export type StoreLike = {
-  listen: (fn: (entry: { changes: RecordsDiffLike; source: string }) => void, opts: { source: string; scope: string }) => () => void;
-  mergeRemoteChanges: (fn: () => void) => void;
-  put: (records: TLRecord[]) => void;
-  remove: (ids: TLRecord["id"][]) => void;
-  has: (id: TLRecord["id"]) => boolean;
-  allRecords: () => Iterable<TLRecord>;
-};
+export type { StoreLike } from "@/lib/yjsSyncHelpers";
 
 const SMOOTH_LERP_FACTOR = 0.25;
 const SMOOTH_DONE_DISTANCE = 0.5;
@@ -81,6 +75,8 @@ export function useYjsSync({
 
     const yMap = ydoc.getMap<string>("tldraw");
     let hasConnectedOnce = false;
+
+    // ---------- 接続・認証（HocuspocusProvider） ----------
     // name は IndexeddbPersistence の docName と統一（公式パターン）
     const prov = new HocuspocusProvider({
       url: wsUrl,
@@ -117,6 +113,7 @@ export function useYjsSync({
     const smoothTargets = new Map<string, { targetX: number; targetY: number; record: TLRecord }>();
     let smoothRafId: number | null = null;
 
+    // ---------- スムースフォロー（他ユーザーがドラッグ中のシェイプを滑らかに追従） ----------
     const runSmoothLoop = () => {
       smoothRafId = null;
       const s = getStoreRef.current?.();
@@ -158,6 +155,7 @@ export function useYjsSync({
       if (smoothRafId === null && smoothTargets.size > 0) smoothRafId = requestAnimationFrame(runSmoothLoop);
     };
 
+    // ---------- Store←Y 同期（Y.Map の変更を Store に反映） ----------
     const handleYUpdate = (event: { changes: { keys: Map<string, { action: string }> } }) => {
       if (isLocalUpdateRef.current) return;
       event.changes.keys.forEach((_, key) => changedKeys.add(key));
@@ -214,6 +212,7 @@ export function useYjsSync({
       }
     }
 
+    // ---------- Store→Y 永続化（Store の変更を Y.Map に書き込み・ドラッグ時は throttle） ----------
     const DRAG_SYNC_THROTTLE_MS = 80;
     let rafScheduled = false;
     let pendingChanges: RecordsDiffLike | null = null;
@@ -298,6 +297,7 @@ export function useYjsSync({
     setConnectionStatusRef.current?.("offline");
     setStatusRef.current?.("loading");
 
+    // ---------- クリーンアップ ----------
     return () => {
       if (smoothRafId !== null) cancelAnimationFrame(smoothRafId);
       if (cameraSaveTimer) clearTimeout(cameraSaveTimer);

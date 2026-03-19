@@ -7,3 +7,4 @@ export { WheelGuard } from "./ScrollContainer";
 export { ShapeConnectHandles } from "./ShapeConnectHandles";
 export { OgpPreview } from "./OgpPreview";
 export { ShapeReactionPanel } from "./ShapeReactionPanel";
+export { getMinShapeSize } from "./shapeSizeUtils";

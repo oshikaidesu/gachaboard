@@ -24,7 +24,7 @@ echo ">>> 3. パッケージ・DB セットアップ"
 cd nextjs-web
 npm install --legacy-peer-deps
 npx prisma generate
-npx prisma migrate deploy
+npx prisma migrate deploy || { npx prisma migrate resolve --applied 20250318120000_init && npx prisma migrate deploy; } || exit 1
 
 echo ">>> 4. 本番サーバー起動（既存ビルド）"
 # ビルドが必要な場合: npm run build

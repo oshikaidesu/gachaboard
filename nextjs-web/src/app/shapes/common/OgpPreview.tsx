@@ -1,13 +1,57 @@
 "use client";
 
+import { useRef, useEffect } from "react";
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
 import type { OgpData } from "@shared/apiTypes";
 import { getSafeHref } from "@/lib/safeUrl";
 import { useOgp } from "@/app/hooks/media/useOgp";
 
+/**
+ * OGP カードのリンク領域にネイティブ DOM リスナーを付け、
+ * tldraw キャンバスにイベントが伝播する前に止める。
+ * React の合成イベント経由では tldraw の capture リスナーに勝てないため。
+ */
+function useNativeLinkClick(href: string | null) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !href) return;
+
+    const stop = (e: Event) => {
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    };
+
+    const handleClick = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      window.open(href, "_blank", "noopener,noreferrer");
+    };
+
+    el.addEventListener("pointerdown", stop, { capture: true });
+    el.addEventListener("pointerup", stop, { capture: true });
+    el.addEventListener("mousedown", stop, { capture: true });
+    el.addEventListener("touchstart", stop, { capture: true });
+    el.addEventListener("click", handleClick, { capture: true });
+
+    return () => {
+      el.removeEventListener("pointerdown", stop, { capture: true });
+      el.removeEventListener("pointerup", stop, { capture: true });
+      el.removeEventListener("mousedown", stop, { capture: true });
+      el.removeEventListener("touchstart", stop, { capture: true });
+      el.removeEventListener("click", handleClick, { capture: true });
+    };
+  }, [href]);
+
+  return ref;
+}
+
 function OgpCard({ data, width }: { data: OgpData; width: number }) {
   const safeHref = getSafeHref(data.url);
   const safeImage = data.image ? getSafeHref(data.image) : null;
+  const linkRef = useNativeLinkClick(safeHref);
 
   const domain = (() => {
     if (safeHref) {
@@ -130,25 +174,17 @@ function OgpCard({ data, width }: { data: OgpData; width: number }) {
 
   if (safeHref) {
     return (
-      <a
-        href={safeHref}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={cardStyle}
-        onPointerDown={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
+      <div
+        ref={linkRef}
+        style={{ ...cardStyle, cursor: "pointer" }}
       >
         {cardContent}
-      </a>
+      </div>
     );
   }
 
   return (
-    <div
-      style={cardStyle}
-      onPointerDown={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-    >
+    <div style={cardStyle}>
       {cardContent}
     </div>
   );
@@ -198,7 +234,7 @@ function OgpPreviewItem({ ogpUrl, width, onDismiss }: OgpPreviewItemProps) {
   if (!ogp) return null;
 
   return (
-    <div style={{ position: "relative", width, pointerEvents: "all" }}>
+    <div data-ogp-preview style={{ position: "relative", width, pointerEvents: "all" }}>
       {onDismiss && (
         <button
           style={{

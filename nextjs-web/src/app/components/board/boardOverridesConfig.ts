@@ -24,3 +24,19 @@ export const TOOLBAR_ALLOWED_IDS: readonly string[] = ["select", "draw", "eraser
 
 /** アクションメニューから非表示にする ID */
 export const HIDE_ACTION_IDS: readonly string[] = ["rotate-cw", "rotate-ccw", "toggle-dark-mode"];
+
+/** 右クリックのコンテキストメニューを非表示にする（線・描画の邪魔にならないように） */
+export const CONTEXT_MENU_ENABLED = false;
+
+/** ショートカット（kbd）を無効化するアクション ID（ツールロック・Shift+L・Cmd+S・Cmd+E など） */
+export const ACTIONS_DISABLE_KBD_IDS: readonly string[] = [
+  "select-zoom-tool",
+  "toggle-tool-lock",
+  "toggle-lock",
+  "save-copy",
+  "embed",
+  "export-as",
+  "export-as-png",
+  "export-as-svg",
+  "export-as-json",
+];

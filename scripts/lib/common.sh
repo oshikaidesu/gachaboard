@@ -288,13 +288,18 @@ wait_for_postgres() {
   return 1
 }
 
-# nextjs-web で Prisma スキーマを適用（generate + db push）
+# nextjs-web で Prisma スキーマを適用（generate + migrate deploy）
+# 既存 DB（スキーマあり・マイグレーション履歴なし）の場合は初回だけ baseline してから deploy
 # 使用: apply_prisma_schema "$ROOT_DIR"
 apply_prisma_schema() {
   local root_dir="${1:-.}"
   local web_dir="${root_dir}/nextjs-web"
+  local init_migration="20250318120000_init"
   echo ">>> スキーマ適用 (prisma generate / migrate deploy)"
-  (cd "$web_dir" && npx prisma generate && npx prisma migrate deploy)
+  (cd "$web_dir" && npx prisma generate) || return 1
+  (cd "$web_dir" && npx prisma migrate deploy) && return 0
+  echo ">>> 既存 DB のため baseline を適用してから再実行します"
+  (cd "$web_dir" && npx prisma migrate resolve --applied "$init_migration" && npx prisma migrate deploy) || return 1
 }
 
 # macOS: Docker Desktop を完全終了→再起動→Engine 準備完了まで待つ

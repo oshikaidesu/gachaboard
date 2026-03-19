@@ -1,6 +1,6 @@
 /**
- * S3 マルチパートアップロードのロジック。
- * useFileDropHandler から分離。
+ * S3 マルチパートアップロードのロジック（新規・再開）。
+ * useFileDropHandler から分離。init → パート送信 → complete の流れを名前付きで実行。
  */
 
 import pLimit from "p-limit";
@@ -18,6 +18,39 @@ export const S3_REQUIRED_MSG =
 const S3_PART_SIZE = 100 * 1024 * 1024; // 100MB
 const CHUNK_CONCURRENCY = 4;
 
+// ---------- パート PUT（進捗付き） ----------
+
+/** Presigned URL へ PUT し、アップロード中の進捗を onProgress(0..1) で通知。ETag を返す。 */
+function putWithProgress(
+  url: string,
+  body: Blob,
+  onProgress: (loadedRatio: number) => void,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable && e.total > 0) {
+        onProgress(e.loaded / e.total);
+      }
+    });
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const etag = xhr.getResponseHeader("etag");
+        if (etag) resolve(etag);
+        else reject(new Error("No ETag in response"));
+      } else {
+        reject(new Error(`Upload failed: ${xhr.status}`));
+      }
+    });
+    xhr.addEventListener("error", () => reject(new Error("Upload network error")));
+    xhr.addEventListener("abort", () => reject(new Error("Upload aborted")));
+    xhr.send(body);
+  });
+}
+
+// ---------- 並列実行 ----------
+
 export async function runWithConcurrency<T>(
   tasks: (() => Promise<T>)[],
   concurrency: number,
@@ -25,6 +58,8 @@ export async function runWithConcurrency<T>(
   const limit = pLimit(concurrency);
   return Promise.allSettled(tasks.map((task) => limit(() => task())));
 }
+
+// ---------- 新規アップロード（init → パート送信 → complete） ----------
 
 export async function uploadFileViaS3(
   file: File,
@@ -74,6 +109,8 @@ export async function uploadFileViaS3(
     });
   }
 
+  onProgress?.(0);
+
   const parts: { PartNumber: number; ETag: string }[] = [];
   let done = 0;
 
@@ -82,10 +119,11 @@ export async function uploadFileViaS3(
     const end = Math.min(start + S3_PART_SIZE, file.size);
     const chunk = file.slice(start, end);
     const url = presignedUrls[partNumber - 1];
-    const res = await fetch(url, { method: "PUT", body: chunk });
-    if (!res.ok) throw new Error(`Part ${partNumber} failed: ${res.status}`);
-    const etag = res.headers.get("etag");
-    if (!etag) throw new Error(`Part ${partNumber}: no ETag`);
+    const etag = await putWithProgress(url, chunk, (loaded) => {
+      // loaded は 0..1。このパート完了分 = (partNumber-1) + loaded
+      const pct = ((partNumber - 1) + loaded) / totalParts;
+      onProgress?.(Math.round(pct * 95));
+    });
     done++;
     onProgress?.(Math.round((done / totalParts) * 95));
     parts.push({ PartNumber: partNumber, ETag: etag });
@@ -119,6 +157,8 @@ export async function uploadFileViaS3(
   onProgress?.(100);
   return completeRes.json() as Promise<ApiAsset>;
 }
+
+// ---------- 再開アップロード（status → 未完了パート送信 → complete） ----------
 
 export async function uploadFileViaS3Resume(
   session: StoredSession,
@@ -187,6 +227,8 @@ export async function uploadFileViaS3Resume(
     presignedUrls: Record<string, string>;
   };
 
+  onProgress?.(0);
+
   let done = status.completedPartNumbers.length;
   const uploadPart = async (partNumber: number) => {
     const url = presignedUrls[partNumber];
@@ -194,10 +236,11 @@ export async function uploadFileViaS3Resume(
     const start = (partNumber - 1) * S3_PART_SIZE;
     const end = Math.min(start + S3_PART_SIZE, file.size);
     const chunk = file.slice(start, end);
-    const res = await fetch(url, { method: "PUT", body: chunk });
-    if (!res.ok) throw new Error(`Part ${partNumber} failed: ${res.status}`);
-    const etag = res.headers.get("etag");
-    if (!etag) throw new Error(`Part ${partNumber}: no ETag`);
+    const etag = await putWithProgress(url, chunk, (loaded) => {
+      // loaded は 0..1。完了済み done パート + 現在パートの進捗
+      const pct = (done + loaded) / totalParts;
+      onProgress?.(Math.round(pct * 95));
+    });
     done++;
     onProgress?.(Math.round((done / totalParts) * 95));
     allParts.set(partNumber, { PartNumber: partNumber, ETag: etag });

@@ -20,6 +20,7 @@ import {
   getColorForShape,
   getStrokeHexForColorStyle,
 } from "../common";
+import { resizeBox } from "@cmpd/editor";
 import { SHAPE_TYPE, isTextFile, type TextFileShape } from "@shared/shapeDefs";
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
 import { getSafeAssetId } from "@/lib/safeUrl";
@@ -27,6 +28,10 @@ import { convertToFileIcon } from "@/app/shapes";
 
 export type { TextFileShape } from "@shared/shapeDefs";
 export { isTextFile } from "@shared/shapeDefs";
+
+/** 初期配置のデフォルトサイズ（最小値にも使用） */
+const TEXT_FILE_DEFAULT_W = 320;
+const TEXT_FILE_DEFAULT_H = 240;
 
 /** タッチで変換した直後の click 二重実行を防ぐため */
 const lastTouchEndByShapeId = new Map<string, number>();
@@ -40,8 +45,8 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
       fileName: "file.txt",
       mimeType: "text/plain",
       content: "",
-      w: 320,
-      h: 240,
+      w: TEXT_FILE_DEFAULT_W,
+      h: TEXT_FILE_DEFAULT_H,
     };
   }
 
@@ -52,6 +57,13 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
       isFilled: true,
     });
   }
+
+  override onResize = (shape: TextFileShape, info: Parameters<typeof resizeBox>[1]) => {
+    return resizeBox(shape, info, {
+      minWidth: TEXT_FILE_DEFAULT_W,
+      minHeight: TEXT_FILE_DEFAULT_H,
+    });
+  };
 
   override component(shape: TextFileShape) {
     const editor = useEditor();

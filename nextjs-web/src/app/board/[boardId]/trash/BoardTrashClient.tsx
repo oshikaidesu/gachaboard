@@ -8,26 +8,9 @@ import { TwemojiImg } from "@/app/components/ui/Twemoji";
 import { useRouter } from "next/navigation";
 import { formatFileSize } from "@shared/utils";
 import { getFileEmoji } from "@/app/shapes";
-
-type TrashAsset = {
-  id: string;
-  fileName: string;
-  mimeType: string;
-  kind: string;
-  sizeBytes: string;
-  deletedAt: string;
-  lastKnownX: number | null;
-  lastKnownY: number | null;
-  uploader: { name: string | null; image: string | null };
-};
-
-type SortKey = "deletedAt_desc" | "deletedAt_asc" | "size_desc" | "size_asc";
-
-type ConfirmState = {
-  ids: string[];
-  totalBytes: number;
-  onConfirm: () => void;
-};
+import { ConfirmDeleteModal, type TrashConfirmState } from "@/app/components/board/trash/ConfirmDeleteModal";
+import type { TrashAsset, SortKey } from "./types";
+import { sortTrashAssets } from "./utils";
 
 type Props = {
   boardId: string;
@@ -35,67 +18,13 @@ type Props = {
   workspaceId: string;
 };
 
-// ---- 削除確認モーダル --------------------------------------------------------
-
-function ConfirmDeleteModal({
-  state,
-  onClose,
-}: {
-  state: ConfirmState;
-  onClose: () => void;
-}) {
-  const count = state.ids.length;
-  const size = formatFileSize(state.totalBytes);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-black/70">
-      <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl dark:border dark:border-zinc-700 dark:bg-zinc-900">
-        <h2 className="mb-1 text-base font-semibold text-zinc-900 dark:text-zinc-100">本当に削除しますか？</h2>
-        <p className="mb-1 text-sm text-zinc-500 dark:text-zinc-400">
-          {count} 件（{size}）を完全に削除します。
-        </p>
-        <p className="mb-6 text-sm font-medium text-red-500 dark:text-red-400">この操作は取り消せません。</p>
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-          >
-            いいえ、戻る
-          </button>
-          <button
-            onClick={() => { state.onConfirm(); onClose(); }}
-            className="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700"
-          >
-            はい、削除する
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---- ユーティリティ ----------------------------------------------------------
-
-function sortAssets(assets: TrashAsset[], key: SortKey): TrashAsset[] {
-  return [...assets].sort((a, b) => {
-    switch (key) {
-      case "deletedAt_desc": return new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime();
-      case "deletedAt_asc":  return new Date(a.deletedAt).getTime() - new Date(b.deletedAt).getTime();
-      case "size_desc":      return Number(b.sizeBytes) - Number(a.sizeBytes);
-      case "size_asc":       return Number(a.sizeBytes) - Number(b.sizeBytes);
-    }
-  });
-}
-
-// ---- メインコンポーネント ----------------------------------------------------
-
 export default function BoardTrashClient({ boardId, boardName, workspaceId }: Props) {
   const router = useRouter();
   const [assets, setAssets] = useState<TrashAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey>("deletedAt_desc");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [confirm, setConfirm] = useState<ConfirmState | null>(null);
+  const [confirm, setConfirm] = useState<TrashConfirmState | null>(null);
   const [actionState, setActionState] = useState<{ id: string; type: "restoring" | "deleting" } | null>(null);
 
   const load = useCallback(async () => {
@@ -111,7 +40,7 @@ export default function BoardTrashClient({ boardId, boardName, workspaceId }: Pr
 
   useEffect(() => { load(); }, [load]);
 
-  const sorted = sortAssets(assets, sortKey);
+  const sorted = sortTrashAssets(assets, sortKey);
   const totalBytes = assets.reduce((sum, a) => sum + Number(a.sizeBytes), 0);
 
   // ---- 選択操作 ---------------------------------------------------------------

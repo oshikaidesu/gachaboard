@@ -1,9 +1,16 @@
+/**
+ * API ルート用の認可ヘルパー。
+ * セッション取得・ワークスペース/ボード/アセットへのアクセス判定を担当。
+ */
+
 import type { Prisma } from "@/generated/prisma/client";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { headers } from "next/headers";
+
+// ---------- セッション・ログイン ----------
 
 /** ログイン済みセッションを取得。未ログインなら null */
 export async function getSession() {
@@ -31,6 +38,8 @@ export async function requireLogin() {
   return session;
 }
 
+// ---------- サーバーオーナー ----------
+
 /** サーバーオーナーか確認。SERVER_OWNER_DISCORD_ID 未設定時は全員 true */
 function isServerOwner(session: { user: { discordId?: string | null } } | null): boolean {
   if (!session?.user?.discordId) return false;
@@ -47,6 +56,8 @@ export async function assertServerOwner() {
   if (!isServerOwner(session)) return null;
   return { session };
 }
+
+// ---------- ワークスペース ----------
 
 /** ワークスペースオーナーまたは招待メンバーか */
 async function hasWorkspaceAccess(workspaceId: string, userId: string): Promise<boolean> {
@@ -105,6 +116,8 @@ export async function assertWorkspaceOwner(workspaceId: string) {
   return { session, workspace };
 }
 
+// ---------- ボード ----------
+
 /** Board が存在しログイン済みか。サーバーオーナーモード時は WS オーナー or 招待メンバー */
 export async function assertBoardAccess(boardId: string) {
   const session = await requireLogin();
@@ -127,6 +140,8 @@ export async function assertBoardAccess(boardId: string) {
 
   return { session, board };
 }
+
+// ---------- アセット ----------
 
 /**
  * アセットの読み取り権限を確認。
@@ -194,6 +209,8 @@ export async function assertWorkspaceWriteAccess(workspaceId: string) {
   }
   return null;
 }
+
+// ---------- S3 セッション・監査 ----------
 
 /**
  * S3 アップロードセッションを取得。uploaderId が一致する場合のみ返す。

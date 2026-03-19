@@ -31,6 +31,12 @@ start_postgres() {
     echo "host all all 127.0.0.1/32 trust" >> "$PGDATA/pg_hba.conf"
     echo "port = $POSTGRES_PORT" >> "$PGDATA/postgresql.conf"
   fi
+  if [[ -f "$PGDATA/postmaster.pid" ]]; then
+    echo ">>> 既存の PostgreSQL を停止しています..."
+    pg_ctl -D "$PGDATA" stop -m fast 2>/dev/null || true
+    rm -f "$PGDATA/postmaster.pid" 2>/dev/null || true
+    sleep 2
+  fi
   echo ">>> PostgreSQL を起動しています..."
   pg_ctl -D "$PGDATA" -l "$DATA_DIR/postgres.log" -o "-p $POSTGRES_PORT" start
   sleep 2
@@ -80,6 +86,11 @@ start_minio() {
   fi
 
   mkdir -p "$MINIO_DATA"
+  if pgrep -f "minio.*server" >/dev/null 2>&1; then
+    echo ">>> 既存の MinIO を停止しています..."
+    pkill -f "minio.*server" 2>/dev/null || true
+    sleep 2
+  fi
   if ! pgrep -f "minio.*server" >/dev/null 2>&1; then
     echo ">>> MinIO を起動しています..."
     MINIO_ROOT_USER=minioadmin MINIO_ROOT_PASSWORD=minioadmin \
@@ -98,7 +109,17 @@ start_minio() {
 
 start_sync_server() {
   if pgrep -f "sync-server.*server.mjs" >/dev/null 2>&1; then
-    return 0
+    echo ">>> 既存の sync-server を停止しています..."
+    pkill -f "sync-server.*server.mjs" 2>/dev/null || true
+    sleep 1
+  fi
+  if command -v lsof >/dev/null 2>&1; then
+    pids=$(lsof -ti ":$SYNC_PORT" 2>/dev/null) || true
+    if [[ -n "$pids" ]]; then
+      echo ">>> ポート $SYNC_PORT を解放しています..."
+      echo "$pids" | xargs kill -9 2>/dev/null || true
+      sleep 1
+    fi
   fi
   echo ">>> sync-server を起動しています..."
   mkdir -p "$SYNC_DATA"

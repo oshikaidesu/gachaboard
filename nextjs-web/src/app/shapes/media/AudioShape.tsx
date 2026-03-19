@@ -33,6 +33,7 @@ import { getSafeAssetId } from "@/lib/safeUrl";
 import { MediaCommentInput } from "./MediaCommentInput";
 import { MediaCommentList } from "./MediaCommentList";
 import { WaveformCanvas } from "./WaveformCanvas";
+import { MediaVolumeSlider } from "./MediaVolumeSlider";
 import {
   ORANGE,
   GRAY_LIGHT,
@@ -57,112 +58,6 @@ export type { AudioShape } from "@shared/shapeDefs";
 
 /** タッチで変換した直後の click 二重実行を防ぐため */
 const lastTouchEndByShapeId = new Map<string, number>();
-
-// ---------- 音量スライダー（PointerCapture 方式） ----------
-
-function VolumeSlider({
-  value,
-  onChange,
-  accentColor = ORANGE,
-  trackBg,
-  width = 196,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  accentColor?: string;
-  trackBg: string;
-  width?: number;
-}) {
-  const barRef = useRef<HTMLDivElement>(null);
-  const [dragging, setDragging] = useState(false);
-
-  const calcValue = useCallback(
-    (clientX: number) => {
-      const bar = barRef.current;
-      if (!bar) return value;
-      const rect = bar.getBoundingClientRect();
-      return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    },
-    [value]
-  );
-
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    setDragging(true);
-    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
-    onChange(calcValue(e.clientX));
-  };
-
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    if (!dragging) return;
-    onChange(calcValue(e.clientX));
-  };
-
-  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    setDragging(false);
-  };
-
-  const pct = Math.max(0, Math.min(100, value * 100));
-
-  return (
-    <div
-      ref={barRef}
-      data-volume-slider
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onMouseDown={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
-      style={{
-        position: "relative",
-        width,
-        height: 28,
-        display: "flex",
-        alignItems: "center",
-        cursor: "pointer",
-        touchAction: "none",
-        pointerEvents: "auto",
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          height: 4,
-          borderRadius: 2,
-          background: trackBg,
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            width: `${pct}%`,
-            height: "100%",
-            background: accentColor,
-            borderRadius: 2,
-            transition: dragging ? "none" : "width 0.05s linear",
-          }}
-        />
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          left: `calc(${pct}% - 6px)`,
-          width: 12,
-          height: 12,
-          borderRadius: "50%",
-          background: accentColor,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-          transition: dragging ? "none" : "left 0.05s linear",
-          pointerEvents: "none",
-        }}
-      />
-    </div>
-  );
-}
 
 // ---------- メインプレイヤー ----------
 
@@ -383,7 +278,7 @@ function AudioPlayer({ shape }: { shape: AudioShape }) {
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
           <span style={{ fontSize: 10 }}>{volume === 0 ? "🔇" : volume < 0.5 ? "🔉" : "🔊"}</span>
-          <VolumeSlider
+          <MediaVolumeSlider
             value={volume}
             onChange={(v) => {
               setVolume(v);
@@ -555,7 +450,10 @@ export class AudioShapeUtil extends BaseBoxShapeUtil<AudioShape> {
   }
 
   override onResize = (shape: AudioShape, info: Parameters<typeof resizeBox>[1]) => {
-    return resizeBox(shape, info, { minWidth: AUDIO_DEFAULT_W, minHeight: AUDIO_DEFAULT_H });
+    return resizeBox(shape, info, {
+      minWidth: AUDIO_DEFAULT_W,
+      minHeight: AUDIO_DEFAULT_H,
+    });
   };
 
   override hideSelectionBoundsBg = () => true;

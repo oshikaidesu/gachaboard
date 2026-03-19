@@ -5,7 +5,11 @@ import {
   useEditor,
   useValue,
   createShapeId,
+  Box2d,
+  Vec2d,
   type TLShapeId,
+  type TLShape,
+  type TLResizeHandle,
 } from "@cmpd/compound";
 
 type Dir = "top" | "bottom" | "left" | "right";
@@ -15,8 +19,23 @@ const TRI_W = 13;
 const TRI_H = 13;
 const OFFSET = 23;
 const CENTER_ANCHOR = { x: 0.5, y: 0.5 };
-
 const RESIZE_HANDLE_SIZE = 12;
+/** 矢印用の当たりは先端だけにし、エッジ付近を選択枠リサイズに譲る */
+const TIP_HIT_R = 14;
+
+const CORNER_CURSORS: Record<Corner, string> = {
+  top_left: "nwse-resize",
+  top_right: "nesw-resize",
+  bottom_left: "nesw-resize",
+  bottom_right: "nwse-resize",
+};
+
+const CORNER_RESIZE: Record<Corner, { wMul: number; hMul: number; adjustX: boolean; adjustY: boolean }> = {
+  top_left: { wMul: -1, hMul: -1, adjustX: true, adjustY: true },
+  top_right: { wMul: 1, hMul: -1, adjustX: false, adjustY: true },
+  bottom_left: { wMul: -1, hMul: 1, adjustX: true, adjustY: false },
+  bottom_right: { wMul: 1, hMul: 1, adjustX: false, adjustY: false },
+};
 
 function triPoints(dir: Dir, cx: number, cy: number): string {
   switch (dir) {
@@ -31,21 +50,6 @@ function triPoints(dir: Dir, cx: number, cy: number): string {
   }
 }
 
-const CORNER_CURSORS: Record<Corner, string> = {
-  top_left: "nwse-resize",
-  top_right: "nesw-resize",
-  bottom_left: "nesw-resize",
-  bottom_right: "nwse-resize",
-};
-
-/** 各コーナーの dx/dy から newW, newH, newX, newY を算出する係数 */
-const CORNER_RESIZE: Record<Corner, { wMul: number; hMul: number; adjustX: boolean; adjustY: boolean }> = {
-  top_left: { wMul: -1, hMul: -1, adjustX: true, adjustY: true },
-  top_right: { wMul: 1, hMul: -1, adjustX: false, adjustY: true },
-  bottom_left: { wMul: -1, hMul: 1, adjustX: true, adjustY: false },
-  bottom_right: { wMul: 1, hMul: 1, adjustX: false, adjustY: false },
-};
-
 type Props = {
   shapeId: TLShapeId;
   w: number;
@@ -55,7 +59,18 @@ type Props = {
 export function ShapeConnectHandles({ shapeId, w, h }: Props) {
   const editor = useEditor();
   const dragging = useRef<TLShapeId | null>(null);
-  const resizing = useRef<{ corner: Corner; startX: number; startY: number; startW: number; startH: number; startShapeX: number; startShapeY: number } | null>(null);
+  const resizing = useRef<{
+    corner: Corner;
+    startX: number;
+    startY: number;
+    startW: number;
+    startH: number;
+    startShapeX: number;
+    startShapeY: number;
+    shapeType: string;
+    initialShape: TLShape;
+    initialBounds: Box2d;
+  } | null>(null);
 
   const visible = useValue("shape-connect-visible", () => {
     if (editor.getCurrentToolId() !== "select") return false;
@@ -176,40 +191,97 @@ export function ShapeConnectHandles({ shapeId, w, h }: Props) {
 
     const shape = editor.getShape(shapeId);
     if (!shape) return;
-    const props = shape.props as { w: number; h: number };
 
     resizing.current = {
       corner,
       startX: e.clientX,
       startY: e.clientY,
-      startW: props.w,
-      startH: props.h,
+      startW: w,
+      startH: h,
       startShapeX: shape.x,
       startShapeY: shape.y,
+      shapeType: shape.type,
+      initialShape: shape,
+      initialBounds: new Box2d(0, 0, w, h),
     };
 
     editor.mark("resize start");
 
     function onMove(ev: PointerEvent) {
       if (!resizing.current) return;
-      const { corner: c, startX, startY, startW, startH, startShapeX, startShapeY } = resizing.current;
+      const {
+        corner: c, startX, startY, startW, startH,
+        startShapeX, startShapeY, shapeType,
+        initialShape, initialBounds,
+      } = resizing.current;
+
       const zoom = editor.getZoomLevel();
       const dx = (ev.clientX - startX) / zoom;
       const dy = (ev.clientY - startY) / zoom;
       const { wMul, hMul, adjustX, adjustY } = CORNER_RESIZE[c];
 
-      const newW = Math.max(20, startW + wMul * dx);
-      const newH = Math.max(20, startH + hMul * dy);
-      const newX = adjustX ? startShapeX + (startW - newW) : startShapeX;
-      const newY = adjustY ? startShapeY + (startH - newH) : startShapeY;
+      let scaleX = Math.max(0.01, (startW + wMul * dx) / startW);
+      let scaleY = Math.max(0.01, (startH + hMul * dy) / startH);
+
+      const util = editor.getShapeUtil(initialShape);
+
+      if (util.isAspectRatioLocked(initialShape)) {
+        if (Math.abs(scaleX) > Math.abs(scaleY)) {
+          scaleY = Math.sign(scaleY) * Math.abs(scaleX);
+        } else {
+          scaleX = Math.sign(scaleX) * Math.abs(scaleY);
+        }
+      }
+
+      const newPoint = new Vec2d(
+        adjustX ? startShapeX + startW * (1 - scaleX) : startShapeX,
+        adjustY ? startShapeY + startH * (1 - scaleY) : startShapeY,
+      );
+
+      let resultW = startW * scaleX;
+      let resultH = startH * scaleY;
+      let resizedProps: Record<string, unknown> | null = null;
+
+      if (util.onResize && util.canResize(initialShape)) {
+        const result = util.onResize(
+          { ...initialShape, x: newPoint.x, y: newPoint.y } as typeof initialShape,
+          {
+            newPoint,
+            handle: c as TLResizeHandle,
+            mode: "resize_bounds",
+            scaleX,
+            scaleY,
+            initialBounds,
+            initialShape,
+          },
+        );
+
+        if (result?.props) {
+          const rp = result.props as Record<string, unknown> & { w?: number; h?: number };
+          resizedProps = rp;
+          if (rp.w != null) resultW = rp.w;
+          if (rp.h != null) resultH = rp.h;
+        }
+      } else {
+        resultW = Math.max(1, resultW);
+        resultH = Math.max(1, resultH);
+      }
+
+      const anchoredX = adjustX ? startShapeX + startW - resultW : startShapeX;
+      const anchoredY = adjustY ? startShapeY + startH - resultH : startShapeY;
+
+      const current = editor.getShape(shapeId);
+      const nextProps = current
+        ? { ...current.props, ...(resizedProps ?? {}), w: resultW, h: resultH }
+        : { ...(resizedProps ?? {}), w: resultW, h: resultH };
 
       editor.updateShapes([{
         id: shapeId,
-        type: "geo",
-        x: newX,
-        y: newY,
-        props: { w: newW, h: newH },
-      }]);
+        type: shapeType,
+        x: anchoredX,
+        y: anchoredY,
+        props: nextProps,
+      }], { squashing: true });
     }
 
     function onUp() {
@@ -220,7 +292,7 @@ export function ShapeConnectHandles({ shapeId, w, h }: Props) {
 
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
-  }, [editor, shapeId]);
+  }, [editor, shapeId, w, h]);
 
   if (!visible || isEditing) return null;
 
@@ -269,7 +341,7 @@ export function ShapeConnectHandles({ shapeId, w, h }: Props) {
           <g
             key={dir}
             transform={`translate(${anchor.x},${anchor.y}) scale(${scale}) translate(${-anchor.x},${-anchor.y})`}
-            style={{ pointerEvents: "all", cursor: "crosshair" }}
+            style={{ pointerEvents: "none" }}
           >
             <polygon
               points={triPoints(dir, tip.x, tip.y)}
@@ -277,7 +349,14 @@ export function ShapeConnectHandles({ shapeId, w, h }: Props) {
               stroke="#fff"
               strokeWidth={1.5}
               strokeLinejoin="round"
-              style={{ pointerEvents: "all" }}
+              style={{ pointerEvents: "none" }}
+            />
+            <circle
+              cx={tip.x}
+              cy={tip.y}
+              r={TIP_HIT_R}
+              fill="transparent"
+              style={{ pointerEvents: "all", cursor: "crosshair" }}
               onPointerDown={(e) => onArrowPointerDown(e, dir)}
             />
           </g>
@@ -287,7 +366,6 @@ export function ShapeConnectHandles({ shapeId, w, h }: Props) {
         const pos = cornerPositions[corner];
         return (
           <g key={corner} style={{ pointerEvents: "all", cursor: CORNER_CURSORS[corner] }}>
-            {/* 当たり判定を広げる透明な rect */}
             <rect
               x={pos.x - hs}
               y={pos.y - hs}
@@ -297,7 +375,6 @@ export function ShapeConnectHandles({ shapeId, w, h }: Props) {
               style={{ pointerEvents: "all" }}
               onPointerDown={(e) => onResizePointerDown(e, corner)}
             />
-            {/* 表示用のハンドル */}
             <rect
               x={pos.x}
               y={pos.y}

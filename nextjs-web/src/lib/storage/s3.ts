@@ -8,6 +8,8 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getBaseUrl } from "@/lib/baseUrl";
 import { env, getS3PublicUrl } from "@/lib/env";
 
+// ---------- 有効判定・エラー判定 ----------
+
 export function isS3Enabled(): boolean {
   return !!(env.S3_BUCKET && env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY);
 }
@@ -32,6 +34,8 @@ export function getS3StorageFullError(err: unknown): { status: 507; message: str
   }
   return null;
 }
+
+// ---------- クライアント生成・Presigned URL 書き換え ----------
 
 let _s3Client: S3Client | null = null;
 
@@ -90,6 +94,8 @@ async function rewritePresignedUrl(url: string): Promise<string> {
   return url.replace(internal, publicUrl);
 }
 
+// ---------- バケット・キー ----------
+
 const bucket = () => env.S3_BUCKET;
 
 /** S3 キー: オリジナルファイル */
@@ -114,6 +120,8 @@ export function s3KeyWaveform(storageKey: string): string {
   const base = storageKey.replace(/\.[^.]+$/, "");
   return `waveforms/${base}.json`;
 }
+
+// ---------- マルチパートアップロード ----------
 
 /** Multipart アップロードを開始 */
 export async function createMultipartUpload(storageKey: string, mimeType: string) {
@@ -188,6 +196,8 @@ export async function abortMultipartUpload(key: string, uploadId: string) {
     }));
   });
 }
+
+// ---------- Presigned GET / オブジェクト操作 ----------
 
 /** Presigned GET のオプション */
 export type PresignedGetOptions = {

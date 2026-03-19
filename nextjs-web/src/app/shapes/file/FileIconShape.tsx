@@ -20,13 +20,18 @@ import {
   getColorForShape,
   getStrokeHexForColorStyle,
 } from "../common";
-import { SHAPE_TYPE, MEDIA_ICON_KINDS, type FileIconShape } from "@shared/shapeDefs";
+import { resizeBox } from "@cmpd/editor";
+import { SHAPE_TYPE, canShowFileIconConvertButton, type FileIconShape } from "@shared/shapeDefs";
 import { convertFromFileIcon } from "@/app/shapes";
 import { TwemojiImg } from "@/app/components/ui/Twemoji";
 import { useTheme } from "@/app/components/theme/ThemeProvider";
 import { getSafeAssetId } from "@/lib/safeUrl";
 
 export type { FileIconShape } from "@shared/shapeDefs";
+
+/** 初期配置のデフォルトサイズ（最小値にも使用） */
+const FILE_ICON_DEFAULT_W = 96;
+const FILE_ICON_DEFAULT_H = 96;
 
 /** タッチで変換した直後の click 二重実行を防ぐため */
 const lastTouchEndByShapeId = new Map<string, number>();
@@ -38,6 +43,7 @@ export function getFileEmoji(fileName: string, kind: string): string {
   const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
   if (["zip", "tar", "gz", "7z", "rar"].includes(ext)) return "🗜️";
   if (ext === "pdf") return "📕";
+  if (["psd", "ai"].includes(ext)) return "🎨";
   if (["doc", "docx"].includes(ext)) return "📝";
   if (["xls", "xlsx", "csv"].includes(ext)) return "📊";
   if (["ppt", "pptx"].includes(ext)) return "📊";
@@ -170,8 +176,8 @@ export class FileIconShapeUtil extends BaseBoxShapeUtil<FileIconShape> {
       fileName: "file",
       mimeType: "application/octet-stream",
       kind: "file",
-      w: 96,
-      h: 96,
+      w: FILE_ICON_DEFAULT_W,
+      h: FILE_ICON_DEFAULT_H,
     };
   }
 
@@ -182,6 +188,13 @@ export class FileIconShapeUtil extends BaseBoxShapeUtil<FileIconShape> {
       isFilled: true,
     });
   }
+
+  override onResize = (shape: FileIconShape, info: Parameters<typeof resizeBox>[1]) => {
+    return resizeBox(shape, info, {
+      minWidth: FILE_ICON_DEFAULT_W,
+      minHeight: FILE_ICON_DEFAULT_H,
+    });
+  };
 
   override component(shape: FileIconShape) {
     return <FileIconShapeInner shape={shape} />;
@@ -227,7 +240,11 @@ function FileIconShapeInner({ shape }: { shape: FileIconShape }) {
           avatarUrl={getCreatedByAvatarUrl(shape)}
           rank={getCreationRank(editor, shape)}
           rightSlot={
-            (shape.props.kind === "file" || (MEDIA_ICON_KINDS as readonly string[]).includes(shape.props.kind)) ? (
+            canShowFileIconConvertButton(
+              shape.props.kind,
+              shape.props.mimeType ?? "",
+              shape.props.fileName ?? "",
+            ) ? (
               <button
                 type="button"
                 title={shape.props.kind === "file" ? "テキストで表示" : "プレイヤーで表示"}

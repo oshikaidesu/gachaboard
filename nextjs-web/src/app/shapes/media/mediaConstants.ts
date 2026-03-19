@@ -40,6 +40,13 @@ export const SEEK_BAR_HIT_HEIGHT = 28;
 export const CONTROLS_HEIGHT = 36;
 export const HEADER_HEIGHT = 26;
 
+/** 動画エリア以外の UI（ヘッダー・コントロール・コメント入力欄）の合計高さ。VideoShape と shapeCreators で共通利用。 */
+export const VIDEO_UI_OVERHEAD =
+  (HEADER_HEIGHT + 1) +
+  (1 + 6 + SEEK_BAR_HIT_HEIGHT + 6 + (CONTROLS_HEIGHT - 10) + 8) +
+  (30 + 6) +
+  2;
+
 export const WAVEFORM_HEIGHT = 48;
 export const WAVEFORM_HIT_HEIGHT = 56;
 export const WAVEFORM_VIEW_WIDTH = 360;
@@ -49,3 +56,8 @@ export const BASE_HEIGHT = 190;
 /** 音声シェイプのデフォルト寸法（AudioShapeUtil.getDefaultProps と createShapeForResolved で共通利用） */
 export const AUDIO_DEFAULT_W = 460;
 export const AUDIO_DEFAULT_H = BASE_HEIGHT + MIN_COMMENT_LIST_H;
+
+/** 動画シェイプのデフォルト寸法（最大サイズ計算で配置時サイズがない場合のフォールバック） */
+export const VIDEO_DEFAULT_W = 480;
+const VIDEO_DEFAULT_VIDEO_AREA_H = Math.round(VIDEO_DEFAULT_W / (16 / 9));
+export const VIDEO_DEFAULT_H = VIDEO_DEFAULT_VIDEO_AREA_H + VIDEO_UI_OVERHEAD + MIN_COMMENT_LIST_H;

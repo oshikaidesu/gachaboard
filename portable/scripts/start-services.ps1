@@ -15,66 +15,121 @@ $SyncData = Join-Path $DataDir "sync"
 
 New-Item -ItemType Directory -Force -Path $DataDir, $BinDir | Out-Null
 
-# PostgreSQL
-function Start-Postgres {
-  $pgCtlPath = $null
+# PostgreSQL: get pg_ctl path
+function Get-PostgresCtlPath {
   $pgCtl = Get-Command pg_ctl -ErrorAction SilentlyContinue
-  if ($pgCtl) { $pgCtlPath = Split-Path $pgCtl.Source }
-  if (-not $pgCtlPath) {
-    $found = Get-ChildItem -Path $BinDir -Filter "pg_ctl.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($found) { $pgCtlPath = Split-Path $found.FullName }
+  if ($pgCtl) {
+    return (Split-Path $pgCtl.Source)
   }
+  $found = Get-ChildItem -Path $BinDir -Filter "pg_ctl.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($found) {
+    return (Split-Path $found.FullName)
+  }
+  return $null
+}
+
+# PostgreSQL: first-run download
+function Install-PostgresPortable {
+  Write-Host ">>> Downloading PostgreSQL (first run)..."
+  $pgZip = Join-Path $BinDir "postgres.zip"
+  $urls = @(
+    "https://get.enterprisedb.com/postgresql/postgresql-16.13-1-windows-x64-binaries.zip",
+    "https://sourceforge.net/projects/pgsqlportable/files/16.1/postgresql-16.1-1-windows-x64-full.zip/download"
+  )
+  foreach ($u in $urls) {
+    try {
+      Invoke-WebRequest -Uri $u -OutFile $pgZip -UseBasicParsing -TimeoutSec 120
+      if ((Get-Item $pgZip).Length -gt 10000000) {
+        break
+      }
+    }
+    catch {
+      # ignore
+    }
+  }
+  if (-not (Test-Path $pgZip) -or (Get-Item $pgZip).Length -le 10000000) {
+    Write-Host "PostgreSQL download failed. Install manually: https://www.postgresql.org/download/windows/"
+    return $false
+  }
+  Expand-Archive -Path $pgZip -DestinationPath $BinDir -Force
+  Remove-Item $pgZip -Force
+  $found = Get-ChildItem -Path $BinDir -Filter "pg_ctl.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+  if (-not $found) {
+    Write-Host "PostgreSQL extract failed."
+    return $false
+  }
+  $true
+}
+
+# PostgreSQL: init data dir (first run only)
+function Initialize-PostgresData {
+  Write-Host ">>> Initializing PostgreSQL (first run)..."
+  Write-Host "    (May take a while on first run; antivirus may delay)"
+  & initdb -D $PgData -U gachaboard --auth=trust --locale=C
+  Add-Content -Path (Join-Path $PgData "pg_hba.conf") -Value "host all all 127.0.0.1/32 trust"
+  $conf = Join-Path $PgData "postgresql.conf"
+  (Get-Content $conf) -replace "dynamic_shared_memory_type = posix", "dynamic_shared_memory_type = windows" | Set-Content $conf
+  (Get-Content $conf) -replace "log_timezone = 'Etc/UTC'", "log_timezone = 'UTC'" | Set-Content $conf
+  (Get-Content $conf) -replace "timezone = 'Etc/UTC'", "timezone = 'UTC'" | Set-Content $conf
+}
+
+# PostgreSQL: start and ensure DB ready
+function Start-Postgres {
+  $pgCtlPath = Get-PostgresCtlPath
   if (-not $pgCtlPath) {
-    Write-Host ">>> Downloading PostgreSQL (first run)..."
-    $pgZip = Join-Path $BinDir "postgres.zip"
-    $pgUrls = @(
-      "https://get.enterprisedb.com/postgresql/postgresql-16.13-1-windows-x64-binaries.zip",
-      "https://sourceforge.net/projects/pgsqlportable/files/16.1/postgresql-16.1-1-windows-x64-full.zip/download"
-    )
-    $downloaded = $false
-    foreach ($pgUrl in $pgUrls) {
-      try {
-        Invoke-WebRequest -Uri $pgUrl -OutFile $pgZip -UseBasicParsing -TimeoutSec 120
-        if ((Get-Item $pgZip).Length -gt 10000000) { $downloaded = $true; break }
-      } catch {}
-    }
-    if (-not $downloaded) {
-      Write-Host "PostgreSQL download failed. Install manually: https://www.postgresql.org/download/windows/"
-      return $false
-    }
-    Expand-Archive -Path $pgZip -DestinationPath $BinDir -Force
-    Remove-Item $pgZip -Force
-    $found = Get-ChildItem -Path $BinDir -Filter "pg_ctl.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($found) { $pgCtlPath = Split-Path $found.FullName }
-    if (-not $pgCtlPath) {
-      Write-Host "PostgreSQL extract failed."
-      return $false
-    }
+    if (-not (Install-PostgresPortable)) { return $false }
+    $pgCtlPath = Get-PostgresCtlPath
+    if (-not $pgCtlPath) { return $false }
   }
   $env:PATH = $pgCtlPath + ";" + $env:PATH
 
-  try {
-    $ec = (Start-Process -FilePath "pg_isready" -ArgumentList "-h","127.0.0.1","-p",$PostgresPort,"-U","gachaboard" -Wait -NoNewWindow -PassThru).ExitCode
-  } catch { $ec = 1 }
-  if ($ec -eq 0) { return $true }
-
-  if (-not (Test-Path $PgData)) {
-    Write-Host ">>> Initializing PostgreSQL (first run)..."
-    & initdb -D $PgData -U gachaboard --auth=trust --locale=C
-    Add-Content -Path (Join-Path $PgData "pg_hba.conf") -Value "host all all 127.0.0.1/32 trust"
-    $conf = Join-Path $PgData "postgresql.conf"
-    (Get-Content $conf) -replace 'dynamic_shared_memory_type = posix', 'dynamic_shared_memory_type = windows' | Set-Content $conf
-    (Get-Content $conf) -replace "log_timezone = 'Etc/UTC'", "log_timezone = 'UTC'" | Set-Content $conf
-    (Get-Content $conf) -replace "timezone = 'Etc/UTC'", "timezone = 'UTC'" | Set-Content $conf
+  $ec = 1
+  try { $p = Start-Process -FilePath "pg_isready" -ArgumentList "-h", "127.0.0.1", "-p", $PostgresPort, "-U", "gachaboard" -Wait -NoNewWindow -PassThru; $ec = $p.ExitCode }
+  catch { }
+  if ($ec -eq 0) {
+    Ensure-GachaboardDatabase
+    return $true
   }
+
+  if (-not (Test-Path $PgData)) { Initialize-PostgresData }
+
+  $pidFile = Join-Path $PgData "postmaster.pid"
+  if ((Test-Path $PgData) -and (Test-Path $pidFile)) {
+    Write-Host ">>> Stopping existing PostgreSQL..."
+    try { & pg_ctl -D $PgData stop -m fast 2>&1 | Out-Null } catch { }
+    Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+  }
+
   Write-Host ">>> Starting PostgreSQL..."
-  & pg_ctl -D $PgData -l (Join-Path $DataDir "postgres.log") -o "-p $PostgresPort" start
-  Start-Sleep -Seconds 2
-  $dbExists = & psql -h 127.0.0.1 -p $PostgresPort -U gachaboard -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='gachaboard'" 2>&1
-  if (-not $dbExists) {
+  $logFile = Join-Path $DataDir "postgres.log"
+  & pg_ctl -D $PgData -l $logFile -o "-p $PostgresPort" start
+
+  $maxWait = 60
+  for ($j = 0; $j -lt $maxWait; $j++) {
+    $ready = $null
+    try { $ready = Start-Process -FilePath "pg_isready" -ArgumentList "-h", "127.0.0.1", "-p", $PostgresPort, "-U", "gachaboard" -Wait -NoNewWindow -PassThru -ErrorAction SilentlyContinue }
+    catch { }
+    if ($ready -and $ready.ExitCode -eq 0) {
+      Ensure-GachaboardDatabase
+      return $true
+    }
+    if ($j -eq 0) { Write-Host "    waiting for PostgreSQL to accept connections..." }
+    Start-Sleep -Seconds 1
+    if ($j -eq $maxWait - 1) {
+      Write-Host "PostgreSQL did not become ready in $maxWait s. Check data/postgres.log" -ForegroundColor Red
+      return $false
+    }
+  }
+  return $false
+}
+
+function Ensure-GachaboardDatabase {
+  $sql = "SELECT 1 FROM pg_database WHERE datname='gachaboard'"
+  $out = & psql -h 127.0.0.1 -p $PostgresPort -U gachaboard -d postgres -tAc $sql 2>&1 | Out-String
+  if ($out -notmatch "1") {
     & psql -h 127.0.0.1 -p $PostgresPort -U gachaboard -d postgres -c "CREATE DATABASE gachaboard"
   }
-  return $true
 }
 
 # MinIO
@@ -84,6 +139,12 @@ function Start-Minio {
     Write-Host ">>> Downloading MinIO (first run)..."
     $minioUrl = "https://dl.min.io/server/minio/release/windows-amd64/minio.exe"
     Invoke-WebRequest -Uri $minioUrl -OutFile $minioExe -UseBasicParsing
+  }
+  $minioProc = Get-Process -Name "minio" -ErrorAction SilentlyContinue
+  if ($minioProc) {
+    Write-Host ">>> Stopping existing MinIO..."
+    $minioProc | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
   }
   $minioProc = Get-Process -Name "minio" -ErrorAction SilentlyContinue
   if (-not $minioProc) {
@@ -112,11 +173,18 @@ function Start-SyncServer {
     return $true
   } catch {}
   finally { try { $tcp.Close() } catch {} }
+  # Stop existing sync-server if port in use, then start
+  $conn = Get-NetTCPConnection -LocalPort $SyncPort -ErrorAction SilentlyContinue
+  if ($conn) {
+    Write-Host ">>> Stopping existing sync-server..."
+    $conn.OwningProcess | Select-Object -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+    Start-Sleep -Seconds 1
+  }
   $syncDir = Join-Path $RootDir "nextjs-web\sync-server"
   if (-not (Test-Path (Join-Path $syncDir "node_modules"))) {
     Write-Host ">>> Installing sync-server dependencies (first run)..."
     Push-Location $syncDir
-    npm install 2>$null | Out-Null
+    npm install 2>&1 | Out-Null
     Pop-Location
   }
   Write-Host ">>> Starting sync-server..."

@@ -167,10 +167,11 @@ button[data-testid="rich-text.link"] {
   display: none !important;
 }
 
-/* 画像シェイプ: object-fit を contain に変更してクロップを防ぐ */
+/* 画像シェイプ: object-fit を contain に変更してクロップを防ぎ、背景リピートを無効化 */
 .tl-image {
   object-fit: contain !important;
   background-size: contain !important;
+  background-repeat: no-repeat !important;
 }
 
 /* ホワイトボード: 複数ページ未使用・既存UIとの混乱防止のためメニューゾーンのトリガーを非表示 */

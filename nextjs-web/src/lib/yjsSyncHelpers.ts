@@ -71,6 +71,19 @@ export type RecordsDiffLike = {
 };
 
 /**
+ * TLStore 互換のインターフェース。useYjsSync が Store⇔Y.Doc を双方向バインドする際に使用。
+ * listen / mergeRemoteChanges / put / remove / has / allRecords を備える。
+ */
+export type StoreLike = {
+  listen: (fn: (entry: { changes: RecordsDiffLike; source: string }) => void, opts: { source: string; scope: string }) => () => void;
+  mergeRemoteChanges: (fn: () => void) => void;
+  put: (records: TLRecord[]) => void;
+  remove: (ids: TLRecord["id"][]) => void;
+  has: (id: TLRecord["id"]) => boolean;
+  allRecords: () => Iterable<TLRecord>;
+};
+
+/**
  * 変更が位置のみ（x,y）の更新かどうか。ドラッグ中の連続更新を検出する。
  * ドラッグ中は Y.Doc に送らず、drop 時にまとめて送るため。
  */

@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * 責務:
+ * 1) ドロップ・ファイルピッカー: registerHandler / openFilePickerAndUpload / openAllFilesPickerAndUpload
+ * 2) アップロードオーケストレーション: placeholderShape → S3 アップロード → placeFile（processFiles / resumeUpload）
+ */
+
 import { useCallback, useState, useEffect, useRef } from "react";
 import type { Editor } from "@cmpd/compound";
 import { placeFile, placeholderShape } from "@/app/shapes";
@@ -17,13 +23,59 @@ import {
 
 const MAX_CONCURRENT = 4;
 
+/** 1 ファイル分: プレースホルダー表示 → アップロード実行 → 配置。成功で true、失敗で false。 */
+async function executeSingleFileUpload(
+  editor: Editor,
+  file: File,
+  position: { x: number; y: number },
+  meta: { userName: string; avatarUrl: string | null },
+  uploadFn: (onProgress: (pct: number) => void) => Promise<ApiAsset>,
+  onError: (msg: string) => void,
+): Promise<boolean> {
+  const placeholderId = await placeholderShape(
+    editor,
+    file,
+    position,
+    meta.userName,
+    meta.avatarUrl,
+  );
+  const updateProgress = (pct: number) => {
+    if (!placeholderId) return;
+    const existing = editor.getShape(placeholderId as TLShapeId);
+    if (existing) {
+      editor.updateShape({
+        id: placeholderId as TLShapeId,
+        type: existing.type,
+        meta: { ...existing.meta, uploadProgress: pct },
+      });
+    }
+  };
+
+  let data: ApiAsset;
+  try {
+    data = await uploadFn(updateProgress);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "アップロードに失敗しました";
+    onError(msg);
+    if (placeholderId) editor.deleteShapes([placeholderId]);
+    return false;
+  }
+
+  await placeFile(
+    editor,
+    file,
+    data,
+    position,
+    meta.userName,
+    placeholderId ?? undefined,
+    meta.avatarUrl,
+  );
+  return true;
+}
+
 /**
  * ファイルドロップ → アップロード → キャンバス配置 のフック。
- *
- * 共通処理（@/lib/uploadCommon 参照）:
- * - processFiles: アップロードボタン・DD 両方から利用
- * - uploadAndPlace: placeholderShape → uploadFileViaS3 → placeFile
- * - MIME 解決・送信%表示は s3Upload / shapes で統一
+ * processFiles: アップロードボタン・DD 両方から利用。MIME 解決・送信%は s3Upload / shapes で統一。
  */
 export function useFileDropHandler(
   boardId: string,
@@ -53,6 +105,8 @@ export function useFileDropHandler(
     refreshResumable();
   }, [refreshResumable]);
 
+  const meta = { userName, avatarUrl: avatarUrl ?? null };
+
   const uploadAndPlace = useCallback(
     async (
       editor: Editor,
@@ -61,44 +115,13 @@ export function useFileDropHandler(
       handle: FileSystemFileHandle | null,
       onError: (msg: string) => void,
     ): Promise<void> => {
-      const placeholderId = await placeholderShape(
+      await executeSingleFileUpload(
         editor,
         file,
         position,
-        userName,
-        avatarUrl ?? null
-      );
-      const updateProgress = (pct: number) => {
-        if (placeholderId) {
-          const existing = editor.getShape(placeholderId as TLShapeId);
-          if (existing) {
-            editor.updateShape({
-              id: placeholderId as TLShapeId,
-              type: existing.type,
-              meta: { ...existing.meta, uploadProgress: pct },
-            });
-          }
-        }
-      };
-
-      let data: ApiAsset;
-      try {
-        data = await uploadFileViaS3(file, boardId, updateProgress, handle);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "アップロードに失敗しました";
-        onError(msg);
-        if (placeholderId) editor.deleteShapes([placeholderId]);
-        return;
-      }
-
-      await placeFile(
-        editor,
-        file,
-        data,
-        position,
-        userName,
-        placeholderId ?? undefined,
-        avatarUrl ?? null
+        meta,
+        (onProgress) => uploadFileViaS3(file, boardId, onProgress, handle),
+        onError,
       );
     },
     [boardId, userName, avatarUrl],
@@ -215,44 +238,18 @@ export function useFileDropHandler(
       }
       const file = await session.handle.getFile();
       const position = getViewportPageCenter(editor);
-      const placeholderId = await placeholderShape(
+      const ok = await executeSingleFileUpload(
         editor,
         file,
         position,
-        userName,
-        avatarUrl ?? null
+        meta,
+        (onProgress) => uploadFileViaS3Resume(session, file, onProgress),
+        (msg) => {
+          showError(msg);
+          refreshResumable();
+        },
       );
-
-      const updateProgress = (pct: number) => {
-        if (placeholderId) {
-          const existing = editor.getShape(placeholderId as TLShapeId);
-          if (existing) {
-            editor.updateShape({
-              id: placeholderId as TLShapeId,
-              type: existing.type,
-              meta: { ...existing.meta, uploadProgress: pct },
-            });
-          }
-        }
-      };
-
-      try {
-        const data = await uploadFileViaS3Resume(session, file, updateProgress);
-        await placeFile(
-          editor,
-          file,
-          data,
-          position,
-          userName,
-          placeholderId ?? undefined,
-          avatarUrl ?? null
-        );
-        setResumableUploads((prev) => prev.filter((s) => s.uploadId !== session.uploadId));
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "再開に失敗しました";
-        showError(msg);
-        if (placeholderId) editor.deleteShapes([placeholderId]);
-      }
+      if (ok) setResumableUploads((prev) => prev.filter((s) => s.uploadId !== session.uploadId));
       refreshResumable();
     },
     [userName, avatarUrl, getViewportPageCenter, showError, refreshResumable],

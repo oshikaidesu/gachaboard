@@ -17,6 +17,8 @@ import {
   GEO_DEFAULT_SIZE,
   TOOLBAR_ALLOWED_IDS,
   HIDE_ACTION_IDS,
+  CONTEXT_MENU_ENABLED,
+  ACTIONS_DISABLE_KBD_IDS,
 } from "./boardOverridesConfig";
 
 export type BoardOverridesOptions = {
@@ -28,9 +30,8 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
   return {
   actions(editor, actions) {
     const next = { ...actions };
-    // 単体キーアクション（Z=ズームツール）を無効化（誤爆防止）
-    const ACTIONS_WITH_SINGLE_KEY_KBD = ["select-zoom-tool"];
-    for (const id of ACTIONS_WITH_SINGLE_KEY_KBD) {
+    // ショートカットを無効化（ツールロック・Cmd+S・Cmd+E など誤爆防止）
+    for (const id of ACTIONS_DISABLE_KBD_IDS) {
       if (next[id]) next[id] = { ...next[id], kbd: undefined };
     }
     return next;
@@ -226,7 +227,12 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
 
     return filtered;
   },
+  contextMenu(_editor, schema) {
+    if (!CONTEXT_MENU_ENABLED) return [];
+    return schema;
+  },
   actionsMenu(editor, schema) {
+    if (!CONTEXT_MENU_ENABLED) return [];
     return schema.filter(
       (item) =>
         item.type !== "item" ||
