@@ -26,8 +26,11 @@ import { useDoubleClickPreview } from "@/app/hooks/useDoubleClickPreview";
 import { useUrlPreviewAttacher } from "@/app/hooks/useUrlPreviewAttacher";
 import { useShapeDeletePositionCapture } from "@/app/hooks/useShapeDeletePositionCapture";
 import { useSnapshotSave } from "@/app/hooks/board/useSnapshotPersistence";
+import { BackupScheduler } from "./BackupScheduler";
+import { ManualBackupButton } from "./ManualBackupButton";
 import { DarkModeButton } from "./DarkModeButton";
 import { DownloadSelectedButton } from "./DownloadSelectedButton";
+import { FocusLatestShapeButton } from "./FocusLatestShapeButton";
 import { BoardHeader } from "./BoardHeader";
 import { getSyncWsUrl, isSyncWsUrlValid } from "@/lib/syncWsUrl";
 import { useBoardSnapshotFetch } from "@/app/hooks/board/useBoardSnapshotFetch";
@@ -257,6 +260,21 @@ export default function CompoundBoard({
                   translations: { ja: "/translations/ja.json" },
                 }}
               >
+                <BackupScheduler
+                  store={useSync && yjsStore.status === "synced-remote" ? yjsStore.store : null}
+                  provider={yjsStore.provider ?? null}
+                  boardId={boardId}
+                  workspaceId={workspaceId}
+                  enabled={useSync}
+                />
+                <ManualBackupButton
+                  portalTarget={headerActionsEl}
+                  store={useSync && yjsStore.status === "synced-remote" ? yjsStore.store : null}
+                  provider={yjsStore.provider ?? null}
+                  boardId={boardId}
+                  workspaceId={workspaceId}
+                  enabled={useSync}
+                />
                 <DarkModeButton portalTarget={headerActionsEl} />
                 <BrushModeToolbarSync />
                 {useSync && yjsStore.provider && (
@@ -267,6 +285,7 @@ export default function CompoundBoard({
                 )}
                 <ConnectHandles />
                 <DownloadSelectedButton />
+                <FocusLatestShapeButton />
                 <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 z-10 rounded-full bg-black/50 px-4 py-1.5 text-xs text-white opacity-50 select-none dark:bg-white/20">
                   ファイルをドロップして配置
                 </div>

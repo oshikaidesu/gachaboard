@@ -37,6 +37,23 @@ function getBackgroundForRank(rank: number): string {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+type ShapeWithMeta = { id: string; meta?: unknown };
+
+/**
+ * 現在ページ内のシェイプを、作成日時順（新しい順）にソートした配列を返す。
+ * createdAt がないシェイプは最後尾。同値なら id 辞書順。
+ * getCreationRank と getLatestShapeIds で共通利用。
+ */
+export function getShapesSortedByCreationDesc(editor: Editor): ShapeWithMeta[] {
+  const shapes = editor.getCurrentPageShapes();
+  return [...shapes].sort((a, b) => {
+    const at = (a.meta as { createdAt?: number })?.createdAt ?? 0;
+    const bt = (b.meta as { createdAt?: number })?.createdAt ?? 0;
+    if (bt !== at) return bt - at;
+    return a.id.localeCompare(b.id);
+  });
+}
+
 /**
  * 現在ページ内で、作成日時順（新しい順）に並べたときの順位を返す。
  * 1＝1番新しい、2＝2番目、…。createdAt がないシェイプは最後尾扱い。
@@ -45,15 +62,18 @@ export function getCreationRank(
   editor: Editor,
   shape: { id: string; meta?: unknown }
 ): number {
-  const shapes = editor.getCurrentPageShapes();
-  const sorted = [...shapes].sort((a, b) => {
-    const at = (a.meta as { createdAt?: number })?.createdAt ?? 0;
-    const bt = (b.meta as { createdAt?: number })?.createdAt ?? 0;
-    if (bt !== at) return bt - at;
-    return a.id.localeCompare(b.id);
-  });
+  const sorted = getShapesSortedByCreationDesc(editor);
   const idx = sorted.findIndex((s) => s.id === shape.id);
   return idx >= 0 ? idx + 1 : Number.POSITIVE_INFINITY;
+}
+
+/**
+ * 作成日時順（新しい順）で上位 limit 件のシェイプ ID を返す。
+ * デフォルトは5件。シェイプが少ない場合は存在する分だけ返す。
+ */
+export function getLatestShapeIds(editor: Editor, limit = 5): string[] {
+  const sorted = getShapesSortedByCreationDesc(editor);
+  return sorted.slice(0, limit).map((s) => s.id);
 }
 
 /**
