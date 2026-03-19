@@ -105,7 +105,11 @@ export function WorkspaceMembersPopover({
             return (
               <div
                 key={m.userId}
-                className="flex items-center justify-between gap-3 px-4 py-2 hover:bg-zinc-50 dark:hover:bg-slate-700"
+                className={`flex items-center justify-between gap-3 px-4 py-2 ${
+                  m.role === "owner"
+                    ? "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50"
+                    : "hover:bg-zinc-50 dark:hover:bg-slate-700"
+                }`}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   {safeAvatar ? (
