@@ -10,10 +10,8 @@ import { useOnClickOutside } from "usehooks-ts";
 type Props = {
   board: ApiBoard;
   tab: "active" | "trash";
-  copiedBoardId: string | null;
   openMenuId: string | null;
   onOpenMenu: (id: string | null) => void;
-  onCopyUrl: (boardId: string) => void;
   onRename: (boardId: string, name: string) => void;
   onTrash: (boardId: string) => void;
   onRestore: (boardId: string) => void;
@@ -23,10 +21,8 @@ type Props = {
 export function WorkspaceBoardCard({
   board,
   tab,
-  copiedBoardId,
   openMenuId,
   onOpenMenu,
-  onCopyUrl,
   onRename,
   onTrash,
   onRestore,
@@ -103,16 +99,6 @@ export function WorkspaceBoardCard({
                 >
                   名前を変更
                 </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onCopyUrl(board.id);
-                    onOpenMenu(null);
-                  }}
-                  className="w-full px-4 py-2 text-left text-sm text-zinc-600 hover:bg-zinc-50 dark:text-slate-200 dark:hover:bg-slate-700"
-                >
-                  {copiedBoardId === board.id ? "✓ コピー済み" : "URLをコピー"}
-                </button>
                 <Link
                   href={`/board/${board.id}/trash`}
                   onClick={() => onOpenMenu(null)}
@@ -125,7 +111,14 @@ export function WorkspaceBoardCard({
                   onClick={() => onOpenMenu(null)}
                   className="block px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 dark:text-slate-200 dark:hover:bg-slate-700"
                 >
-                  リアクション絵文字をカスタマイズ
+                  リアクション絵文字
+                </Link>
+                <Link
+                  href={`/board/${board.id}/backup-restore`}
+                  onClick={() => onOpenMenu(null)}
+                  className="block px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  バックアップ復元
                 </Link>
                 <div className="my-1 border-t border-zinc-100 dark:border-slate-600" />
                 <button

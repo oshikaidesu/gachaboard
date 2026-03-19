@@ -8,7 +8,6 @@ import { ThemeToggle } from "@/app/components/theme/ThemeToggle";
 import type { ApiBoard } from "@shared/apiTypes";
 import { Identicon } from "@/app/components/ui/Identicon";
 import { RenameModal } from "@/app/components/ui/RenameModal";
-import { useCopyToClipboard } from "usehooks-ts";
 import { useWorkspaceDetail } from "@/app/hooks/workspace/useWorkspaceDetail";
 import { WorkspaceMembersPopover } from "./components/WorkspaceMembersPopover";
 import { WorkspaceBoardCard } from "./components/WorkspaceBoardCard";
@@ -28,7 +27,6 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId, e2eH
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const [renameName, setRenameName] = useState("");
   const [renameSaving, setRenameSaving] = useState(false);
-  const [copiedText, copyToClipboard] = useCopyToClipboard();
 
   const create = async (name: string) => {
     const res = await fetch(`/api/workspaces/${workspaceId}/boards`, {
@@ -67,10 +65,6 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId, e2eH
       headers: withE2EHeaders({}, e2eHeaders),
     });
     await load();
-  };
-
-  const copyBoardUrl = (boardId: string) => {
-    copyToClipboard(`${window.location.origin}/board/${boardId}`);
   };
 
   const openRenameBoard = (boardId: string, name: string) => {
@@ -203,10 +197,8 @@ export default function WorkspaceDetailClient({ workspaceId, currentUserId, e2eH
                 key={b.id}
                 board={b}
                 tab={tab}
-                copiedBoardId={copiedText?.endsWith(`/board/${b.id}`) ? b.id : null}
                 openMenuId={openMenu}
                 onOpenMenu={setOpenMenu}
-                onCopyUrl={copyBoardUrl}
                 onRename={openRenameBoard}
                 onTrash={trash}
                 onRestore={restore}

@@ -567,7 +567,7 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<VideoShape & TLBaseBoxShape
             </button>
           }
         />
-        <AssetLoader assetId={p.assetId} fileName={p.fileName}>
+        <AssetLoader assetId={p.assetId} fileName={p.fileName} showThumbnail>
           <VideoPlayer shape={shape} />
         </AssetLoader>
         <ShapeReactionPanel shapeId={shape.id} />

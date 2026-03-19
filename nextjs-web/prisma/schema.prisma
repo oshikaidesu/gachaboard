@@ -51,18 +51,30 @@ model WorkspaceMember {
 }
 
 model Board {
-  id           String    @id @default(cuid())
-  workspaceId  String
-  name         String
-  snapshotData Json?
-  deletedAt    DateTime?
-  workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  assets        Asset[]
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id                   String                 @id @default(cuid())
+  workspaceId          String
+  name                 String
+  snapshotData         Json?
+  deletedAt            DateTime?
+  workspace            Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  assets               Asset[]
+  snapshotHistory      BoardSnapshotHistory[]
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
 
   @@index([workspaceId, createdAt])
   @@index([deletedAt])
+}
+
+model BoardSnapshotHistory {
+  id           String   @id @default(cuid())
+  boardId      String
+  snapshotData Json
+  thumbnailSvg String?  @db.Text
+  savedAt      DateTime @default(now())
+  board        Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@index([boardId, savedAt])
 }
 
 model Asset {

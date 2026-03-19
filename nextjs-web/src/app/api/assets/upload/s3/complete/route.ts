@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
   });
 
   if (mimeType.startsWith("video/")) {
-    runVideoConversion(storageKey).catch((err) => {
+    runVideoConversion(storageKey).conversionComplete.catch((err) => {
       console.error("[runVideoConversion] failed for", storageKey, err?.message ?? err);
     });
   }

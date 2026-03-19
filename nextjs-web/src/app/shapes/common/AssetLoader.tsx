@@ -9,13 +9,15 @@ type Props = {
   converted?: boolean;
   /** 削除済み表示時にファイル名を表示する（任意） */
   fileName?: string | null;
+  /** 動画サムネイルを背景に表示するか（動画のみ true 推奨） */
+  showThumbnail?: boolean;
 };
 
 /**
  * アセットファイルが取得可能になるまでローディング表示を出す共通ラッパー。
  * HEAD 200 → ready、HEAD 202 → 変換中、HEAD 404/410 等 → 利用不可
  */
-export function AssetLoader({ assetId, children, converted, fileName }: Props) {
+export function AssetLoader({ assetId, children, converted, fileName, showThumbnail = false }: Props) {
   const status = useAssetStatus(assetId, converted);
 
   if (status === "ready") return <>{children}</>;
@@ -53,7 +55,7 @@ export function AssetLoader({ assetId, children, converted, fileName }: Props) {
 
   const isTranscoding = status === "transcoding";
   const safeId = getSafeAssetId(assetId);
-  const thumbUrl = safeId ? `url(/api/assets/${safeId}/thumbnail)` : "none";
+  const thumbUrl = showThumbnail && safeId ? `url(/api/assets/${safeId}/thumbnail)` : "none";
 
   return (
     <div style={{

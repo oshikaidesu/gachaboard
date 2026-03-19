@@ -70,6 +70,7 @@ export async function uploadFileViaS3(
   const mimeType = getEffectiveMimeType(file);
   const initRes = await fetch("/api/assets/upload/s3/init", {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       fileName: file.name,
@@ -80,6 +81,11 @@ export async function uploadFileViaS3(
   });
   if (initRes.status === 503) {
     throw new Error(S3_REQUIRED_MSG);
+  }
+  if (initRes.status === 401) {
+    throw new Error(
+      "ログインが必要です。セッションが切れている可能性があります。ページを再読み込みして再度ログインしてください。",
+    );
   }
   if (!initRes.ok) {
     const body = await initRes.json().catch(() => ({}));
@@ -137,6 +143,7 @@ export async function uploadFileViaS3(
   parts.sort((a, b) => a.PartNumber - b.PartNumber);
   const completeRes = await fetch("/api/assets/upload/s3/complete", {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       uploadId,
@@ -172,6 +179,7 @@ export async function uploadFileViaS3Resume(
 
   const statusRes = await fetch(
     `/api/assets/upload/s3/status?uploadId=${encodeURIComponent(uploadId)}`,
+    { credentials: "include" },
   );
   if (!statusRes.ok) {
     const body = await statusRes.json().catch(() => ({}));
@@ -191,6 +199,7 @@ export async function uploadFileViaS3Resume(
   if (pendingPartNumbers.length === 0) {
     const completeRes = await fetch("/api/assets/upload/s3/complete", {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         uploadId,
@@ -216,6 +225,7 @@ export async function uploadFileViaS3Resume(
 
   const presignRes = await fetch("/api/assets/upload/s3/presign", {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ uploadId, partNumbers: pendingPartNumbers }),
   });
@@ -254,6 +264,7 @@ export async function uploadFileViaS3Resume(
   const parts = Array.from(allParts.values()).sort((a, b) => a.PartNumber - b.PartNumber);
   const completeRes = await fetch("/api/assets/upload/s3/complete", {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       uploadId,

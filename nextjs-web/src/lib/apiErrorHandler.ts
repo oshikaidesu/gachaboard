@@ -5,5 +5,9 @@ import { NextResponse } from "next/server";
  */
 export function handleApiError(e: unknown, routeName: string): NextResponse {
   console.error(`[api:${routeName}]`, e);
-  return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  const message =
+    process.env.NODE_ENV === "development" && e instanceof Error
+      ? e.message
+      : "Internal server error";
+  return NextResponse.json({ error: message }, { status: 500 });
 }

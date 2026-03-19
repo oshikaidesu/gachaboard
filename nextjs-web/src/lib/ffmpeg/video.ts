@@ -3,8 +3,24 @@ import fs from "fs/promises";
 import { ensureLocalFromS3, uploadToS3 } from "@/lib/storage";
 import { s3KeyConverted, s3KeyThumbnail } from "@/lib/s3";
 import { runWithFfmpegLimit } from "./concurrency";
-export async function runVideoConversion(storageKey: string): Promise<void> {
-  return runWithFfmpegLimit(() => runVideoConversionImpl(storageKey));
+
+export type VideoConversionHandles = {
+  conversionComplete: Promise<void>;
+};
+
+/**
+ * 動画変換（サムネイル＋トランスコード）をバックグラウンドで開始。
+ * サムネイルは thumbnail API からオンデマンド生成もされるため、
+ * ここでの生成は「先行して作っておく」最適化。
+ */
+export function runVideoConversion(storageKey: string): VideoConversionHandles {
+  const conversionComplete = runWithFfmpegLimit(() => runVideoConversionImpl(storageKey)).catch(
+    (err) => {
+      console.error("[runVideoConversion] failed for", storageKey, err?.message ?? err);
+    }
+  ) as Promise<void>;
+
+  return { conversionComplete };
 }
 
 async function runVideoConversionImpl(storageKey: string): Promise<void> {
@@ -16,15 +32,14 @@ async function runVideoConversionImpl(storageKey: string): Promise<void> {
     const base = storageKey.replace(/\.[^.]+$/, "");
     const tmpDest = path.join(tmpDir, `conv_${base}.mp4`);
     const tmpThumb = path.join(tmpDir, `thumb_${base}.jpg`);
-    // サムネイルとトランスコードを並列。サムネイルは軽いので先に完了→即S3へ
-    const [, convPath] = await Promise.all([
-      (async () => {
-        await generateThumbnailWithPath(tmpSrc!, tmpThumb);
-        await uploadToS3(s3KeyThumbnail(storageKey), tmpThumb, "image/jpeg");
-      })(),
-      transcodeVideoToLightWithPath(tmpSrc!, tmpDest).then(() => tmpDest),
-    ]);
-    await uploadToS3(s3KeyConverted(storageKey, ".mp4"), convPath, "video/mp4");
+    const thumbPromise = (async () => {
+      await generateThumbnailWithPath(tmpSrc!, tmpThumb);
+      await uploadToS3(s3KeyThumbnail(storageKey), tmpThumb, "image/jpeg");
+    })();
+    const transcodePromise = transcodeVideoToLightWithPath(tmpSrc!, tmpDest).then(() =>
+      uploadToS3(s3KeyConverted(storageKey, ".mp4"), tmpDest, "video/mp4")
+    );
+    await Promise.all([thumbPromise, transcodePromise]);
   } finally {
     if (tmpSrc) await fs.unlink(tmpSrc).catch(() => {});
   }
@@ -47,6 +62,51 @@ export async function transcodeVideoToLightWithPath(srcPath: string, destPath: s
   const { renameSync } = await import("fs");
   renameSync(tmp, destPath);
 }
+
+// ---------- オンデマンドサムネイル生成 ----------
+
+const thumbnailInFlight = new Map<string, Promise<boolean>>();
+
+/**
+ * storageKey の動画からサムネイルを生成し S3 にアップロードする。
+ * 同一 storageKey に対する同時リクエストは 1 つだけ実行し、他は待つ。
+ * 成功時 true、失敗時 false。
+ */
+export async function ensureThumbnail(storageKey: string): Promise<boolean> {
+  const existing = thumbnailInFlight.get(storageKey);
+  if (existing) return existing;
+
+  const promise = runWithFfmpegLimit(() => generateAndUploadThumbnail(storageKey))
+    .then(() => true)
+    .catch((err) => {
+      console.error("[ensureThumbnail] failed for", storageKey, err?.message ?? err);
+      return false;
+    })
+    .finally(() => {
+      thumbnailInFlight.delete(storageKey);
+    });
+
+  thumbnailInFlight.set(storageKey, promise);
+  return promise;
+}
+
+async function generateAndUploadThumbnail(storageKey: string): Promise<void> {
+  const tmpDir = path.join(process.cwd(), "uploads", "tmp");
+  await fs.mkdir(tmpDir, { recursive: true });
+  const base = storageKey.replace(/\.[^.]+$/, "");
+  const tmpThumb = path.join(tmpDir, `thumb_${base}.jpg`);
+  let tmpSrc: string | null = null;
+  try {
+    tmpSrc = await ensureLocalFromS3(storageKey);
+    await generateThumbnailWithPath(tmpSrc, tmpThumb);
+    await uploadToS3(s3KeyThumbnail(storageKey), tmpThumb, "image/jpeg");
+  } finally {
+    if (tmpSrc) await fs.unlink(tmpSrc).catch(() => {});
+    await fs.unlink(tmpThumb).catch(() => {});
+  }
+}
+
+// ---------- ffmpeg ヘルパー ----------
 
 export async function generateThumbnailWithPath(srcPath: string, destPath: string): Promise<void> {
   const { default: ffmpeg } = await import("fluent-ffmpeg");
