@@ -87,11 +87,21 @@ jobs:
           path: release-files
           merge-multiple: true
 
+      - name: Prepare release files
+        run: |
+          mkdir -p release-assets
+          find release-files -name "gachaboard-dist.zip" -exec cp {} release-assets/ \;
+          find release-files -name "*.exe" -exec cp {} release-assets/ \;
+          ls -la release-assets/
+          test -f release-assets/gachaboard-dist.zip || (echo "gachaboard-dist.zip not found" && exit 1)
+          test $(find release-assets -name "*.exe" | wc -l) -ge 1 || (echo "No exe found" && exit 1)
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
           files: |
-            release-files/gachaboard-dist.zip
-            release-files/*.exe
+            release-assets/gachaboard-dist.zip
+            release-assets/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
