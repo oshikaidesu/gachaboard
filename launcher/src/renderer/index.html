@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gachaboard</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f5f5f4;
+      color: #44403c;
+      padding: 24px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 4px; font-weight: 600; text-align: center; }
+    .tagline { color: #78716c; font-size: 0.75rem; text-align: center; margin: 0 0 12px; line-height: 1.4; }
+    .screen-icon { display: block; margin: 0 auto 12px; }
+    .sub { color: #78716c; font-size: 0.875rem; margin-bottom: 20px; }
+    .screen { display: none; max-width: 420px; margin: 0 auto; text-align: left; }
+    .screen.active { display: block; }
+    label { display: block; margin: 12px 0 4px; font-size: 0.875rem; }
+    input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d6d3d1;
+      border-radius: 4px;
+      background: #fff;
+      color: #44403c;
+      font-size: 0.9rem;
+    }
+    input:focus { outline: none; border-color: #FEA013; }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+    .btn-primary {
+      background: #FEA013;
+      color: #44403c;
+    }
+    .btn-primary:hover { background: #e89110; }
+    .btn-secondary {
+      background: #e7e5e4;
+      color: #44403c;
+      margin-left: 8px;
+    }
+    .btn-secondary:hover { background: #d6d3d1; }
+    a { color: #FEA013; }
+    .log {
+      background: #fff;
+      border: 1px solid #d6d3d1;
+      border-radius: 4px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      max-height: 140px;
+      overflow-y: auto;
+      margin-top: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #57534e;
+    }
+    .url-display {
+      background: #fff;
+      border: 1px solid #d6d3d1;
+      border-radius: 4px;
+      padding: 10px;
+      margin: 12px 0;
+      font-size: 0.9rem;
+      word-break: break-all;
+      color: #44403c;
+    }
+    .status { color: #16a34a; }
+    .status.stopped { color: #dc2626; }
+    .oauth-guide {
+      background: #fff;
+      border: 1px solid #d6d3d1;
+      border-radius: 4px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      font-size: 0.875rem;
+    }
+    .oauth-guide ol { margin: 8px 0 0; padding-left: 20px; }
+    .oauth-guide li { margin: 4px 0; }
+    .oauth-guide ul { margin: 4px 0; padding-left: 20px; }
+    .oauth-guide code { background: #f5f5f4; padding: 2px 6px; border-radius: 2px; font-size: 0.8rem; }
+    .gear-btn {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      color: #78716c;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .gear-btn:hover { color: #44403c; }
+    .gear-btn svg { width: 24px; height: 24px; }
+    .help-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .help-modal.open { display: flex; }
+    .help-modal-inner {
+      background: #fff;
+      border-radius: 8px;
+      max-width: 480px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      text-align: left;
+    }
+    .help-modal h2 { font-size: 1.1rem; margin: 0 0 16px; }
+    .help-modal h3 { font-size: 0.95rem; margin: 16px 0 8px; }
+    .help-modal p, .help-modal ul { font-size: 0.875rem; margin: 0 0 8px; line-height: 1.5; }
+    .help-modal ul { padding-left: 20px; }
+    .help-modal code { background: #f5f5f4; padding: 2px 6px; border-radius: 2px; font-size: 0.8rem; }
+    .help-modal-close { margin-top: 16px; padding: 8px 16px; cursor: pointer; }
+    .help-modal label { display: block; margin: 8px 0 4px; font-size: 0.8rem; }
+    .help-modal input { width: 100%; padding: 6px 8px; font-size: 0.85rem; }
+    .help-modal .copy-row { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+    .help-modal .copy-row code { flex: 1; word-break: break-all; }
+    .help-modal .copy-btn { padding: 4px 10px; font-size: 0.8rem; margin: 0; }
+    .guide-box { background: #fff; border: 1px solid #d6d3d1; border-radius: 4px; padding: 12px 16px; margin-bottom: 16px; font-size: 0.875rem; }
+    .guide-box h4 { margin: 0 0 8px; font-size: 0.9rem; }
+    .guide-box ol, .guide-box ul { margin: 4px 0 0; padding-left: 20px; }
+    .guide-box li { margin: 2px 0; }
+    .guide-box code { background: #f5f5f4; padding: 2px 6px; border-radius: 2px; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <button id="gear-btn" class="gear-btn" title="設定" type="button">
+    <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-2 13.5l103 78-110 190-118-50q-11 8-23 15t-24 12L590-80H370Zm70-80h79l14-106q31-8 57.5-23.5T639-327l99 41 39-68-86-65q5-14 7-29.5t2-31.5q0-16-2-31.5t-7-29.5l86-65-39-68-99 42q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 64q-5 15-7 30t-2 32q0 16 2 31t7 30l-86 65 39 68 99-42q22 23 48.5 38.5T427-266l13 106Zm42-180q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Zm-2-140Z"/></svg>
+  </button>
+
+  <div id="help-modal" class="help-modal">
+    <div class="help-modal-inner">
+      <h2>設定・取説</h2>
+
+      <h3>Gachaboardとは</h3>
+      <div class="guide-box">
+        <p>自分のPCをサーバーにして動かすホワイトボードです。音楽・映像・デザインなど、あらゆるファイルを自由に貼り付けて共有できます。データはすべて自分のPC内に保存されます。</p>
+      </div>
+
+      <h3>ログイン方法</h3>
+      <div class="guide-box">
+        <p>Discordアカウントを使用してログインします。初回のみ、Discordのデベロッパーポータルでアプリを作成し、以下のURLを「Redirects」に登録してください。</p>
+        <div id="oauth-localhost-row" class="copy-row" style="margin-top:6px">
+          <code id="oauth-localhost-url">http://localhost:18580/api/auth/callback/discord</code>
+          <button type="button" class="btn-secondary copy-btn" data-copy="oauth-localhost-url">コピー</button>
+        </div>
+        <div id="oauth-tailscale-row" class="copy-row" style="display:none">
+          <code id="oauth-tailscale-url"></code>
+          <button type="button" class="btn-secondary copy-btn" data-copy="oauth-tailscale-url">コピー</button>
+        </div>
+        <p id="oauth-tailscale-hint" style="display:none;font-size:0.8rem;color:#78716c;margin-top:4px">Tailscaleで起動すると表示されます</p>
+      </div>
+
+      <h3>外部から参加してもらうには</h3>
+      <div class="guide-box">
+        <p>離れた場所にいる人と使う場合は、<a href="https://tailscale.com/download" target="_blank">Tailscale</a>を利用します。参加者にもTailscaleをインストールしてもらい、起動後に表示されるURLを共有してください。同じネットワーク内であれば、localhostのURLを共有するだけで利用可能です。</p>
+        <p style="margin-top:8px;font-size:0.85rem">※サーバー主は、<a href="https://login.tailscale.com/admin/dns" target="_blank">Tailscale管理画面</a>で「MagicDNS」と「HTTPS」を有効にする必要があります。</p>
+      </div>
+
+      <h3>招待コード</h3>
+      <div class="guide-box">
+        <p>プロジェクトごとに参加メンバーを管理できるよう、招待コード方式（ワークフロー・ワークボード）を採用しています。</p>
+      </div>
+
+      <h3>ENV（環境変数）の編集</h3>
+      <label for="settings-client-id">Discord Client ID</label>
+      <input type="text" id="settings-client-id" placeholder="1234567890123456789">
+      <label for="settings-client-secret">Discord Client Secret</label>
+      <input type="password" id="settings-client-secret" placeholder="abcdef123456...">
+      <label for="settings-owner-id">Discord オーナー ID（任意）</label>
+      <input type="text" id="settings-owner-id" placeholder="空なら全員アクセス可">
+      <button id="settings-save-btn" class="btn-primary" style="margin-top:8px">保存</button>
+
+      <h3>ドキュメント</h3>
+      <ul>
+        <li><a href="https://github.com/oshikaidesu/gachaboard/blob/main/docs/user/SETUP.md" target="_blank">セットアップガイド</a></li>
+        <li><a href="https://github.com/oshikaidesu/gachaboard/blob/main/docs/user/ENV-REFERENCE.md" target="_blank">環境変数リファレンス</a></li>
+        <li><a href="https://github.com/oshikaidesu/gachaboard/blob/main/docs/user/WINDOWS-NATIVE-SETUP.md" target="_blank">Windows 起動</a></li>
+      </ul>
+      <button id="help-modal-close" class="btn-secondary help-modal-close">閉じる</button>
+    </div>
+  </div>
+  <div id="wizard-screen" class="screen">
+    <img id="header-icon" class="screen-icon" src="" alt="" width="48" height="48" style="display:none">
+    <h1>Gachaboard 初回設定</h1>
+    <p class="tagline">音楽・映像・デザインファイルを貼り付けて、みんなで一緒に使えるホワイトボード</p>
+    <p class="sub">Discordアカウントでログインします。外部から参加してもらう場合はTailscaleをインストールし、URLを共有してください。</p>
+    <div class="oauth-guide">
+      <p><strong>Discordでのアプリ作成手順:</strong></p>
+      <ol>
+        <li><a href="https://discord.com/developers/applications" target="_blank">Discord Developer Portal</a> で「New Application」を作成</li>
+        <li>「OAuth2」→「General」で Client ID と Client Secret を取得</li>
+        <li>「OAuth2」→「Redirects」に以下を追加:
+          <ul>
+            <li><code>http://localhost:18580/api/auth/callback/discord</code></li>
+            <li><code>https://&lt;あなたのTailscaleホスト&gt;.ts.net/api/auth/callback/discord</code>（Tailscale 利用時。ホスト名は起動後に確認可能）</li>
+          </ul>
+        </li>
+      </ol>
+      <p style="margin-top:12px;margin-bottom:0"><a href="https://github.com/oshikaidesu/gachaboard" target="_blank">GitHub</a> · <a href="https://github.com/oshikaidesu/gachaboard/releases" target="_blank">Releases</a> · <a href="https://github.com/oshikaidesu/gachaboard/blob/main/LICENSE" target="_blank">Apache 2.0</a></p>
+    </div>
+    <label for="client-id">Discord Client ID（必須）</label>
+    <input type="text" id="client-id" placeholder="1234567890123456789">
+    <label for="client-secret">Discord Client Secret（必須）</label>
+    <input type="password" id="client-secret" placeholder="abcdef123456...">
+    <label for="owner-id">Discord オーナー ID（任意）</label>
+    <input type="text" id="owner-id" placeholder="このユーザーのみワークスペース作成可。空なら全員アクセス可">
+    <button id="wizard-submit" class="btn-primary">はじめる</button>
+  </div>
+
+  <div id="running-screen" class="screen">
+    <img id="running-icon" class="screen-icon" src="" alt="" width="48" height="48" style="display:none">
+    <h1>Gachaboard</h1>
+    <p class="tagline">音楽・映像・デザインなど、あらゆるファイルを自由に貼り付けて共有できるホワイトボード</p>
+    <p class="sub status" id="status-text"></p>
+    <p class="sub" style="margin-bottom:12px">外部から参加してもらう場合は、Tailscaleをインストールし、以下のURLを共有してください。</p>
+    <div id="start-area">
+      <button id="start-server" class="btn-primary">サーバを起動</button>
+    </div>
+    <div id="url-area" class="url-display" style="display:none">
+      <strong>アクセス URL:</strong><br>
+      <span id="current-url">-</span>
+    </div>
+    <button id="open-browser" class="btn-primary" style="display:none">ブラウザで開く</button>
+    <button id="stop-server" class="btn-secondary" style="display:none">停止</button>
+    <p class="sub" style="margin-top:24px">
+      <a href="https://github.com/oshikaidesu/gachaboard" target="_blank">GitHub</a> · <a href="https://github.com/oshikaidesu/gachaboard/releases" target="_blank">最新版は Releases で確認</a> · <a href="https://github.com/oshikaidesu/gachaboard/blob/main/LICENSE" target="_blank">Apache 2.0</a>
+    </p>
+    <div id="log-area" class="log"></div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
