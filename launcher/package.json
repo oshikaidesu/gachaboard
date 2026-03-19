@@ -29,7 +29,7 @@
     ],
     "win": {
       "icon": "assets/icon.png",
-      "target": ["portable", "nsis"]
+      "target": ["portable"]
     },
     "mac": {
       "icon": "assets/icon.png",

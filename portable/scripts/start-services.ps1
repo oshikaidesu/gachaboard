@@ -101,9 +101,31 @@ function Start-Postgres {
     Start-Sleep -Seconds 2
   }
 
+  # プロジェクト移動後: postgresql.conf の data_directory が古いパスのままなら更新
+  $conf = Join-Path $PgData "postgresql.conf"
+  $pgDataNorm = $PgData.Replace('\', '/')
+  if ((Test-Path $conf)) {
+    $content = Get-Content $conf -Raw
+    if ($content -match "data_directory\s*=\s*'([^']+)'") {
+      $oldPath = $Matches[1].Trim().Replace('\', '/')
+      if ($oldPath -and $oldPath -ne $pgDataNorm) {
+        Write-Host ">>> Updating data_directory (project was moved)..."
+        $content = $content -replace "data_directory\s*=\s*'[^']*'", "data_directory = '$pgDataNorm'"
+        Set-Content -Path $conf -Value $content -NoNewline
+      }
+    }
+  }
+
   Write-Host ">>> Starting PostgreSQL..."
   $logFile = Join-Path $DataDir "postgres.log"
-  & pg_ctl -D $PgData -l $logFile -o "-p $PostgresPort" start
+  # pg_ctl start を子プロセスで実行すると Windows でハングすることがあるため、
+  # Start-Job で非同期実行してブロックを回避する。Job は kill しない（kill すると postgres も終了する）
+  $null = Start-Job -ScriptBlock {
+    param($ctlPath, $dataDir, $logPath, $port)
+    $env:PATH = $ctlPath + ";" + $env:PATH
+    & (Join-Path $ctlPath "pg_ctl.exe") -D $dataDir -l $logPath -o "-p $port" start 2>&1
+  } -ArgumentList $pgCtlPath, $PgData, $logFile, $PostgresPort
+  Start-Sleep -Seconds 4
 
   $maxWait = 60
   for ($j = 0; $j -lt $maxWait; $j++) {

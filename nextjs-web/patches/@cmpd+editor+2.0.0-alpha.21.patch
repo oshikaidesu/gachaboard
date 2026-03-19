@@ -1,5 +1,5 @@
 diff --git a/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js b/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js
-index a589b0a..669a99c 100644
+index a589b0a..6b75033 100644
 --- a/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js
 +++ b/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js
 @@ -87,6 +87,18 @@ function Canvas({ className }) {
@@ -41,6 +41,51 @@ index a589b0a..669a99c 100644
          ] })
        ]
      }
+@@ -259,7 +271,7 @@ function HandlesWrapper() {
+     if (handle.type !== "vertex") {
+       const prev = handles[i - 1];
+       const next = handles[i + 1];
+-      if (prev && next) {
++      if (prev && next && onlySelectedShape.type !== "arrow") {
+         if (Math.hypot(prev.y - next.y, prev.x - next.x) < MIN_HANDLE_DISTANCE / zoomLevel) {
+           continue;
+         }
+@@ -267,7 +279,7 @@ function HandlesWrapper() {
+     }
+     handlesToDisplay.push(handle);
+   }
+-  handlesToDisplay.sort((a) => a.type === "vertex" ? 1 : -1);
++  handlesToDisplay.sort((a, b) => (a.type === "vertex" ? 0 : 1) - (b.type === "vertex" ? 0 : 1));
+   return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Handles, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("g", { transform: import_Matrix2d.Matrix2d.toCssString(transform), children: handlesToDisplay.map((handle) => {
+     return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+       HandleWrapper,
+@@ -291,7 +303,25 @@ function HandleWrapper({
+   const { Handle } = (0, import_useEditorComponents.useEditorComponents)();
+   if (!Handle)
+     return null;
+-  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("g", { "aria-label": "handle", transform: `translate(${handle.x}, ${handle.y})`, ...events, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Handle, { shapeId, handle, zoom, isCoarse }) });
++  const attachPointerOnHandleGeometry = handle.id === "middle";
++  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
++    "g",
++    {
++      "aria-label": "handle",
++      transform: `translate(${handle.x}, ${handle.y})`,
++      ...attachPointerOnHandleGeometry ? {} : events,
++      children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
++        Handle,
++        {
++          shapeId,
++          handle,
++          zoom,
++          isCoarse,
++          ...attachPointerOnHandleGeometry ? { handlePointerEvents: events } : {}
++        }
++      )
++    }
++  );
+ }
+ function ShapesWithSVGs() {
+   const editor = (0, import_useEditor.useEditor)();
 diff --git a/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js.orig b/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js.orig
 new file mode 100644
 index 0000000..a589b0a
@@ -534,7 +579,7 @@ index cc9390c..4c2afd0 100644
        userId + "_cursor"
      ) : CollaboratorHint ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
 diff --git a/node_modules/@cmpd/editor/dist-cjs/lib/editor/Editor.js b/node_modules/@cmpd/editor/dist-cjs/lib/editor/Editor.js
-index 46ae2f7..4846e7a 100644
+index 46ae2f7..03db254 100644
 --- a/node_modules/@cmpd/editor/dist-cjs/lib/editor/Editor.js
 +++ b/node_modules/@cmpd/editor/dist-cjs/lib/editor/Editor.js
 @@ -128,9 +128,6 @@ class Editor extends import_eventemitter3.EventEmitter {
@@ -547,6 +592,15 @@ index 46ae2f7..4846e7a 100644
        this.root.children[Tool.id] = new Tool(this, this.root);
      }
      this.environment = new import_EnvironmentManager.EnvironmentManager(this);
+@@ -3641,7 +3638,7 @@ class Editor extends import_eventemitter3.EventEmitter {
+           if (geometry.isFilled || isGroup && geometry.children[0].isFilled) {
+             return inMarginClosestToEdgeHit || shape;
+           } else {
+-            if (this.getShapePageBounds(shape).contains(viewportPageBounds))
++            if (shape.type !== "arrow" && this.getShapePageBounds(shape).contains(viewportPageBounds))
+               continue;
+             if (Math.abs(distance) < margin) {
+               if (Math.abs(distance) < inMarginClosestToEdgeDistance) {
 @@ -7079,25 +7076,10 @@ reason:${result.reason}`
            switch (info.name) {
              case "key_down": {
@@ -636,7 +690,7 @@ index 0b10d51..b93caf9 100644
  }
  //# sourceMappingURL=normalizeWheel.js.map
 diff --git a/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs b/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs
-index 9ac80d5..71dc55b 100644
+index 9ac80d5..8d6a3a8 100644
 --- a/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs
 +++ b/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs
 @@ -50,6 +50,18 @@ function Canvas({ className }) {
@@ -678,6 +732,48 @@ index 9ac80d5..71dc55b 100644
          ] })
        ]
      }
+@@ -222,7 +234,7 @@ function HandlesWrapper() {
+     if (handle.type !== "vertex") {
+       const prev = handles[i - 1];
+       const next = handles[i + 1];
+-      if (prev && next) {
++      if (prev && next && onlySelectedShape.type !== "arrow") {
+         if (Math.hypot(prev.y - next.y, prev.x - next.x) < MIN_HANDLE_DISTANCE / zoomLevel) {
+           continue;
+         }
+@@ -230,7 +242,7 @@ function HandlesWrapper() {
+     }
+     handlesToDisplay.push(handle);
+   }
+-  handlesToDisplay.sort((a) => a.type === "vertex" ? 1 : -1);
++  handlesToDisplay.sort((a, b) => (a.type === "vertex" ? 0 : 1) - (b.type === "vertex" ? 0 : 1));
+   return /* @__PURE__ */ jsx(Handles, { children: /* @__PURE__ */ jsx("g", { transform: Matrix2d.toCssString(transform), children: handlesToDisplay.map((handle) => {
+     return /* @__PURE__ */ jsx(
+       HandleWrapper,
+@@ -254,7 +266,22 @@ function HandleWrapper({
+   const { Handle } = useEditorComponents();
+   if (!Handle)
+     return null;
+-  return /* @__PURE__ */ jsx("g", { "aria-label": "handle", transform: `translate(${handle.x}, ${handle.y})`, ...events, children: /* @__PURE__ */ jsx(Handle, { shapeId, handle, zoom, isCoarse }) });
++  const attachPointerOnHandleGeometry = handle.id === "middle";
++  return /* @__PURE__ */ jsx(
++    "g",
++    {
++      "aria-label": "handle",
++      transform: `translate(${handle.x}, ${handle.y})`,
++      ...attachPointerOnHandleGeometry ? {} : events,
++      children: /* @__PURE__ */ jsx(Handle, {
++        shapeId,
++        handle,
++        zoom,
++        isCoarse,
++        ...attachPointerOnHandleGeometry ? { handlePointerEvents: events } : {}
++      })
++    }
++  );
+ }
+ function ShapesWithSVGs() {
+   const editor = useEditor();
 diff --git a/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs.orig b/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs.orig
 new file mode 100644
 index 0000000..9ac80d5
@@ -1141,7 +1237,7 @@ index 865c753..9e631f5 100644
        userId + "_cursor"
      ) : CollaboratorHint ? /* @__PURE__ */ jsx(
 diff --git a/node_modules/@cmpd/editor/dist-esm/lib/editor/Editor.mjs b/node_modules/@cmpd/editor/dist-esm/lib/editor/Editor.mjs
-index beccefa..f2674b7 100644
+index beccefa..ed91e83 100644
 --- a/node_modules/@cmpd/editor/dist-esm/lib/editor/Editor.mjs
 +++ b/node_modules/@cmpd/editor/dist-esm/lib/editor/Editor.mjs
 @@ -160,9 +160,6 @@ class Editor extends EventEmitter {
@@ -1154,6 +1250,15 @@ index beccefa..f2674b7 100644
        this.root.children[Tool.id] = new Tool(this, this.root);
      }
      this.environment = new EnvironmentManager(this);
+@@ -3673,7 +3670,7 @@ class Editor extends EventEmitter {
+           if (geometry.isFilled || isGroup && geometry.children[0].isFilled) {
+             return inMarginClosestToEdgeHit || shape;
+           } else {
+-            if (this.getShapePageBounds(shape).contains(viewportPageBounds))
++            if (shape.type !== "arrow" && this.getShapePageBounds(shape).contains(viewportPageBounds))
+               continue;
+             if (Math.abs(distance) < margin) {
+               if (Math.abs(distance) < inMarginClosestToEdgeDistance) {
 @@ -7119,25 +7116,10 @@ reason:${result.reason}`
            switch (info.name) {
              case "key_down": {
@@ -1242,7 +1347,7 @@ index b223bab..f6b68e3 100644
  export {
    normalizeWheel
 diff --git a/node_modules/@cmpd/editor/src/lib/editor/Editor.ts b/node_modules/@cmpd/editor/src/lib/editor/Editor.ts
-index 390a3a4..7e7d0f5 100644
+index 390a3a4..13eb425 100644
 --- a/node_modules/@cmpd/editor/src/lib/editor/Editor.ts
 +++ b/node_modules/@cmpd/editor/src/lib/editor/Editor.ts
 @@ -262,12 +262,8 @@ export class Editor extends EventEmitter<TLEventMap> {
@@ -1259,7 +1364,24 @@ index 390a3a4..7e7d0f5 100644
  			this.root.children![Tool.id] = new Tool(this, this.root)
  		}
  
-@@ -9295,34 +9291,11 @@ export class Editor extends EventEmitter<TLEventMap> {
+@@ -4764,7 +4760,15 @@ export class Editor extends EventEmitter<TLEventMap> {
+ 						return inMarginClosestToEdgeHit || shape
+ 					} else {
+ 						// If the shape is bigger than the viewport, then skip it.
+-						if (this.getShapePageBounds(shape)!.contains(viewportPageBounds)) continue
++						// Arrows use a closed hollow Group2d with a large AABB vs. the stroke; when
++						// zoomed in the viewport can sit entirely inside page bounds while the pointer
++						// is still on the stroke — skipping would drop hit testing entirely.
++						if (
++							!this.isShapeOfType(shape, 'arrow') &&
++							this.getShapePageBounds(shape)!.contains(viewportPageBounds)
++						) {
++							continue
++						}
+ 
+ 						// For hollow shapes...
+ 						if (Math.abs(distance) < margin) {
+@@ -9295,34 +9299,11 @@ export class Editor extends EventEmitter<TLEventMap> {
  
  					switch (info.name) {
  						case 'key_down': {
