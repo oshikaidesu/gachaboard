@@ -36,6 +36,7 @@ import { BoardHeader } from "./BoardHeader";
 import { getSyncWsUrl, isSyncWsUrlValid } from "@/lib/syncWsUrl";
 import { useBoardSnapshotFetch } from "@/app/hooks/board/useBoardSnapshotFetch";
 import { useRestoreAsset } from "@/app/hooks/board/useRestoreAsset";
+import { useCanvasExpansionToast } from "@/app/hooks/board/useCanvasExpansionToast";
 import { useSyncStatus } from "@/app/hooks/board/useSyncStatus";
 import { useSyncToken } from "@/app/hooks/board/useSyncToken";
 
@@ -136,6 +137,7 @@ export default function CompoundBoard({
   const { registerHandler: registerDoubleClickHandler } = useDoubleClickPreview(setPreview);
   const { registerListener: registerUrlPreviewAttacher } = useUrlPreviewAttacher();
   const { registerListener: registerPositionCapture } = useShapeDeletePositionCapture();
+  const { registerListener: registerCanvasExpansionToast } = useCanvasExpansionToast(useSync);
 
   const { syncStatus, syncAvailable, isSyncError, isLoading } = useSyncStatus(useSync, yjsStore);
 
@@ -169,6 +171,7 @@ export default function CompoundBoard({
       registerDoubleClickHandler(editor);
       registerUrlPreviewAttacher(editor);
       registerPositionCapture(editor);
+      registerCanvasExpansionToast(editor);
       handleRestoreAsset(editor);
     },
     [
@@ -179,6 +182,7 @@ export default function CompoundBoard({
       registerDoubleClickHandler,
       registerUrlPreviewAttacher,
       registerPositionCapture,
+      registerCanvasExpansionToast,
       handleRestoreAsset,
     ]
   );

@@ -72,7 +72,7 @@ export default function RootLayout({
             <ThemeToggleFloating />
           </AuthProvider>
         </ThemeProvider>
-        <Toaster position="top-right" richColors />
+        <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
   );
