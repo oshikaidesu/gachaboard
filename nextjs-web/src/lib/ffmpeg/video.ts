@@ -2,6 +2,10 @@ import path from "path";
 import fs from "fs/promises";
 import { ensureLocalFromS3, uploadToS3 } from "@/lib/storage";
 import { s3KeyConverted, s3KeyThumbnail } from "@/lib/s3";
+import { resolveVideoTranscodeOptions } from "./encoder-strategy";
+import { applyFfmpegOsPriorityToCommand, resolveFfmpegThreadArgs } from "./ffmpeg-tuning";
+import { deriveOutputPreset } from "./load-preset-behavior";
+import { getMergedMediaEncodingEffective } from "./media-encoding-prefs";
 import { runWithFfmpegLimit } from "./concurrency";
 
 export type VideoConversionHandles = {
@@ -47,17 +51,25 @@ async function runVideoConversionImpl(storageKey: string): Promise<void> {
 
 export async function transcodeVideoToLightWithPath(srcPath: string, destPath: string): Promise<void> {
   const { default: ffmpeg } = await import("fluent-ffmpeg");
+  const eff = await getMergedMediaEncodingEffective();
+  const { videoCodec, outputOptions, summary } = await resolveVideoTranscodeOptions({
+    videoBackend: eff.videoBackend,
+    resourceIntensity: eff.resourceIntensity,
+    outputPreset: eff.outputPreset,
+    forceHwEncoder: eff.forceHwEncoder,
+  });
+  console.log("[transcodeVideoToLightWithPath]", summary);
+
   const tmp = destPath.replace(/\.mp4$/, ".tmp.mp4");
+  const cmd = ffmpeg(srcPath)
+    .videoCodec(videoCodec)
+    .audioCodec("aac")
+    .format("mp4")
+    .outputOptions(outputOptions)
+    .output(tmp);
+  applyFfmpegOsPriorityToCommand(cmd, eff.resourceIntensity);
   await new Promise<void>((resolve, reject) => {
-    ffmpeg(srcPath)
-      .videoCodec("libx264")
-      .audioCodec("aac")
-      .format("mp4")
-      .outputOptions(["-vf", "scale=-2:min(ih\\,720)", "-crf", "30", "-preset", "veryfast", "-movflags", "+faststart"])
-      .output(tmp)
-      .on("end", () => resolve())
-      .on("error", (err) => reject(err))
-      .run();
+    cmd.on("end", () => resolve()).on("error", (err) => reject(err)).run();
   });
   const { renameSync } = await import("fs");
   renameSync(tmp, destPath);
@@ -110,17 +122,16 @@ async function generateAndUploadThumbnail(storageKey: string): Promise<void> {
 
 export async function generateThumbnailWithPath(srcPath: string, destPath: string): Promise<void> {
   const { default: ffmpeg } = await import("fluent-ffmpeg");
+  const eff = await getMergedMediaEncodingEffective();
+  const { thumbnailJpegQ } = deriveOutputPreset(eff.outputPreset);
   const duration = await new Promise<number>((resolve, reject) => {
     ffmpeg.ffprobe(srcPath, (err, meta) => (err ? reject(err) : resolve(meta?.format?.duration ?? 0)));
   });
   const seekSec = duration > 0 ? duration / 2 : 0;
+  const outOpts = [...resolveFfmpegThreadArgs(eff.resourceIntensity), "-vframes", "1", "-q:v", String(thumbnailJpegQ)];
+  const cmd = ffmpeg(srcPath).inputOptions([`-ss ${seekSec}`]).outputOptions(outOpts).output(destPath);
+  applyFfmpegOsPriorityToCommand(cmd, eff.resourceIntensity);
   await new Promise<void>((resolve, reject) => {
-    ffmpeg(srcPath)
-      .inputOptions([`-ss ${seekSec}`])
-      .outputOptions(["-vframes", "1", "-q:v", "3"])
-      .output(destPath)
-      .on("end", () => resolve())
-      .on("error", reject)
-      .run();
+    cmd.on("end", () => resolve()).on("error", reject).run();
   });
 }

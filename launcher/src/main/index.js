@@ -6,6 +6,32 @@ const fs = require('fs');
 const crypto = require('crypto');
 const http = require('http');
 
+/**
+ * 子プロセスの stdout/stderr を表示用に文字列化する。
+ * 日本語 Windows ではパイプ経由が CP932 のまま送られ、UTF-8 と誤認すると文字化けするためフォールバックする。
+ */
+function decodeChildLogChunk(chunk) {
+  if (chunk == null) return '';
+  const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk));
+  if (buf.length === 0) return '';
+  if (process.platform !== 'win32') {
+    return buf.toString('utf8');
+  }
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buf);
+  } catch {
+    try {
+      return new TextDecoder('shift_jis').decode(buf);
+    } catch {
+      try {
+        return new TextDecoder('windows-31j').decode(buf);
+      } catch {
+        return buf.toString('utf8');
+      }
+    }
+  }
+}
+
 // キャッシュ競合回避: 専用 userData を設定（Windows の "Unable to move the cache" エラー対策）
 // 開発時はプロジェクト直下に置き、Cursor 等の他 Electron プロセスとの競合を避ける
 if (app.isPackaged) {
@@ -28,22 +54,96 @@ if (!gotLock) {
   });
 }
 
-// アプリルート: 開発時は launcher の親、本番は exe のディレクトリ or cwd（run-launcher.bat 等で設定）
-function getAppRoot() {
+const LAUNCHER_SETTINGS_BASENAME = 'launcher-settings.json';
+
+function getLauncherSettingsPath() {
+  return path.join(app.getPath('userData'), LAUNCHER_SETTINGS_BASENAME);
+}
+
+/** ZIP 展開など「一式」がそろっているか（Windows / 共通の判定） */
+function hasProjectRoot(dir) {
+  if (!dir || typeof dir !== 'string') return false;
+  const runWin = path.join(dir, 'scripts', 'win', 'run.ps1');
+  const runSh = path.join(dir, 'scripts', 'start', 'tailscale.sh');
+  const nextPkg = path.join(dir, 'nextjs-web', 'package.json');
+  return fs.existsSync(nextPkg) && (fs.existsSync(runWin) || fs.existsSync(runSh));
+}
+
+function readLauncherSettings() {
+  try {
+    const p = getLauncherSettingsPath();
+    if (!fs.existsSync(p)) return {};
+    return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch (_) {
+    return {};
+  }
+}
+
+/** ユーザーが設定したパス（無効でもファイル上は返す用途は getLauncherConfig で別処理） */
+function readSavedProjectRootRaw() {
+  const j = readLauncherSettings();
+  const r = j.projectRoot;
+  if (typeof r === 'string' && r.trim()) {
+    return path.normalize(path.resolve(r.trim()));
+  }
+  return null;
+}
+
+function writeSavedProjectRoot(absPathOrNull) {
+  const p = getLauncherSettingsPath();
+  let data = readLauncherSettings();
+  if (absPathOrNull === null || absPathOrNull === '') {
+    delete data.projectRoot;
+  } else {
+    data.projectRoot = absPathOrNull;
+  }
+  fs.writeFileSync(p, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
+}
+
+// アプリルート: 1) GACHABOARD_ROOT 2) 設定ファイル（有効なパスだけ）3) 本番は exe 所在（一式は無い前提）4) 開発は launcher の親
+function computeAppRoot() {
   if (process.env.GACHABOARD_ROOT) {
-    return process.env.GACHABOARD_ROOT;
+    return path.normalize(path.resolve(process.env.GACHABOARD_ROOT));
+  }
+  const saved = readSavedProjectRootRaw();
+  if (saved && hasProjectRoot(saved)) {
+    return saved;
   }
   if (app.isPackaged) {
-    const exeDir = path.dirname(app.getPath('exe'));
-    const cwd = process.cwd();
-    const hasProject = (dir) =>
-      fs.existsSync(path.join(dir, 'scripts', 'win', 'run.ps1')) ||
-      fs.existsSync(path.join(dir, 'nextjs-web', 'package.json'));
-    if (hasProject(exeDir)) return exeDir;
-    if (hasProject(cwd)) return cwd;
-    return exeDir;
+    // ユーザ向けに exe/cwd からプロジェクトを自動推測しない（安心してそのまま起動、を防ぐ）
+    return path.dirname(app.getPath('exe'));
   }
   return path.resolve(__dirname, '../../..');
+}
+
+function getLauncherConfigPayload() {
+  const rawSaved = readSavedProjectRootRaw();
+  const savedInvalid = !!(rawSaved && !hasProjectRoot(rawSaved));
+  return {
+    savedProjectRoot: rawSaved,
+    effectiveAppRoot: appRoot,
+    usesEnvOverride: !!process.env.GACHABOARD_ROOT,
+    projectLayoutValid: hasProjectRoot(appRoot),
+    savedPathInvalid: savedInvalid,
+  };
+}
+
+function notifyAppRootToRenderer() {
+  if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.webContents || mainWindow.webContents.isDestroyed()) {
+    return;
+  }
+  const iconPath = path.join(appRoot, 'nextjs-web', 'public', 'icon.svg');
+  const iconUrl = fs.existsSync(iconPath) ? pathToFileURL(iconPath).href : '';
+  mainWindow.webContents.send('app-root', appRoot);
+  mainWindow.webContents.send('icon-url', iconUrl);
+  const configured = isEnvConfigured();
+  if (configured) ensureFfmpegEnvDefaults();
+  mainWindow.webContents.send('env-configured', configured);
+}
+
+function refreshAppRootFromDisk() {
+  appRoot = computeAppRoot();
+  notifyAppRootToRenderer();
 }
 
 let mainWindow = null;
@@ -149,6 +249,31 @@ function isEnvConfigured() {
   return hasClientId && hasClientSecret && hasAuthSecret;
 }
 
+/** .env.local に FFMPEG 行が無い既存環境へ既定（gpu / medium）を追記する */
+function ensureFfmpegEnvDefaults() {
+  const envPath = path.join(appRoot, 'nextjs-web', '.env.local');
+  if (!fs.existsSync(envPath)) return;
+  let content = fs.readFileSync(envPath, 'utf8');
+  let changed = false;
+  if (!/^FFMPEG_VIDEO_BACKEND=/m.test(content)) {
+    content = `${content.replace(/\s*$/, '')}\nFFMPEG_VIDEO_BACKEND=gpu\n`;
+    changed = true;
+  }
+  if (!/^FFMPEG_RESOURCE_INTENSITY=/m.test(content)) {
+    content = `${content.replace(/\s*$/, '')}\nFFMPEG_RESOURCE_INTENSITY=medium\n`;
+    changed = true;
+  }
+  if (!/^FFMPEG_OUTPUT_PRESET=/m.test(content)) {
+    content = `${content.replace(/\s*$/, '')}\nFFMPEG_OUTPUT_PRESET=medium\n`;
+    changed = true;
+  }
+  if (!/^FFMPEG_OS_PRIORITY=/m.test(content)) {
+    content = `${content.replace(/\s*$/, '')}\nFFMPEG_OS_PRIORITY=auto\n`;
+    changed = true;
+  }
+  if (changed) fs.writeFileSync(envPath, content, 'utf8');
+}
+
 // ウィザード用: .env.local を生成
 ipcMain.handle('save-env', async (_, { discordClientId, discordClientSecret, serverOwnerDiscordId }) => {
   const envLocalPath = path.join(appRoot, 'nextjs-web', '.env.local');
@@ -210,6 +335,22 @@ SYNC_SERVER_INTERNAL_URL=http://127.0.0.1:18582
   if (!seen.has('HOST_BIND')) {
     out.push('HOST_BIND=0.0.0.0');
   }
+  let text = out.join('\n');
+  if (!/^FFMPEG_VIDEO_BACKEND=/m.test(text)) {
+    out.push('FFMPEG_VIDEO_BACKEND=gpu');
+    text = out.join('\n');
+  }
+  if (!/^FFMPEG_RESOURCE_INTENSITY=/m.test(text)) {
+    out.push('FFMPEG_RESOURCE_INTENSITY=medium');
+    text = out.join('\n');
+  }
+  if (!/^FFMPEG_OUTPUT_PRESET=/m.test(text)) {
+    out.push('FFMPEG_OUTPUT_PRESET=medium');
+    text = out.join('\n');
+  }
+  if (!/^FFMPEG_OS_PRIORITY=/m.test(text)) {
+    out.push('FFMPEG_OS_PRIORITY=auto');
+  }
   const dir = path.dirname(envLocalPath);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(envLocalPath, out.join('\n'), 'utf8');
@@ -222,10 +363,57 @@ ipcMain.handle('check-env', async () => {
 
 ipcMain.handle('get-app-root', async () => appRoot);
 
+ipcMain.handle('get-launcher-config', async () => getLauncherConfigPayload());
+
+ipcMain.handle('set-saved-project-root', async (_, dir) => {
+  if (process.env.GACHABOARD_ROOT) {
+    return {
+      ok: false,
+      error: '環境変数 GACHABOARD_ROOT が設定されているため、ここでの変更は反映されません。環境変数を解除するか、その値を変更してください。',
+    };
+  }
+  if (dir === null || dir === undefined || dir === '') {
+    writeSavedProjectRoot(null);
+    refreshAppRootFromDisk();
+    return { ok: true, ...getLauncherConfigPayload() };
+  }
+  const abs = path.normalize(path.resolve(String(dir)));
+  if (!hasProjectRoot(abs)) {
+    return {
+      ok: false,
+      error:
+        'そのフォルダに Gachaboard の一式が見つかりません。nextjs-web と scripts（例: scripts\\win\\run.ps1）があるフォルダを選んでください。',
+    };
+  }
+  writeSavedProjectRoot(abs);
+  refreshAppRootFromDisk();
+  return { ok: true, ...getLauncherConfigPayload() };
+});
+
+ipcMain.handle('pick-project-root-folder', async () => {
+  if (!mainWindow) return { canceled: true };
+  const r = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
+    title: 'Gachaboard のプロジェクトフォルダを選択',
+  });
+  if (r.canceled || !r.filePaths?.length) return { canceled: true };
+  return { canceled: false, path: r.filePaths[0] };
+});
+
 // 設定モーダル用: .env.local から Discord 関連を読み取り
 ipcMain.handle('get-env', async () => {
   const envPath = path.join(appRoot, 'nextjs-web', '.env.local');
-  if (!fs.existsSync(envPath)) return { discordClientId: '', discordClientSecret: '', serverOwnerDiscordId: '' };
+  if (!fs.existsSync(envPath)) {
+    return {
+      discordClientId: '',
+      discordClientSecret: '',
+      serverOwnerDiscordId: '',
+      ffmpegVideoBackend: '',
+      ffmpegResourceIntensity: '',
+      ffmpegOutputPreset: '',
+      ffmpegOsPriority: '',
+    };
+  }
   const content = fs.readFileSync(envPath, 'utf8');
   const get = (key) => {
     const m = content.match(new RegExp(`^${key}=(.+)$`, 'm'));
@@ -235,15 +423,40 @@ ipcMain.handle('get-env', async () => {
     discordClientId: get('DISCORD_CLIENT_ID'),
     discordClientSecret: get('DISCORD_CLIENT_SECRET'),
     serverOwnerDiscordId: get('SERVER_OWNER_DISCORD_ID'),
+    ffmpegVideoBackend: get('FFMPEG_VIDEO_BACKEND'),
+    ffmpegResourceIntensity: get('FFMPEG_RESOURCE_INTENSITY'),
+    ffmpegOutputPreset: get('FFMPEG_OUTPUT_PRESET'),
+    ffmpegOsPriority: get('FFMPEG_OS_PRIORITY'),
   };
 });
 
 // 設定モーダル用: Discord 関連のみ更新（NEXTAUTH_SECRET は維持）
-ipcMain.handle('update-env', async (_, { discordClientId, discordClientSecret, serverOwnerDiscordId }) => {
+ipcMain.handle(
+  'update-env',
+  async (
+    _,
+    {
+      discordClientId,
+      discordClientSecret,
+      serverOwnerDiscordId,
+      ffmpegVideoBackend = '',
+      ffmpegResourceIntensity = '',
+      ffmpegOutputPreset = '',
+      ffmpegOsPriority = '',
+    }
+  ) => {
   const envPath = path.join(appRoot, 'nextjs-web', '.env.local');
   if (!fs.existsSync(envPath)) {
     return { ok: false, error: '.env.local がありません。初回ウィザードを完了してください。' };
   }
+  const vbRaw = typeof ffmpegVideoBackend === 'string' ? ffmpegVideoBackend.trim().toLowerCase() : '';
+  const riRaw = typeof ffmpegResourceIntensity === 'string' ? ffmpegResourceIntensity.trim().toLowerCase() : '';
+  const vb = vbRaw === 'cpu' ? 'cpu' : 'gpu';
+  const ri = ['light', 'medium', 'heavy'].includes(riRaw) ? riRaw : 'medium';
+  const opRaw = typeof ffmpegOutputPreset === 'string' ? ffmpegOutputPreset.trim().toLowerCase() : '';
+  const op = ['light', 'medium', 'heavy'].includes(opRaw) ? opRaw : 'medium';
+  const osRaw = typeof ffmpegOsPriority === 'string' ? ffmpegOsPriority.trim().toLowerCase() : '';
+  const osPr = ['low', 'normal', 'auto'].includes(osRaw) ? osRaw : 'auto';
   const lines = fs.readFileSync(envPath, 'utf8').split('\n');
   const out = [];
   const seen = new Set();
@@ -263,11 +476,35 @@ ipcMain.handle('update-env', async (_, { discordClientId, discordClientSecret, s
       seen.add('SERVER_OWNER_DISCORD_ID');
       continue;
     }
+    if (line.startsWith('FFMPEG_VIDEO_BACKEND=')) {
+      out.push(`FFMPEG_VIDEO_BACKEND=${vb}`);
+      seen.add('FFMPEG_VIDEO_BACKEND');
+      continue;
+    }
+    if (line.startsWith('FFMPEG_RESOURCE_INTENSITY=')) {
+      out.push(`FFMPEG_RESOURCE_INTENSITY=${ri}`);
+      seen.add('FFMPEG_RESOURCE_INTENSITY');
+      continue;
+    }
+    if (line.startsWith('FFMPEG_OUTPUT_PRESET=')) {
+      out.push(`FFMPEG_OUTPUT_PRESET=${op}`);
+      seen.add('FFMPEG_OUTPUT_PRESET');
+      continue;
+    }
+    if (line.startsWith('FFMPEG_OS_PRIORITY=')) {
+      out.push(`FFMPEG_OS_PRIORITY=${osPr}`);
+      seen.add('FFMPEG_OS_PRIORITY');
+      continue;
+    }
     out.push(line);
   }
   if (!seen.has('DISCORD_CLIENT_ID')) out.push(`DISCORD_CLIENT_ID=${discordClientId || ''}`);
   if (!seen.has('DISCORD_CLIENT_SECRET')) out.push(`DISCORD_CLIENT_SECRET=${discordClientSecret || ''}`);
   if (!seen.has('SERVER_OWNER_DISCORD_ID')) out.push(`SERVER_OWNER_DISCORD_ID=${serverOwnerDiscordId || ''}`);
+  if (!seen.has('FFMPEG_VIDEO_BACKEND')) out.push(`FFMPEG_VIDEO_BACKEND=${vb}`);
+  if (!seen.has('FFMPEG_RESOURCE_INTENSITY')) out.push(`FFMPEG_RESOURCE_INTENSITY=${ri}`);
+  if (!seen.has('FFMPEG_OUTPUT_PRESET')) out.push(`FFMPEG_OUTPUT_PRESET=${op}`);
+  if (!seen.has('FFMPEG_OS_PRIORITY')) out.push(`FFMPEG_OS_PRIORITY=${osPr}`);
   fs.writeFileSync(envPath, out.join('\n'), 'utf8');
   return { ok: true };
 });
@@ -289,6 +526,13 @@ ipcMain.handle('get-oauth-redirect-urls', async () => {
 // サーバ起動
 ipcMain.handle('start-server', async () => {
   if (serverProcess) return { ok: false, error: 'Already running' };
+  if (!hasProjectRoot(appRoot)) {
+    return {
+      ok: false,
+      error:
+        'Gachaboard のプロジェクトフォルダが見つかりません。設定（歯車）から、ZIP で展開したフォルダ（一式がある場所）を指定してください。',
+    };
+  }
   const isWin = process.platform === 'win32';
   const script = isWin
     ? 'powershell'
@@ -308,10 +552,10 @@ ipcMain.handle('start-server', async () => {
     }
   };
   serverProcess.stdout?.on('data', (chunk) => {
-    safeSend('server-log', chunk.toString());
+    safeSend('server-log', decodeChildLogChunk(chunk));
   });
   serverProcess.stderr?.on('data', (chunk) => {
-    safeSend('server-log', chunk.toString());
+    safeSend('server-log', decodeChildLogChunk(chunk));
   });
   serverProcess.on('exit', (code) => {
     serverProcess = null;
@@ -453,7 +697,7 @@ ipcMain.handle('wait-for-ready', async () => {
 });
 
 app.whenReady().then(() => {
-  appRoot = getAppRoot();
+  appRoot = computeAppRoot();
   createTray();
   createWindow();
   mainWindow.webContents.on('did-finish-load', () => {
@@ -461,7 +705,9 @@ app.whenReady().then(() => {
     const iconUrl = fs.existsSync(iconPath) ? pathToFileURL(iconPath).href : '';
     mainWindow.webContents.send('app-root', appRoot);
     mainWindow.webContents.send('icon-url', iconUrl);
-    mainWindow.webContents.send('env-configured', isEnvConfigured());
+    const configured = isEnvConfigured();
+    if (configured) ensureFfmpegEnvDefaults();
+    mainWindow.webContents.send('env-configured', configured);
   });
 });
 

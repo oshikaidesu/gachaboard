@@ -206,29 +206,6 @@ button[data-testid="rich-text.link"] {
   z-index: 200;
 }
 
-/*
- * 矢印の曲げハンドル: compound の二重円は半径差でホバーを出す設計のため、同一 r では表示とフィードバックが崩れる。
- * 1 円にする。pointer は HandleWrapper の親 g（compound 既定）で受ける。
- */
-.tl-arrow-bend-handle__disk {
-  fill: var(--color-background);
-  stroke: var(--color-selection-stroke);
-  stroke-width: calc(1.5px * var(--tl-scale));
-  pointer-events: all;
-  cursor: var(--tl-cursor-grab, grab);
-}
-.tl-arrow-bend-handle__disk:hover {
-  fill: var(--color-selection-fill);
-}
-.tl-arrow-bend-handle__disk:active {
-  cursor: var(--tl-cursor-grabbing, grabbing);
-}
-@media (pointer: coarse) {
-  .tl-arrow-bend-handle__disk:active {
-    fill: var(--color-selection-fill);
-  }
-}
-
 /* 回転ハンドルを非表示 */
 .tl-rotate-corner,
 .tl-mobile-rotate__bg,

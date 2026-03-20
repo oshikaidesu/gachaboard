@@ -10,11 +10,12 @@ type Props = ComponentProps<typeof DefaultHandle> & {
 };
 
 /**
- * 画面上の一定半径（調整可）。シェイプ→ページスケール × zoom でローカル r に換算。
- * pointer は Canvas の HandleWrapper が付与する親 g に載る（compound 既定と同じ）。
+ * 外側は掴みやすさ用の大きい透明円、内側は始点・終点に合わせた見た目用の小さい円。
+ * 両方ともシェイプ→ページスケール × zoom でローカル r に換算する。
  */
 const BEND_HANDLE_RADIUS_SCREEN_PX = { coarse: 20, fine: 12 } as const;
 const BEND_HANDLE_MIN_RADIUS_SCREEN_PX = 8;
+const BEND_HANDLE_VISIBLE_RADIUS_SCREEN_PX = 4;
 
 function shapeLocalRadiusFromFixedScreenRadius(
   radiusScreenPx: number,
@@ -26,7 +27,7 @@ function shapeLocalRadiusFromFixedScreenRadius(
 }
 
 /**
- * 矢印の曲げ（middle）。1 円＋globals の .tl-arrow-bend-handle__disk。
+ * 矢印の曲げ（middle）。当たりは大きいまま、見た目だけ始点・終点サイズに寄せる。
  */
 export function ArrowBendFriendlyHandle(props: Props) {
   const editor = useEditor();
@@ -49,7 +50,12 @@ export function ArrowBendFriendlyHandle(props: Props) {
     shapeToPageScale,
     zoom
   );
-  const r = Math.max(rDesired, rFloor);
+  const bgR = Math.max(rDesired, rFloor);
+  const fgR = shapeLocalRadiusFromFixedScreenRadius(
+    BEND_HANDLE_VISIBLE_RADIUS_SCREEN_PX,
+    shapeToPageScale,
+    zoom
+  );
 
   return (
     <g
@@ -63,7 +69,8 @@ export function ArrowBendFriendlyHandle(props: Props) {
         className
       )}
     >
-      <circle className="tl-arrow-bend-handle__disk" r={r} />
+      <circle className="tl-handle__bg" r={bgR} />
+      <circle className="tl-handle__fg" r={fgR} />
     </g>
   );
 }

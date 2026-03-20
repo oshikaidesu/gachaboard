@@ -296,7 +296,6 @@ export class WrappedTextShapeUtil extends TextShapeUtil {
 
 const GEO_DEFAULT_WIDTH = 200;
 const GEO_DEFAULT_HEIGHT = 120;
-const GEO_MIN_SIZE = 80;
 const GEO_MAX_WIDTH = GEO_DEFAULT_WIDTH * 4;
 const GEO_MAX_HEIGHT = GEO_DEFAULT_HEIGHT * 4;
 
@@ -326,8 +325,6 @@ export class WrappedGeoShapeUtil extends GeoShapeUtil {
       props: { ...shape.props, h: effectiveH },
     };
     const result = resizeBox(shapeWithEffectiveH, info, {
-      minWidth: GEO_MIN_SIZE,
-      minHeight: GEO_MIN_SIZE,
       maxWidth: GEO_MAX_WIDTH,
       maxHeight: GEO_MAX_HEIGHT,
     });

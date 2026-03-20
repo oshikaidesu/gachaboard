@@ -58,7 +58,7 @@ api.onIconUrl((url) => {
     if (runningIcon) { runningIcon.src = url; runningIcon.style.display = 'block'; }
   }
 });
-api.onEnvConfigured((configured) => {
+api.onEnvConfigured(async (configured) => {
   initOverlayImages();
   if (configured) {
     showScreen('running');
@@ -66,6 +66,7 @@ api.onEnvConfigured((configured) => {
     api.setOverlayStatus('idle');
   } else {
     showScreen('wizard');
+    await refreshProjectPathUi('wizard-');
   }
 });
 
@@ -81,6 +82,13 @@ api.onServerExit((code) => {
 });
 
 wizardSubmit.addEventListener('click', async () => {
+  const layout = await api.getLauncherConfig();
+  if (!layout.projectLayoutValid) {
+    alert(
+      'Gachaboard のプロジェクトフォルダが指定されていないか、一式が見つかりません。\n\nこの画面の「Gachaboard フォルダパス」で ZIP 等で展開したフォルダを指定してから「はじめる」を押してください。',
+    );
+    return;
+  }
   const clientId = clientIdInput.value.trim();
   const clientSecret = clientSecretInput.value.trim();
   const ownerId = ownerIdInput.value.trim();
@@ -112,7 +120,9 @@ function showIdleState() {
   stopServerBtn.style.display = 'none';
   logArea.textContent = '';
   const hint = document.getElementById('tailscale-hint');
-  if (hint) hint.textContent = '外部から参加してもらう場合は、Tailscaleをインストールし、起動後に表示されるURLを共有してください。';
+  if (hint) {
+    hint.textContent = '外部から参加してもらう場合は、Tailscaleをインストールし、起動後に表示されるURLを共有してください。';
+  }
 }
 
 function showRunningState(url) {
@@ -126,10 +136,19 @@ function showRunningState(url) {
   openBrowserBtn.style.display = 'inline-block';
   stopServerBtn.style.display = 'inline-block';
   const hint = document.getElementById('tailscale-hint');
-  if (hint) hint.textContent = '外部から参加してもらう場合は、Tailscaleをインストールし、以下のURLを共有してください。';
+  if (hint) {
+    hint.textContent = '外部から参加してもらう場合は、Tailscaleをインストールし、以下のURLを共有してください。';
+  }
 }
 
 async function startServerFlow() {
+  const layout = await api.getLauncherConfig();
+  if (!layout.projectLayoutValid) {
+    alert(
+      'Gachaboard のプロジェクトフォルダが指定されていないか、一式が見つかりません。\n\n設定（歯車アイコン）を開き、「Gachaboard フォルダパス」から ZIP 等で展開したフォルダを指定してください。',
+    );
+    return;
+  }
   statusText.textContent = 'サーバを起動しています...';
   statusText.classList.remove('stopped');
   startServerBtn.disabled = true;
@@ -137,7 +156,7 @@ async function startServerFlow() {
   const result = await api.startServer();
   if (!result.ok) {
     api.setOverlayStatus('error');
-    statusText.textContent = '起動に失敗しました';
+    statusText.textContent = result.error || '起動に失敗しました';
     statusText.classList.add('stopped');
     startServerBtn.disabled = false;
     return;
@@ -149,14 +168,82 @@ async function startServerFlow() {
   startServerBtn.disabled = false;
 }
 
+function setRadioGroupValue(name, value) {
+  document.querySelectorAll(`input[type="radio"][name="${name}"]`).forEach((el) => {
+    el.checked = el.value === value;
+  });
+}
+
+function getRadioGroupValue(name, fallback) {
+  const el = document.querySelector(`input[type="radio"][name="${name}"]:checked`);
+  return el && el.value ? el.value : fallback;
+}
+
+async function refreshProjectPathUi(prefix) {
+  const cfg = await api.getLauncherConfig();
+  const input = document.getElementById(`${prefix}project-root`);
+  const envNote = document.getElementById(`${prefix}env-override-note`);
+  const invalid = document.getElementById(`${prefix}root-invalid`);
+  const pickBtn = document.getElementById(`${prefix}project-root-pick`);
+  // 未設定・無効時は exe パスなどを出さない（自動で合ってるように見せない）
+  if (input) input.value = cfg.projectLayoutValid ? cfg.effectiveAppRoot || '' : '';
+  if (cfg.usesEnvOverride) {
+    if (envNote) {
+      envNote.style.display = 'block';
+      envNote.textContent =
+        '環境変数 GACHABOARD_ROOT が優先されています。この画面でのフォルダ指定は反映されません。';
+    }
+    if (pickBtn) pickBtn.disabled = true;
+  } else {
+    if (envNote) envNote.style.display = 'none';
+    if (pickBtn) pickBtn.disabled = false;
+  }
+  if (cfg.savedPathInvalid) {
+    if (invalid) {
+      invalid.style.display = 'block';
+      invalid.textContent =
+        '保存したフォルダが見つからないか、一式が揃っていません。フォルダを移動した場合は「フォルダを選択」し直してください。';
+    }
+  } else if (invalid) {
+    invalid.style.display = 'none';
+  }
+}
+
+async function refreshAllProjectPathUis() {
+  await refreshProjectPathUi('settings-');
+  await refreshProjectPathUi('wizard-');
+}
+
 async function openSettingsModal() {
   document.getElementById('help-modal').classList.add('open');
+  await refreshAllProjectPathUis();
   try {
     const env = await api.getEnv();
     document.getElementById('settings-client-id').value = env.discordClientId || '';
     document.getElementById('settings-client-secret').value = env.discordClientSecret || '';
     document.getElementById('settings-owner-id').value = env.serverOwnerDiscordId || '';
+    
+    // FFmpeg Backend
+    const vBackend = (env.ffmpegVideoBackend || '').trim().toLowerCase();
+    document.getElementById('settings-ffmpeg-backend').value = 
+      vBackend === 'cpu' || vBackend === 'gpu' ? vBackend : 'gpu';
+    
+    // FFmpeg Intensity
+    const vIntensity = (env.ffmpegResourceIntensity || '').trim().toLowerCase();
+    document.getElementById('settings-ffmpeg-intensity').value = 
+      vIntensity === 'light' || vIntensity === 'medium' || vIntensity === 'heavy' ? vIntensity : 'medium';
+    
+    // OS Priority
+    const vOs = (env.ffmpegOsPriority || '').trim().toLowerCase();
+    setRadioGroupValue('ffmpeg-os-priority', vOs === 'low' || vOs === 'normal' || vOs === 'auto' ? vOs : 'auto');
+    
+    // Output Preset
+    const vOut = (env.ffmpegOutputPreset || '').trim().toLowerCase();
+    document.getElementById('settings-ffmpeg-output').value = 
+      vOut === 'light' || vOut === 'medium' || vOut === 'heavy' ? vOut : 'medium';
+      
   } catch (_) {}
+  
   try {
     const urls = await api.getOAuthRedirectUrls();
     document.getElementById('oauth-localhost-url').textContent = urls.localhost;
@@ -165,15 +252,41 @@ async function openSettingsModal() {
     if (urls.tailscale) {
       document.getElementById('oauth-tailscale-url').textContent = urls.tailscale;
       tailscaleRow.style.display = 'flex';
-      tailscaleHint.style.display = 'none';
+      if (tailscaleHint) tailscaleHint.style.display = 'none';
     } else {
       tailscaleRow.style.display = 'none';
-      tailscaleHint.style.display = 'block';
+      if (tailscaleHint) tailscaleHint.style.display = 'block';
     }
   } catch (_) {}
 }
 
 document.getElementById('gear-btn').addEventListener('click', openSettingsModal);
+
+async function handleProjectPathPick(prefix) {
+  const pickBtn = document.getElementById(`${prefix}project-root-pick`);
+  if (!pickBtn) return;
+  try {
+    pickBtn.disabled = true;
+    const picked = await api.pickProjectRootFolder();
+    if (picked.canceled) return;
+    const result = await api.setSavedProjectRoot(picked.path);
+    if (!result.ok) {
+      alert(result.error || 'フォルダの保存に失敗しました');
+      return;
+    }
+    await refreshAllProjectPathUis();
+    initOverlayImages();
+    api.setOverlayStatus('idle');
+  } catch (e) {
+    alert('フォルダの選択に失敗しました: ' + e.message);
+  } finally {
+    const cfg = await api.getLauncherConfig();
+    pickBtn.disabled = cfg.usesEnvOverride;
+  }
+}
+
+document.getElementById('settings-project-root-pick')?.addEventListener('click', () => handleProjectPathPick('settings-'));
+document.getElementById('wizard-project-root-pick')?.addEventListener('click', () => handleProjectPathPick('wizard-'));
 document.getElementById('help-modal-close').addEventListener('click', () => {
   document.getElementById('help-modal').classList.remove('open');
 });
@@ -199,17 +312,34 @@ document.getElementById('settings-save-btn').addEventListener('click', async () 
   const clientId = document.getElementById('settings-client-id').value.trim();
   const clientSecret = document.getElementById('settings-client-secret').value.trim();
   const ownerId = document.getElementById('settings-owner-id').value.trim();
+  const ffmpegVideoBackend = document.getElementById('settings-ffmpeg-backend').value;
+  const ffmpegResourceIntensity = document.getElementById('settings-ffmpeg-intensity').value;
+  const ffmpegOsPriority = getRadioGroupValue('ffmpeg-os-priority', 'auto');
+  const ffmpegOutputPreset = document.getElementById('settings-ffmpeg-output').value;
+  
   if (!clientId || !clientSecret) {
     alert('Discord Client ID と Client Secret を入力してください。');
     return;
   }
+  
   const btn = document.getElementById('settings-save-btn');
   btn.disabled = true;
   try {
-    const result = await api.updateEnv({ discordClientId: clientId, discordClientSecret: clientSecret, serverOwnerDiscordId: ownerId });
+    const result = await api.updateEnv({
+      discordClientId: clientId,
+      discordClientSecret: clientSecret,
+      serverOwnerDiscordId: ownerId,
+      ffmpegVideoBackend,
+      ffmpegResourceIntensity,
+      ffmpegOsPriority,
+      ffmpegOutputPreset,
+    });
     if (result.ok) {
       btn.textContent = '保存しました';
-      setTimeout(() => { btn.textContent = '保存'; }, 1500);
+      setTimeout(() => { btn.textContent = '設定を保存する'; }, 1500);
+      if (isServerRunning) {
+        alert('保存しました。メイン画面の「再起動」で反映されます。');
+      }
     } else {
       alert(result.error || '保存に失敗しました');
     }
@@ -219,6 +349,7 @@ document.getElementById('settings-save-btn').addEventListener('click', async () 
     btn.disabled = false;
   }
 });
+
 startServerBtn.addEventListener('click', async () => {
   if (isServerRunning) {
     window.isRestarting = true;
@@ -232,7 +363,7 @@ startServerBtn.addEventListener('click', async () => {
       const result = await api.startServer();
       if (!result.ok) {
         api.setOverlayStatus('error');
-        statusText.textContent = '再起動に失敗しました';
+        statusText.textContent = result.error || '再起動に失敗しました';
         statusText.classList.add('stopped');
         return;
       }
@@ -252,6 +383,7 @@ startServerBtn.addEventListener('click', async () => {
     startServerFlow();
   }
 });
+
 openBrowserBtn.addEventListener('click', () => api.openBrowser());
 stopServerBtn.addEventListener('click', async () => {
   window.isIntentionalStop = true;

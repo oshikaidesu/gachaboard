@@ -46,6 +46,32 @@ export const env = createEnv({
     SYNC_SERVER_URL: z.string().default("http://sync-server:5858"),
     SERVER_OWNER_DISCORD_ID: z.string().default(""),
     E2E_TEST_MODE: boolSchema.default(false),
+    /** 動画エンコード: cpu=常に libx264, gpu=HW 利用可なら利用 */
+    FFMPEG_VIDEO_BACKEND: z.enum(["cpu", "gpu"]).optional(),
+    /** CPU 並列の強さ: light|medium|heavy（主に ffmpeg -threads。変換品質・OS 優先度とは別） */
+    FFMPEG_RESOURCE_INTENSITY: z.enum(["light", "medium", "heavy"]).optional(),
+    /** プレビュー変換の品質・サイズ: light|medium|heavy（動画CRF/CQ・サムネ・MP3・波形） */
+    FFMPEG_OUTPUT_PRESET: z.enum(["light", "medium", "heavy"]).optional(),
+    /** ffmpeg のスレッド上限（正の整数）。未設定なら負荷段階で 2 / 4 / 無制限 */
+    FFMPEG_THREAD_LIMIT: z
+      .string()
+      .optional()
+      .transform((v) => {
+        if (v === undefined || v === "") return undefined;
+        const n = parseInt(v, 10);
+        return Number.isFinite(n) && n > 0 ? n : undefined;
+      }),
+    /**
+     * ffmpeg プロセスの OS 優先度。low=他アプリ優先（Unix: nice、Win: Idle 相当）。
+     * auto=CPU 並列「低い」のときだけ low（FFMPEG_RESOURCE_INTENSITY と連動）。
+     */
+    FFMPEG_OS_PRIORITY: z.enum(["low", "normal", "auto"]).optional(),
+    /** レガシー: gentle|balanced|speed（RESOURCE / OUTPUT 両方に相当する段階として解釈） */
+    FFMPEG_MEDIA_LOAD_PRESET: z.enum(["gentle", "balanced", "speed"]).optional(),
+    /** レガシー: 動画エンコーダ。libx264→cpu寄り、HW 名→gpu+そのエンコーダ優先 */
+    FFMPEG_MEDIA_ENCODER: z
+      .enum(["auto", "libx264", "h264_nvenc", "h264_qsv", "h264_amf", "h264_videotoolbox"])
+      .optional(),
     NODE_ENV: z
       .enum(["development", "production", "test"])
       .default("development"),
@@ -69,6 +95,13 @@ export const env = createEnv({
     SYNC_SERVER_URL: process.env.SYNC_SERVER_URL,
     SERVER_OWNER_DISCORD_ID: process.env.SERVER_OWNER_DISCORD_ID,
     E2E_TEST_MODE: process.env.E2E_TEST_MODE,
+    FFMPEG_VIDEO_BACKEND: process.env.FFMPEG_VIDEO_BACKEND?.trim() || undefined,
+    FFMPEG_RESOURCE_INTENSITY: process.env.FFMPEG_RESOURCE_INTENSITY?.trim() || undefined,
+    FFMPEG_OUTPUT_PRESET: process.env.FFMPEG_OUTPUT_PRESET?.trim() || undefined,
+    FFMPEG_THREAD_LIMIT: process.env.FFMPEG_THREAD_LIMIT,
+    FFMPEG_OS_PRIORITY: process.env.FFMPEG_OS_PRIORITY?.trim() || undefined,
+    FFMPEG_MEDIA_LOAD_PRESET: process.env.FFMPEG_MEDIA_LOAD_PRESET?.trim() || undefined,
+    FFMPEG_MEDIA_ENCODER: process.env.FFMPEG_MEDIA_ENCODER?.trim() || undefined,
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_SYNC_WS_URL: process.env.NEXT_PUBLIC_SYNC_WS_URL,
   },

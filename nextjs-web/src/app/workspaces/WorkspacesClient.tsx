@@ -12,9 +12,14 @@ import { WorkspacesHeader } from "./components/WorkspacesHeader";
 import { WorkspacesEmptyState } from "./components/WorkspacesEmptyState";
 import { WorkspaceCard } from "./components/WorkspaceCard";
 
-type Props = { currentUserId: string; e2eHeaders?: E2EHeaders | null };
+type Props = {
+  currentUserId: string;
+  e2eHeaders?: E2EHeaders | null;
+  /** E2E 以外でワークスペース画面を見ているとき true（動画設定リンク表示） */
+  showServerMediaLink?: boolean;
+};
 
-export default function WorkspacesClient({ currentUserId, e2eHeaders }: Props) {
+export default function WorkspacesClient({ currentUserId, e2eHeaders, showServerMediaLink }: Props) {
   const { workspaces, loading, load } = useWorkspaces(e2eHeaders);
   const [showForm, setShowForm] = useState(false);
   const [newName, setNewName] = useState("");
@@ -114,6 +119,7 @@ export default function WorkspacesClient({ currentUserId, e2eHeaders }: Props) {
         activeCount={active.length}
         trashedCount={trashed.length}
         onNewCreateClick={() => setShowForm(true)}
+        serverMediaHref={showServerMediaLink ? "/server/media-encoding" : undefined}
       />
 
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 p-8">

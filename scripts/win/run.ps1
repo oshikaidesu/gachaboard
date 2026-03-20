@@ -1,9 +1,12 @@
-﻿# Windows native startup (no WSL/Docker)
+# Windows native startup (no WSL/Docker)
 # 起動 = 再起動: 既に Next.js が動いている場合はアプリポートを解放してから起動する。
 # -Tailscale: Tailscale HTTPS 用に NEXTAUTH_URL を設定し、Tailscale Serve を有効化
 # -Dev: npm run dev で開発モード起動（ホットリロード）
 # -BuildOnly: ビルドまで実行して終了（アプリは起動しない）
 param([switch]$Tailscale, [switch]$Dev, [switch]$BuildOnly)
+
+# リダイレクト・パイプ時もコードページを UTF-8 に（日本語 Windows で子プロセス出力が化けにくくなる）
+$null = cmd /c "chcp 65001 >nul 2>&1"
 
 # UTF-8 でコンソール出力（文字化け防止）
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8

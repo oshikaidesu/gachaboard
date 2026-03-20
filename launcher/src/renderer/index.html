@@ -18,14 +18,15 @@
       align-items: center;
       text-align: center;
     }
-    h1 { font-size: 1.25rem; margin: 0 0 4px; font-weight: 600; text-align: center; }
-    .tagline { color: #78716c; font-size: 0.75rem; text-align: center; margin: 0 0 12px; line-height: 1.4; }
+    h1 { font-size: 1.25rem; margin: 0 0 4px; font-weight: 600; }
+    .tagline { color: #78716c; font-size: 0.75rem; margin: 0 0 12px; line-height: 1.4; }
     .screen-icon { display: block; margin: 0 auto 12px; }
     .sub { color: #78716c; font-size: 0.875rem; margin-bottom: 20px; }
     .screen { display: none; max-width: 420px; margin: 0 auto; text-align: left; }
     .screen.active { display: block; }
-    label { display: block; margin: 12px 0 4px; font-size: 0.875rem; }
-    input {
+    .screen label { display: block; margin: 12px 0 4px; font-size: 0.875rem; }
+    .screen input,
+    .screen select {
       width: 100%;
       padding: 8px 10px;
       border: 1px solid #d6d3d1;
@@ -34,65 +35,11 @@
       color: #44403c;
       font-size: 0.9rem;
     }
-    input:focus { outline: none; border-color: #FEA013; }
-    button {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 4px;
-      font-size: 0.9rem;
-      cursor: pointer;
-      margin-top: 12px;
-    }
-    .btn-primary {
-      background: #FEA013;
-      color: #44403c;
-    }
-    .btn-primary:hover { background: #e89110; }
-    .btn-secondary {
-      background: #e7e5e4;
-      color: #44403c;
-      margin-left: 8px;
-    }
-    .btn-secondary:hover { background: #d6d3d1; }
-    a { color: #FEA013; }
-    .log {
-      background: #fff;
-      border: 1px solid #d6d3d1;
-      border-radius: 4px;
-      padding: 10px;
-      font-family: monospace;
-      font-size: 0.75rem;
-      max-height: 140px;
-      overflow-y: auto;
-      margin-top: 12px;
-      white-space: pre-wrap;
-      word-break: break-all;
-      color: #57534e;
-    }
-    .url-display {
-      background: #fff;
-      border: 1px solid #d6d3d1;
-      border-radius: 4px;
-      padding: 10px;
-      margin: 12px 0;
-      font-size: 0.9rem;
-      word-break: break-all;
-      color: #44403c;
-    }
-    .status { color: #16a34a; }
-    .status.stopped { color: #dc2626; }
-    .oauth-guide {
-      background: #fff;
-      border: 1px solid #d6d3d1;
-      border-radius: 4px;
-      padding: 12px 16px;
-      margin-bottom: 20px;
-      font-size: 0.875rem;
-    }
-    .oauth-guide ol { margin: 8px 0 0; padding-left: 20px; }
-    .oauth-guide li { margin: 4px 0; }
-    .oauth-guide ul { margin: 4px 0; padding-left: 20px; }
-    .oauth-guide code { background: #f5f5f4; padding: 2px 6px; border-radius: 2px; font-size: 0.8rem; }
+    .screen input[readonly] { background: #fafaf9; color: #57534e; cursor: default; }
+    .screen input:focus { outline: none; border-color: #FEA013; }
+    .screen button { margin-top: 12px; }
+    
+    /* Settings Modal */
     .gear-btn {
       position: fixed;
       top: 12px;
@@ -118,35 +65,143 @@
       z-index: 100;
       align-items: center;
       justify-content: center;
-      padding: 24px;
+      padding: 20px;
     }
     .help-modal.open { display: flex; }
     .help-modal-inner {
       background: #fff;
       border-radius: 8px;
-      max-width: 480px;
-      max-height: 85vh;
+      max-width: 500px;
+      width: 100%;
+      max-height: 90vh;
       overflow-y: auto;
       padding: 24px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.15);
       text-align: left;
     }
-    .help-modal h2 { font-size: 1.1rem; margin: 0 0 16px; }
-    .help-modal h3 { font-size: 0.95rem; margin: 16px 0 8px; }
-    .help-modal p, .help-modal ul { font-size: 0.875rem; margin: 0 0 8px; line-height: 1.5; }
-    .help-modal ul { padding-left: 20px; }
-    .help-modal code { background: #f5f5f4; padding: 2px 6px; border-radius: 2px; font-size: 0.8rem; }
-    .help-modal-close { margin-top: 16px; padding: 8px 16px; cursor: pointer; }
-    .help-modal label { display: block; margin: 8px 0 4px; font-size: 0.8rem; }
-    .help-modal input { width: 100%; padding: 6px 8px; font-size: 0.85rem; }
+    
+    .help-modal-inner h2 { font-size: 1.1rem; margin: 0 0 16px; font-weight: 600; border-bottom: 1px solid #e7e5e4; padding-bottom: 10px; }
+    .help-modal-inner h3 { font-size: 0.95rem; margin: 16px 0 8px; color: #1c1917; }
+    .help-modal-inner > p,
+    .help-modal-inner .info-card p { font-size: 0.875rem; line-height: 1.5; margin: 0 0 8px; color: #57534e; }
     .help-modal .copy-row { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
-    .help-modal .copy-row code { flex: 1; word-break: break-all; }
-    .help-modal .copy-btn { padding: 4px 10px; font-size: 0.8rem; margin: 0; }
-    .guide-box { background: #fff; border: 1px solid #d6d3d1; border-radius: 4px; padding: 12px 16px; margin-bottom: 16px; font-size: 0.875rem; }
-    .guide-box h4 { margin: 0 0 8px; font-size: 0.9rem; }
-    .guide-box ol, .guide-box ul { margin: 4px 0 0; padding-left: 20px; }
-    .guide-box li { margin: 2px 0; }
-    .guide-box code { background: #f5f5f4; padding: 2px 6px; border-radius: 2px; font-size: 0.8rem; }
+    .help-modal .copy-row code { flex: 1; word-break: break-all; background: #f5f5f4; padding: 2px 6px; border-radius: 2px; font-size: 0.8rem; }
+    .help-modal .copy-btn { margin: 0; }
+    
+    /* Modal forms */
+    .help-modal-inner .field-group { margin-bottom: 16px; }
+    .help-modal-inner .field-group label { display: block; margin-bottom: 6px; font-size: 0.8rem; font-weight: 600; color: #44403c; }
+    .help-modal-inner input,
+    .help-modal-inner select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d6d3d1;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      background: #fff;
+    }
+    .help-modal-inner input:focus,
+    .help-modal-inner select:focus { outline: none; border-color: #FEA013; }
+    .help-modal-inner input[readonly] { background: #fafaf9; color: #57534e; cursor: default; }
+    .path-row { display: flex; gap: 8px; align-items: stretch; margin-top: 6px; }
+    .path-row input { flex: 1; min-width: 0; }
+    .path-row button { margin-top: 0; flex-shrink: 0; white-space: nowrap; }
+    .field-hint { font-size: 0.8rem; color: #78716c; line-height: 1.45; margin: 6px 0 0; }
+    .field-warning { font-size: 0.8rem; color: #b45309; line-height: 1.45; margin: 8px 0 0; }
+    .env-override-note {
+      font-size: 0.8rem;
+      color: #57534e;
+      background: #fef3c7;
+      border: 1px solid #fcd34d;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      line-height: 1.45;
+    }
+    
+    /* Cards & Boxes */
+    .info-card {
+      background: #fafaf9;
+      border: 1px solid #e7e5e4;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+    .info-card p:last-child { margin-bottom: 0; }
+    
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: #FEA013;
+      color: #44403c;
+    }
+    .btn-primary:hover { background: #e89110; }
+    .help-modal-inner .btn-primary { color: #fff; width: 100%; margin-top: 10px; }
+    .btn-secondary {
+      background: #e7e5e4;
+      color: #44403c;
+      margin-left: 8px;
+      font-size: 0.8rem;
+      padding: 6px 12px;
+    }
+    .btn-secondary:hover { background: #d6d3d1; }
+    .btn-outline { background: transparent; border: 1px solid #d6d3d1; color: #78716c; margin-top: 20px; width: 100%; }
+    
+    /* Radio Groups */
+    .radio-group { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+    .radio-item { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+    .radio-item input { width: auto; margin-top: 3px; }
+    .radio-label { font-size: 0.85rem; color: #44403c; line-height: 1.4; }
+    .radio-desc { display: block; font-size: 0.75rem; color: #78716c; margin-top: 2px; }
+    
+    /* Utilities */
+    .copy-row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+    code { background: #f5f5f4; padding: 2px 6px; border-radius: 2px; font-size: 0.8rem; }
+    .recommended { color: #b45309; font-weight: 600; font-size: 0.75rem; margin-left: 4px; }
+    .log {
+      background: #fff;
+      border: 1px solid #d6d3d1;
+      border-radius: 4px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      max-height: 140px;
+      overflow-y: auto;
+      margin-top: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #57534e;
+    }
+    .status { color: #16a34a; }
+    .status.stopped { color: #dc2626; }
+    .url-display {
+      background: #fff;
+      border: 1px solid #d6d3d1;
+      border-radius: 4px;
+      padding: 10px;
+      margin: 12px 0;
+      font-size: 0.9rem;
+      word-break: break-all;
+      color: #44403c;
+    }
+    .oauth-guide {
+      background: #fff;
+      border: 1px solid #d6d3d1;
+      border-radius: 4px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      font-size: 0.875rem;
+    }
+    .oauth-guide ol { margin: 8px 0 0; padding-left: 20px; }
+    .oauth-guide li { margin: 4px 0; }
+    .oauth-guide ul { margin: 4px 0; padding-left: 20px; }
+    .oauth-guide code { background: #f5f5f4; padding: 2px 6px; border-radius: 2px; font-size: 0.8rem; }
+    a { color: #FEA013; }
   </style>
 </head>
 <body>
@@ -156,61 +211,130 @@
 
   <div id="help-modal" class="help-modal">
     <div class="help-modal-inner">
-      <h2>設定・取説</h2>
+      <h2>設定と使い方</h2>
 
-      <h3>Gachaboardとは</h3>
-      <div class="guide-box">
-        <p>自分のPCをサーバーにして動かすホワイトボードです。音楽・映像・デザインなど、あらゆるファイルを自由に貼り付けて共有できます。データはすべて自分のPC内に保存されます。</p>
-      </div>
+      <div id="settings-env-override-note" class="env-override-note" style="display:none"></div>
+      <div id="settings-root-invalid" class="field-warning" style="display:none"></div>
 
-      <h3>ログイン方法</h3>
-      <div class="guide-box">
-        <p>Discordアカウントを使用してログインします。初回のみ、Discordのデベロッパーポータルでアプリを作成し、以下のURLを「Redirects」に登録してください。</p>
-        <div id="oauth-localhost-row" class="copy-row" style="margin-top:6px">
-          <code id="oauth-localhost-url">http://localhost:18580/api/auth/callback/discord</code>
-          <button type="button" class="btn-secondary copy-btn" data-copy="oauth-localhost-url">コピー</button>
+      <h3>Gachaboard フォルダパス</h3>
+      <p class="field-hint" style="margin-top:0;margin-bottom:10px">EXE だけではサーバーは起動しません。ZIP などで展開した<strong>プロジェクト一式が入ったフォルダ</strong>を指定してから「サーバを起動」してください。ドライブやフォルダの<strong>位置を移動したあとも</strong>、ここで指定し直してください。</p>
+      <div class="field-group">
+        <label for="settings-project-root">現在のプロジェクトルート</label>
+        <div class="path-row">
+          <input type="text" id="settings-project-root" readonly placeholder="フォルダを選択してください">
+          <button type="button" class="btn-secondary" id="settings-project-root-pick">フォルダを選択</button>
         </div>
-        <div id="oauth-tailscale-row" class="copy-row" style="display:none">
-          <code id="oauth-tailscale-url"></code>
-          <button type="button" class="btn-secondary copy-btn" data-copy="oauth-tailscale-url">コピー</button>
+      </div>
+      
+      <div class="info-card">
+        <p>Gachaboardは、自分のPCをサーバーにして動かす共有ホワイトボードです。データはすべて自分のPC内に保存されます。</p>
+      </div>
+
+      <h3>1. ログインの準備</h3>
+      <p>Discordアカウントでログインするために、Discord側で「アプリ」を作成し、以下のURLを登録してください。</p>
+      <div class="copy-row">
+        <code id="oauth-localhost-url">http://localhost:18580/api/auth/callback/discord</code>
+        <button type="button" class="btn-secondary copy-btn" data-copy="oauth-localhost-url">コピー</button>
+      </div>
+      <div id="oauth-tailscale-row" class="copy-row" style="display:none">
+        <code id="oauth-tailscale-url"></code>
+        <button type="button" class="btn-secondary copy-btn" data-copy="oauth-tailscale-url">コピー</button>
+      </div>
+      <p id="oauth-tailscale-hint" style="display:none;font-size:0.8rem;color:#78716c;margin-top:4px">Tailscaleで起動すると表示されます</p>
+
+      <h3>2. 離れた人と一緒に使う（Tailscale）</h3>
+      <div class="info-card">
+        <p style="margin-bottom:8px">インターネット越しに参加してもらうときは、全員が <a href="https://tailscale.com/download" target="_blank">Tailscale</a> を入れて同じ仮想ネットに入ります。サーバーを立てたあと、メイン画面に出る<strong>共有用の URL</strong>（<code>https://…ts.net</code> など）を相手に渡してください。同じ Wi‑Fi だけなら、その URL の代わりに localhost の URL を共有しても構いません。</p>
+        <p style="margin:0;font-size:0.85rem;color:#57534e">※サーバー主は <a href="https://login.tailscale.com/admin/dns" target="_blank">Tailscale 管理画面</a> で「MagicDNS」と「HTTPS」を有効にしてください。Discord のリダイレクト用 URL も、上の「Tailscale 用」行が出たら同じ内容を Developer Portal に追加してください。</p>
+      </div>
+
+      <h3>3. 基本設定</h3>
+      <div class="field-group">
+        <label for="settings-client-id">Discord Client ID</label>
+        <input type="text" id="settings-client-id" placeholder="1234567890123456789">
+      </div>
+      <div class="field-group">
+        <label for="settings-client-secret">Discord Client Secret</label>
+        <input type="password" id="settings-client-secret" placeholder="abcdef123456...">
+      </div>
+      <div class="field-group">
+        <label for="settings-owner-id">オーナーのDiscord ID（任意）</label>
+        <input type="text" id="settings-owner-id" placeholder="空欄なら誰でも使えます">
+      </div>
+
+      <h3>4. 動作の調整</h3>
+      <p>動画や音声をアップロードした後の変換処理を調整します。</p>
+      
+      <div class="field-group">
+        <label>処理の方法</label>
+        <select id="settings-ffmpeg-backend">
+          <option value="gpu">CPU ＋ グラフィックボード（高速・推奨）</option>
+          <option value="cpu">CPU のみ</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label>PCへの負荷（CPU並列数）</label>
+        <select id="settings-ffmpeg-intensity">
+          <option value="light">ひかえめ（他の作業を優先）</option>
+          <option value="medium" selected>標準（推奨）</option>
+          <option value="heavy">全力（変換を最速にする）</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label>OSの優先順位</label>
+        <div class="radio-group" role="radiogroup">
+          <label class="radio-item">
+            <input type="radio" name="ffmpeg-os-priority" value="auto" checked>
+            <div class="radio-label">自動<span class="radio-desc">負荷が「ひかえめ」の時だけ優先度を下げます</span></div>
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="ffmpeg-os-priority" value="low">
+            <div class="radio-label">常に下げる<span class="recommended">推奨</span><span class="radio-desc">After Effects等と同時に使いやすくなります</span></div>
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="ffmpeg-os-priority" value="normal">
+            <div class="radio-label">下げない<span class="radio-desc">変換速度を優先します</span></div>
+          </label>
         </div>
-        <p id="oauth-tailscale-hint" style="display:none;font-size:0.8rem;color:#78716c;margin-top:4px">Tailscaleで起動すると表示されます</p>
       </div>
 
-      <h3>外部から参加してもらうには</h3>
-      <div class="guide-box">
-        <p>離れた場所にいる人と使う場合は、<a href="https://tailscale.com/download" target="_blank">Tailscale</a>を利用します。参加者にもTailscaleをインストールしてもらい、起動後に表示されるURLを共有してください。同じネットワーク内であれば、localhostのURLを共有するだけで利用可能です。</p>
-        <p style="margin-top:8px;font-size:0.85rem">※サーバー主は、<a href="https://login.tailscale.com/admin/dns" target="_blank">Tailscale管理画面</a>で「MagicDNS」と「HTTPS」を有効にする必要があります。</p>
+      <div class="field-group">
+        <label>プレビューの画質</label>
+        <select id="settings-ffmpeg-output">
+          <option value="light">軽め（データ節約）</option>
+          <option value="medium" selected>標準（推奨）</option>
+          <option value="heavy">高品質（きれいに表示）</option>
+        </select>
       </div>
 
-      <h3>招待コード</h3>
-      <div class="guide-box">
-        <p>プロジェクトごとに参加メンバーを管理できるよう、招待コード方式（ワークフロー・ワークボード）を採用しています。</p>
+      <button id="settings-save-btn" class="btn-primary">設定を保存する</button>
+      
+      <div style="margin-top: 20px; text-align: center;">
+        <a href="https://github.com/oshikaidesu/gachaboard/blob/main/docs/user/SETUP.md" target="_blank" style="font-size: 0.8rem; margin: 0 8px;">ガイド</a>
+        <a href="https://github.com/oshikaidesu/gachaboard" target="_blank" style="font-size: 0.8rem; margin: 0 8px;">GitHub</a>
       </div>
 
-      <h3>ENV（環境変数）の編集</h3>
-      <label for="settings-client-id">Discord Client ID</label>
-      <input type="text" id="settings-client-id" placeholder="1234567890123456789">
-      <label for="settings-client-secret">Discord Client Secret</label>
-      <input type="password" id="settings-client-secret" placeholder="abcdef123456...">
-      <label for="settings-owner-id">Discord オーナー ID（任意）</label>
-      <input type="text" id="settings-owner-id" placeholder="空なら全員アクセス可">
-      <button id="settings-save-btn" class="btn-primary" style="margin-top:8px">保存</button>
-
-      <h3>ドキュメント</h3>
-      <ul>
-        <li><a href="https://github.com/oshikaidesu/gachaboard/blob/main/docs/user/SETUP.md" target="_blank">セットアップガイド</a></li>
-        <li><a href="https://github.com/oshikaidesu/gachaboard/blob/main/docs/user/ENV-REFERENCE.md" target="_blank">環境変数リファレンス</a></li>
-        <li><a href="https://github.com/oshikaidesu/gachaboard/blob/main/docs/user/WINDOWS-NATIVE-SETUP.md" target="_blank">Windows 起動</a></li>
-      </ul>
-      <button id="help-modal-close" class="btn-secondary help-modal-close">閉じる</button>
+      <button id="help-modal-close" class="btn-outline">閉じる</button>
     </div>
   </div>
+
   <div id="wizard-screen" class="screen">
     <img id="header-icon" class="screen-icon" src="" alt="" width="48" height="48" style="display:none">
     <h1>Gachaboard 初回設定</h1>
     <p class="tagline">音楽・映像・デザインファイルを貼り付けて、みんなで一緒に使えるホワイトボード</p>
     <p class="sub">Discordアカウントでログインします。外部から参加してもらう場合はTailscaleをインストールし、URLを共有してください。</p>
+
+    <div id="wizard-env-override-note" class="env-override-note" style="display:none;margin-bottom:12px;text-align:left"></div>
+    <div id="wizard-root-invalid" class="field-warning" style="display:none;text-align:left"></div>
+    <label for="wizard-project-root" style="text-align:left">Gachaboard フォルダパス</label>
+    <p class="sub" style="font-size:0.8rem;margin-top:4px;margin-bottom:10px;line-height:1.5;text-align:left">EXE だけではサーバーは起動しません。ZIP などで展開した<strong>プロジェクト一式が入ったフォルダ</strong>を指定してから進んでください。ドライブやフォルダの<strong>位置を移動したあとも</strong>、設定（歯車）から指定し直せます。</p>
+    <div class="path-row" style="margin-bottom:8px">
+      <input type="text" id="wizard-project-root" readonly placeholder="フォルダを選択してください">
+      <button type="button" class="btn-secondary" id="wizard-project-root-pick">フォルダを選択</button>
+    </div>
+
     <div class="oauth-guide">
       <p><strong>Discordでのアプリ作成手順:</strong></p>
       <ol>
@@ -225,6 +349,7 @@
       </ol>
       <p style="margin-top:12px;margin-bottom:0"><a href="https://github.com/oshikaidesu/gachaboard" target="_blank">GitHub</a> · <a href="https://github.com/oshikaidesu/gachaboard/releases" target="_blank">Releases</a> · <a href="https://github.com/oshikaidesu/gachaboard/blob/main/LICENSE" target="_blank">Apache 2.0</a></p>
     </div>
+    <p class="sub" style="font-size:0.8rem;margin-top:0;margin-bottom:16px;line-height:1.5">離れた場所の人と使う場合: <a href="https://tailscale.com/download" target="_blank">Tailscale を入手</a>。サーバ側は <a href="https://login.tailscale.com/admin/dns" target="_blank">管理画面</a>で MagicDNS と HTTPS をオンにしてください。</p>
     <label for="client-id">Discord Client ID（必須）</label>
     <input type="text" id="client-id" placeholder="1234567890123456789">
     <label for="client-secret">Discord Client Secret（必須）</label>
@@ -239,7 +364,8 @@
     <h1>Gachaboard</h1>
     <p class="tagline">音楽・映像・デザインなど、あらゆるファイルを自由に貼り付けて共有できるホワイトボード</p>
     <p class="sub status" id="status-text"></p>
-    <p class="sub" id="tailscale-hint" style="margin-bottom:12px">外部から参加してもらう場合は、Tailscaleをインストールし、起動後に表示されるURLを共有してください。</p>
+    <p class="sub" id="tailscale-hint" style="margin-bottom:8px">外部から参加してもらう場合は、Tailscaleをインストールし、起動後に表示されるURLを共有してください。</p>
+    <p class="sub" style="font-size:0.8rem;margin-top:0;margin-bottom:12px;line-height:1.5">Tailscale: <a href="https://tailscale.com/download" target="_blank">ダウンロード</a> · サーバ主は <a href="https://login.tailscale.com/admin/dns" target="_blank">MagicDNS・HTTPS の設定</a>（歯車の設定にも同じ案内があります）</p>
     <div id="start-area">
       <button id="start-server" class="btn-primary">サーバを起動</button>
     </div>

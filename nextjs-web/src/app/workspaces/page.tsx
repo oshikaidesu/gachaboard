@@ -17,6 +17,7 @@ export default async function WorkspacesPage({ searchParams }: Props) {
       <WorkspacesClient
         currentUserId={testUserId}
         e2eHeaders={{ userId: testUserId, userName: testUserName }}
+        showServerMediaLink={false}
       />
     );
   }
@@ -31,5 +32,5 @@ export default async function WorkspacesPage({ searchParams }: Props) {
     }
   }
 
-  return <WorkspacesClient currentUserId={session.user.id} />;
+  return <WorkspacesClient currentUserId={session.user.id} showServerMediaLink />;
 }

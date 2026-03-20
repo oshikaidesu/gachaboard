@@ -48,5 +48,8 @@ next-env.d.ts
 # uploaded files
 /uploads/
 
+# サーバー上の動画変換プリセット（UI から生成）
+/data/media-encoding.json
+
 # user content (do not commit)
 /public/hyperfunk/

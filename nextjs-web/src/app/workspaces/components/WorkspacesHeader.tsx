@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { GachaboardLogo } from "@/app/components/ui/GachaboardLogo";
 import { ThemeToggle } from "@/app/components/theme/ThemeToggle";
 import type { WorkspacesTab } from "../types";
@@ -10,6 +11,8 @@ type Props = {
   activeCount: number;
   trashedCount: number;
   onNewCreateClick: () => void;
+  /** 動画トランスコード設定ページへのリンクを出す（サーバーオーナー向け） */
+  serverMediaHref?: string;
 };
 
 export function WorkspacesHeader({
@@ -18,6 +21,7 @@ export function WorkspacesHeader({
   activeCount,
   trashedCount,
   onNewCreateClick,
+  serverMediaHref,
 }: Props) {
   return (
     <header className="border-b border-zinc-200 bg-white px-4 py-4 dark:border-zinc-700 dark:bg-[#25292e]">
@@ -45,6 +49,14 @@ export function WorkspacesHeader({
           >
             ゴミ箱 ({trashedCount})
           </button>
+          {serverMediaHref && (
+            <Link
+              href={serverMediaHref}
+              className="text-sm text-zinc-600 underline-offset-2 hover:text-zinc-900 hover:underline dark:text-slate-400 dark:hover:text-white"
+            >
+              メディア変換
+            </Link>
+          )}
           {tab === "active" && (
             <button
               onClick={onNewCreateClick}
