@@ -134,7 +134,7 @@ check_env_exists() {
   if [[ ! -f "$env_file" ]] && [[ ! -L "$env_file" ]]; then
     echo ""
     echo "============================================"
-    echo "  .env が未作成です（初回セットアップ）"
+    echo "  nextjs-web/.env.local が未作成です（初回セットアップ）"
     echo "============================================"
     echo ""
     echo "  以下を実行してください:"
@@ -155,46 +155,47 @@ check_env_exists() {
   return 0
 }
 
-# .env (root) を nextjs-web/.env.local へのシンボリックリンクにする。
-# Mac / Linux 共通。1ファイルで管理し二重管理を防ぐ。
-# 使用: ensure_env_symlink "$ROOT_DIR"
-ROOT_ONLY_KEYS=""
-
-ensure_env_symlink() {
+# Canonical env is nextjs-web/.env.local only. Remove legacy root .env (file or symlink).
+# If a root .env file exists, merge keys missing from .env.local, then delete root .env.
+drop_legacy_root_env() {
   local root_dir="${1:-.}"
   local env_local="${root_dir}/nextjs-web/.env.local"
   local env_root="${root_dir}/.env"
 
-  [[ -f "$env_local" ]] || [[ -L "$env_local" ]] || return 0
+  [[ -e "$env_root" ]] || return 0
 
   if [[ -L "$env_root" ]]; then
+    rm -f "$env_root"
+    echo "    (removed legacy root .env symlink)"
     return 0
   fi
 
   if [[ -f "$env_root" ]]; then
-    echo ">>> .env が通常ファイルです。シンボリックリンクに修復します..."
-    for key in $ROOT_ONLY_KEYS; do
-      local val
-      val=$(grep -E "^[[:space:]]*${key}=" "$env_root" 2>/dev/null | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -d '\"\\r')
-      [[ -z "$val" ]] && continue
-      grep -qE "^[[:space:]]*${key}=" "$env_local" 2>/dev/null || echo "${key}=${val}" >> "$env_local"
-    done
+    mkdir -p "$(dirname "$env_local")"
+    if [[ ! -f "$env_local" ]]; then
+      mv "$env_root" "$env_local"
+      echo "    (moved root .env → nextjs-web/.env.local)"
+      return 0
+    fi
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      [[ "$line" =~ ^[[:space:]]*# ]] && continue
+      [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+      local key="${line%%=*}"
+      key="${key#"${key%%[![:space:]]*}"}"
+      key="${key%"${key##*[![:space:]]}"}"
+      [[ -z "$key" ]] && continue
+      if ! grep -qE "^[[:space:]]*${key}=" "$env_local" 2>/dev/null; then
+        echo "$line" >> "$env_local"
+      fi
+    done < "$env_root"
     rm -f "$env_root"
+    echo "    (merged root .env into nextjs-web/.env.local and removed root .env)"
   fi
-
-  ln -sf "nextjs-web/.env.local" "$env_root"
-  echo "    ✓ .env → nextjs-web/.env.local シンボリックリンク作成"
 }
 
-# switch-env.sh 実行後、.env.local の変更を root .env に反映する。
-# シンボリックリンク時は同一ファイルなので不要。コピー方式（Windows で symlink 不可）のときのみ必要。
+# No-op: single canonical file is nextjs-web/.env.local
 sync_env_to_root() {
-  local root_dir="${1:-.}"
-  local env_local="${root_dir}/nextjs-web/.env.local"
-  local env_root="${root_dir}/.env"
-  [[ -f "$env_local" ]] || return 0
-  [[ -L "$env_root" ]] && return 0
-  cp "$env_local" "$env_root"
+  return 0
 }
 
 # 指定した tailscale バイナリからホスト名を取得
@@ -328,9 +329,7 @@ run_native_services() {
   local root="${GACHABOARD_ROOT:-.}"
   export GACHABOARD_DATA_DIR="${root}/data"
   mkdir -p "$GACHABOARD_DATA_DIR"
-  # ポートは .env から sync-env-ports.sh が既に読んでいる想定。ここで export しておく
-  local env_file="${root}/.env"
-  [[ -f "$env_file" ]] || env_file="${root}/nextjs-web/.env.local"
+  local env_file="${root}/nextjs-web/.env.local"
   if [[ -f "$env_file" ]]; then
     export POSTGRES_HOST_PORT=$(grep -E '^POSTGRES_HOST_PORT=' "$env_file" 2>/dev/null | cut -d= -f2- | tr -d '"\r') || true
     export MINIO_API_HOST_PORT=$(grep -E '^MINIO_API_HOST_PORT=' "$env_file" 2>/dev/null | cut -d= -f2- | tr -d '"\r') || true

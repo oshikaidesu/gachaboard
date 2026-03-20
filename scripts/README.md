@@ -1,68 +1,47 @@
-# scripts ディレクトリ
+# scripts
 
-## 環境変数（.env 統合）
+## Environment variables
 
-- **実体**: `nextjs-web/.env.local`（Git に含まれない）
-- **プロジェクトルート**: `.env` は nextjs-web/.env.local へのシンボリックリンク
+- **Only file:** `nextjs-web/.env.local` (not committed)
+- **Template:** `.env.example` at repo root (copied by `npm run setup:env` / launcher wizard)
 
-`npm run setup:env` で自動作成。clone したあと一度実行する（.env は .gitignore なのでリポジトリに含まれない）。
+No root `.env` and no symlinks. Legacy root `.env` is migrated or removed on first run of `setup:env` / `drop_legacy_root_env`.
 
-- **Mac/Linux**: `env.sh`（bash）+ `create-env-symlink.mjs`（Node）
-- **Windows**: `env.ps1`（PowerShell）+ `create-env-symlink.mjs`（Node）
+- **Mac/Linux:** `setup/env.sh`
+- **Windows:** `setup/env.ps1` (via `run-env.ps1` from `npm run setup:env`)
 
-シンボリックリンクは Node.js で作成するため Mac/Windows 両対応。Windows で失敗時は管理者権限または開発者モードを有効化。
-
-## 構成
+## Layout
 
 ```
 scripts/
-├── lib/          # 共通処理（Mac/Linux・直接実行しない）
-│   ├── common.sh         # 依存サービス起動、ポート同期、ブラウザ起動など
-│   └── sync-env-ports.sh # ポート変数から .env を自動同期
-├── start/        # 起動スクリプト（Mac/Linux）
-│   ├── launcher.sh      # 起動ランチャー（start.sh / start.command から呼ばれる）
-│   ├── tailscale.sh     # Tailscale モード（--dev, --reset）
-│   ├── local.sh         # ローカルモード（--dev, --reset）
-│   └── production.sh    # 本番
-├── setup/        # セットアップ（Mac/Linux）
-│   ├── env.sh              # .env 統合（Mac/Linux）
-│   ├── env.ps1             # .env 統合（Windows）
-│   ├── create-env-symlink.mjs  # シンボリックリンク作成
-│   ├── run-env-setup.mjs   # setup:env エントリポイント
-│   └── tailscale-https.sh  # Tailscale HTTPS (Caddy)
-├── win/          # Windows 起動スクリプト（start.bat から呼ばれる）
-│   ├── run.ps1              # メイン起動（PostgreSQL/MinIO/sync-server + Next.js）
-│   ├── reset-services.ps1   # 全サービス停止
-│   ├── sync-env-tailscale.ps1  # Tailscale HTTPS 用 .env.local 更新
-│   └── setup-auto-start.ps1    # ログオン時自動起動のタスク登録
-└── systemd/      # 自動再起動用（Linux）
-    └── gachaboard-web.service.example  # docs/user/AUTO-RESTART.md 参照
+├── entry/        # All user-facing start helpers (see entry/README.md)
+├── lib/
+│   ├── common.sh
+│   └── sync-env-ports.sh   # updates derived keys in nextjs-web/.env.local
+├── start/
+│   ├── launcher.sh
+│   ├── tailscale.sh
+│   ├── local.sh
+│   └── production.sh
+├── setup/
+│   ├── env.sh, env.ps1, run-env-setup.mjs, run-env.ps1
+│   ├── reset-all.sh
+│   └── tailscale-https.sh
+├── win/
+│   ├── run.ps1, reset-services.ps1, sync-env-*.ps1, …
+└── systemd/
 ```
 
-## 使い方
-
-`npm run` から呼ばれる（package.json 参照）。直接実行する場合:
+## Usage
 
 ```bash
-./start.sh                            # Mac/Linux 共通（launcher → tailscale）
-bash scripts/start/tailscale.sh        # 直接呼び出し（ビルド済み起動）
-bash scripts/start/tailscale.sh --dev  # 開発モード
-bash scripts/start/tailscale.sh --reset
+./scripts/entry/start.sh
+bash scripts/start/tailscale.sh --dev
 bash scripts/setup/env.sh
 ```
 
-### Windows での起動
+**Windows:** double-click `scripts/entry/start.bat`.
 
-- **start.bat**（Windows）: ダブルクリックでメニュー表示。1=ローカル, 2=Tailscale, 3=リセット。
-- **start.sh** / **start.command**（Mac/Linux）: 同一の `launcher.sh` を呼ぶ。Node.js で Next.js を起動し、PostgreSQL・MinIO・sync-server は portable スクリプトで起動。
+### Tailscale + Caddy
 
-### 必須ツールの事前チェック
-
-起動時に以下が未インストールの場合、その時点で停止しインストール方法を表示します。
-
-- **共通**: Node.js, npm, curl
-- **Tailscale モード**: 上記 + Tailscale（CLI）
-
-### Tailscale モード起動時
-
-`tailscale.sh` 実行時に `setup/tailscale-https.sh` を自動実行し、Caddyfile を `.env`（実体は `.env.local`）のポートに合わせて更新します。Caddy は別途 `caddy run --config config/Caddyfile` で起動してください。
+`tailscale.sh` may run `setup/tailscale-https.sh` to refresh `config/Caddyfile` from ports in `nextjs-web/.env.local`. Run Caddy separately if needed.

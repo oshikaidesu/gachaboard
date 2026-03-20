@@ -7,8 +7,8 @@ const crypto = require('crypto');
 const http = require('http');
 
 /**
- * 子プロセスの stdout/stderr を表示用に文字列化する。
- * 日本語 Windows ではパイプ経由が CP932 のまま送られ、UTF-8 と誤認すると文字化けするためフォールバックする。
+ * Decode child stdout/stderr for the log pane.
+ * On Japanese Windows, piped output may be CP932; try UTF-8 first, then Shift_JIS.
  */
 function decodeChildLogChunk(chunk) {
   if (chunk == null) return '';
@@ -32,8 +32,8 @@ function decodeChildLogChunk(chunk) {
   }
 }
 
-// キャッシュ競合回避: 専用 userData を設定（Windows の "Unable to move the cache" エラー対策）
-// 開発時はプロジェクト直下に置き、Cursor 等の他 Electron プロセスとの競合を避ける
+// Dedicated userData avoids Electron cache collisions ("Unable to move the cache" on Windows).
+// In dev, keep under the repo root to avoid clashing with other Electron apps (e.g. editors).
 if (app.isPackaged) {
   app.setPath('userData', path.join(app.getPath('appData'), 'gachaboard-launcher'));
 } else {
@@ -41,7 +41,7 @@ if (app.isPackaged) {
   app.setPath('userData', path.join(devRoot, '.gachaboard-launcher'));
 }
 
-// 二重起動防止（同じ userData を複数プロセスで使うとキャッシュエラーになる）
+// Single instance: multiple processes sharing userData can break the cache.
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
@@ -60,7 +60,7 @@ function getLauncherSettingsPath() {
   return path.join(app.getPath('userData'), LAUNCHER_SETTINGS_BASENAME);
 }
 
-/** ZIP 展開など「一式」がそろっているか（Windows / 共通の判定） */
+/** True if dir looks like a full Gachaboard checkout (nextjs-web + scripts). */
 function hasProjectRoot(dir) {
   if (!dir || typeof dir !== 'string') return false;
   const runWin = path.join(dir, 'scripts', 'win', 'run.ps1');
@@ -79,7 +79,7 @@ function readLauncherSettings() {
   }
 }
 
-/** ユーザーが設定したパス（無効でもファイル上は返す用途は getLauncherConfig で別処理） */
+/** Saved path from settings file (may be invalid; see getLauncherConfig). */
 function readSavedProjectRootRaw() {
   const j = readLauncherSettings();
   const r = j.projectRoot;
@@ -100,7 +100,7 @@ function writeSavedProjectRoot(absPathOrNull) {
   fs.writeFileSync(p, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
 }
 
-// アプリルート: 1) GACHABOARD_ROOT 2) 設定ファイル（有効なパスだけ）3) 本番は exe 所在（一式は無い前提）4) 開発は launcher の親
+// App root: 1) GACHABOARD_ROOT 2) saved settings (if valid) 3) packaged: exe dir 4) dev: launcher parent
 function computeAppRoot() {
   if (process.env.GACHABOARD_ROOT) {
     return path.normalize(path.resolve(process.env.GACHABOARD_ROOT));
@@ -110,7 +110,7 @@ function computeAppRoot() {
     return saved;
   }
   if (app.isPackaged) {
-    // ユーザ向けに exe/cwd からプロジェクトを自動推測しない（安心してそのまま起動、を防ぐ）
+    // Do not guess project root from exe/cwd (user must pick the folder explicitly)
     return path.dirname(app.getPath('exe'));
   }
   return path.resolve(__dirname, '../../..');
@@ -180,14 +180,14 @@ function createWindow() {
       if (serverProcess) {
         const result = dialog.showMessageBoxSync(mainWindow, {
           type: 'question',
-          buttons: ['終了する', 'キャンセル'],
+          buttons: ['Quit', 'Cancel'],
           defaultId: 1,
           cancelId: 1,
           title: 'Gachaboard',
-          message: 'サーバーが停止します。よろしいですか？',
+          message: 'This will stop the server. Continue?',
         });
         if (result === 0) quitApp(true);
-        /* result === 1: キャンセル → ウィンドウはそのまま */
+        /* result === 1: cancel — leave window open */
       } else {
         mainWindow.hide();
       }
@@ -208,13 +208,13 @@ function createTray() {
 }
 
 function updateTrayMenu() {
-  const statusSuffix = overlayStatus === 'running' ? ' - 起動中' : overlayStatus === 'error' ? ' - エラー' : '';
+  const statusSuffix = overlayStatus === 'running' ? ' — running' : overlayStatus === 'error' ? ' — error' : '';
   tray?.setToolTip(`Gachaboard${statusSuffix}`);
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'ウィンドウを開く', click: () => mainWindow?.show() },
-    { label: 'ブラウザで開く', click: () => shell.openExternal(currentUrl) },
+    { label: 'Show window', click: () => mainWindow?.show() },
+    { label: 'Open in browser', click: () => shell.openExternal(currentUrl) },
     { type: 'separator' },
-    { label: '終了', click: () => quitApp() },
+    { label: 'Quit', click: () => quitApp() },
   ]);
   tray?.setContextMenu(contextMenu);
 }
@@ -223,11 +223,11 @@ function quitApp(skipConfirmation) {
   if (serverProcess && !skipConfirmation) {
     const result = dialog.showMessageBoxSync(mainWindow || null, {
       type: 'question',
-      buttons: ['終了する', 'キャンセル'],
+      buttons: ['Quit', 'Cancel'],
       defaultId: 1,
       cancelId: 1,
-      title: 'Gachaboard を終了',
-      message: 'サーバーが停止します。よろしいですか？',
+      title: 'Quit Gachaboard',
+      message: 'This will stop the server. Continue?',
     });
     if (result !== 0) return;
   }
@@ -238,7 +238,7 @@ function quitApp(skipConfirmation) {
   app.quit();
 }
 
-// .env.local の必須項目が揃っているか
+// Whether .env.local has required Discord / NextAuth values
 function isEnvConfigured() {
   const envPath = path.join(appRoot, 'nextjs-web', '.env.local');
   if (!fs.existsSync(envPath)) return false;
@@ -249,7 +249,7 @@ function isEnvConfigured() {
   return hasClientId && hasClientSecret && hasAuthSecret;
 }
 
-/** .env.local に FFMPEG 行が無い既存環境へ既定（gpu / medium）を追記する */
+/** Append default FFMPEG_* lines if missing (existing installs) */
 function ensureFfmpegEnvDefaults() {
   const envPath = path.join(appRoot, 'nextjs-web', '.env.local');
   if (!fs.existsSync(envPath)) return;
@@ -274,7 +274,7 @@ function ensureFfmpegEnvDefaults() {
   if (changed) fs.writeFileSync(envPath, content, 'utf8');
 }
 
-// ウィザード用: .env.local を生成
+// Wizard: create .env.local
 ipcMain.handle('save-env', async (_, { discordClientId, discordClientSecret, serverOwnerDiscordId }) => {
   const envLocalPath = path.join(appRoot, 'nextjs-web', '.env.local');
   const envExamplePath = path.join(appRoot, '.env.example');
@@ -369,7 +369,7 @@ ipcMain.handle('set-saved-project-root', async (_, dir) => {
   if (process.env.GACHABOARD_ROOT) {
     return {
       ok: false,
-      error: '環境変数 GACHABOARD_ROOT が設定されているため、ここでの変更は反映されません。環境変数を解除するか、その値を変更してください。',
+      error: 'GACHABOARD_ROOT is set; changes here have no effect. Unset it or change that path.',
     };
   }
   if (dir === null || dir === undefined || dir === '') {
@@ -382,7 +382,7 @@ ipcMain.handle('set-saved-project-root', async (_, dir) => {
     return {
       ok: false,
       error:
-        'そのフォルダに Gachaboard の一式が見つかりません。nextjs-web と scripts（例: scripts\\win\\run.ps1）があるフォルダを選んでください。',
+        'That folder is not a Gachaboard project root. Pick the folder that contains nextjs-web and scripts (e.g. scripts\\win\\run.ps1).',
     };
   }
   writeSavedProjectRoot(abs);
@@ -394,13 +394,13 @@ ipcMain.handle('pick-project-root-folder', async () => {
   if (!mainWindow) return { canceled: true };
   const r = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory'],
-    title: 'Gachaboard のプロジェクトフォルダを選択',
+    title: 'Choose Gachaboard project folder',
   });
   if (r.canceled || !r.filePaths?.length) return { canceled: true };
   return { canceled: false, path: r.filePaths[0] };
 });
 
-// 設定モーダル用: .env.local から Discord 関連を読み取り
+// Settings: read Discord-related keys from .env.local
 ipcMain.handle('get-env', async () => {
   const envPath = path.join(appRoot, 'nextjs-web', '.env.local');
   if (!fs.existsSync(envPath)) {
@@ -430,7 +430,7 @@ ipcMain.handle('get-env', async () => {
   };
 });
 
-// 設定モーダル用: Discord 関連のみ更新（NEXTAUTH_SECRET は維持）
+// Settings: update Discord / FFmpeg keys only (keep NEXTAUTH_SECRET)
 ipcMain.handle(
   'update-env',
   async (
@@ -447,7 +447,7 @@ ipcMain.handle(
   ) => {
   const envPath = path.join(appRoot, 'nextjs-web', '.env.local');
   if (!fs.existsSync(envPath)) {
-    return { ok: false, error: '.env.local がありません。初回ウィザードを完了してください。' };
+    return { ok: false, error: 'Missing nextjs-web/.env.local. Finish the first-time wizard first.' };
   }
   const vbRaw = typeof ffmpegVideoBackend === 'string' ? ffmpegVideoBackend.trim().toLowerCase() : '';
   const riRaw = typeof ffmpegResourceIntensity === 'string' ? ffmpegResourceIntensity.trim().toLowerCase() : '';
@@ -509,7 +509,7 @@ ipcMain.handle(
   return { ok: true };
 });
 
-// OAuth2 リダイレクト URL 一覧
+// OAuth2 redirect URLs to show in Settings
 ipcMain.handle('get-oauth-redirect-urls', async () => {
   const localhost = 'http://localhost:18580/api/auth/callback/discord';
   let tailscale = null;
@@ -523,14 +523,14 @@ ipcMain.handle('get-oauth-redirect-urls', async () => {
   return { localhost, tailscale };
 });
 
-// サーバ起動
+// Start backend (run.ps1 or tailscale.sh)
 ipcMain.handle('start-server', async () => {
   if (serverProcess) return { ok: false, error: 'Already running' };
   if (!hasProjectRoot(appRoot)) {
     return {
       ok: false,
       error:
-        'Gachaboard のプロジェクトフォルダが見つかりません。設定（歯車）から、ZIP で展開したフォルダ（一式がある場所）を指定してください。',
+        'Gachaboard project folder not found. Open Settings (gear) and choose the unpacked project root.',
     };
   }
   const isWin = process.platform === 'win32';
@@ -610,7 +610,7 @@ ipcMain.handle('set-current-url', async (_, url) => {
   updateTrayMenu();
 });
 
-// タスクバーオーバーレイ（Windows のみ）: 起動時は緑、エラー時は赤
+// Taskbar overlay (Windows): green = running, red = error
 ipcMain.handle('set-overlay-images', async (_, { green, red }) => {
   if (process.platform !== 'win32') return;
   const { nativeImage } = require('electron');
@@ -621,9 +621,9 @@ ipcMain.handle('set-overlay-status', async (_, status) => {
   overlayStatus = status;
   if (process.platform === 'win32' && mainWindow) {
     if (status === 'running' && overlayGreen) {
-      mainWindow.setOverlayIcon(overlayGreen, '起動中');
+      mainWindow.setOverlayIcon(overlayGreen, 'Running');
     } else if (status === 'error' && overlayRed) {
-      mainWindow.setOverlayIcon(overlayRed, 'エラー');
+      mainWindow.setOverlayIcon(overlayRed, 'Error');
     } else {
       mainWindow.setOverlayIcon(null, '');
     }
@@ -636,7 +636,7 @@ ipcMain.handle('set-overlay-status', async (_, status) => {
   if (tray) updateTrayMenu();
 });
 
-// Tailscale ホスト名を取得（子プロセス出力から or tailscale status）
+// Resolve Tailscale HTTPS host from `tailscale status --json`
 async function detectTailscaleHost() {
   return new Promise((resolve) => {
     if (process.platform === 'win32') {
@@ -673,7 +673,7 @@ async function detectTailscaleHost() {
   });
 }
 
-// 起動完了をポーリングで検知
+// Poll until Next.js responds on app port
 async function waitForReady() {
   for (let i = 0; i < 60; i++) {
     await new Promise((r) => setTimeout(r, 1000));

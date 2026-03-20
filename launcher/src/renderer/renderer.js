@@ -75,7 +75,7 @@ api.onServerExit((code) => {
   if (window.isRestarting) return;
   api.setOverlayStatus(window.isIntentionalStop ? 'idle' : (code !== 0 ? 'error' : 'idle'));
   showIdleState();
-  statusText.textContent = 'サーバーが停止しました';
+  statusText.textContent = 'Server stopped';
   statusText.classList.add('stopped');
   startServerBtn.disabled = false;
   window.isIntentionalStop = false;
@@ -85,7 +85,7 @@ wizardSubmit.addEventListener('click', async () => {
   const layout = await api.getLauncherConfig();
   if (!layout.projectLayoutValid) {
     alert(
-      'Gachaboard のプロジェクトフォルダが指定されていないか、一式が見つかりません。\n\nこの画面の「Gachaboard フォルダパス」で ZIP 等で展開したフォルダを指定してから「はじめる」を押してください。',
+      'The Gachaboard project folder is missing or incomplete.\n\nChoose the unpacked project folder under “Gachaboard project folder”, then click Continue.',
     );
     return;
   }
@@ -93,7 +93,7 @@ wizardSubmit.addEventListener('click', async () => {
   const clientSecret = clientSecretInput.value.trim();
   const ownerId = ownerIdInput.value.trim();
   if (!clientId || !clientSecret) {
-    alert('Discord Client ID と Client Secret を入力してください。');
+    alert('Enter Discord Client ID and Client Secret.');
     return;
   }
   wizardSubmit.disabled = true;
@@ -103,7 +103,7 @@ wizardSubmit.addEventListener('click', async () => {
     showIdleState();
     api.setOverlayStatus('idle');
   } catch (e) {
-    alert('設定の保存に失敗しました: ' + e.message);
+    alert('Failed to save settings: ' + e.message);
   } finally {
     wizardSubmit.disabled = false;
   }
@@ -111,7 +111,7 @@ wizardSubmit.addEventListener('click', async () => {
 
 function showIdleState() {
   isServerRunning = false;
-  startServerBtn.textContent = 'サーバを起動';
+  startServerBtn.textContent = 'Start server';
   statusText.textContent = '';
   statusText.classList.remove('stopped');
   startArea.style.display = 'block';
@@ -121,14 +121,14 @@ function showIdleState() {
   logArea.textContent = '';
   const hint = document.getElementById('tailscale-hint');
   if (hint) {
-    hint.textContent = '外部から参加してもらう場合は、Tailscaleをインストールし、起動後に表示されるURLを共有してください。';
+    hint.textContent = 'For remote participants: install Tailscale and share the URL shown after startup.';
   }
 }
 
 function showRunningState(url) {
   isServerRunning = true;
-  startServerBtn.textContent = '再起動';
-  statusText.textContent = '起動後はブラウザが開きます';
+  startServerBtn.textContent = 'Restart';
+  statusText.textContent = 'Browser will open when ready';
   statusText.classList.remove('stopped');
   startArea.style.display = 'block';
   currentUrlSpan.textContent = url;
@@ -137,7 +137,7 @@ function showRunningState(url) {
   stopServerBtn.style.display = 'inline-block';
   const hint = document.getElementById('tailscale-hint');
   if (hint) {
-    hint.textContent = '外部から参加してもらう場合は、Tailscaleをインストールし、以下のURLを共有してください。';
+    hint.textContent = 'For remote participants: install Tailscale and share the URL below.';
   }
 }
 
@@ -145,18 +145,18 @@ async function startServerFlow() {
   const layout = await api.getLauncherConfig();
   if (!layout.projectLayoutValid) {
     alert(
-      'Gachaboard のプロジェクトフォルダが指定されていないか、一式が見つかりません。\n\n設定（歯車アイコン）を開き、「Gachaboard フォルダパス」から ZIP 等で展開したフォルダを指定してください。',
+      'The Gachaboard project folder is missing or incomplete.\n\nOpen Settings (gear) and set “Gachaboard project folder” to your unpacked project root.',
     );
     return;
   }
-  statusText.textContent = 'サーバを起動しています...';
+  statusText.textContent = 'Starting server…';
   statusText.classList.remove('stopped');
   startServerBtn.disabled = true;
   logArea.textContent = '';
   const result = await api.startServer();
   if (!result.ok) {
     api.setOverlayStatus('error');
-    statusText.textContent = result.error || '起動に失敗しました';
+    statusText.textContent = result.error || 'Failed to start';
     statusText.classList.add('stopped');
     startServerBtn.disabled = false;
     return;
@@ -185,13 +185,13 @@ async function refreshProjectPathUi(prefix) {
   const envNote = document.getElementById(`${prefix}env-override-note`);
   const invalid = document.getElementById(`${prefix}root-invalid`);
   const pickBtn = document.getElementById(`${prefix}project-root-pick`);
-  // 未設定・無効時は exe パスなどを出さない（自動で合ってるように見せない）
+  // When unset/invalid, do not show exe path (avoid looking “correct” by default)
   if (input) input.value = cfg.projectLayoutValid ? cfg.effectiveAppRoot || '' : '';
   if (cfg.usesEnvOverride) {
     if (envNote) {
       envNote.style.display = 'block';
       envNote.textContent =
-        '環境変数 GACHABOARD_ROOT が優先されています。この画面でのフォルダ指定は反映されません。';
+        'GACHABOARD_ROOT is set; the folder you choose here is ignored.';
     }
     if (pickBtn) pickBtn.disabled = true;
   } else {
@@ -202,7 +202,7 @@ async function refreshProjectPathUi(prefix) {
     if (invalid) {
       invalid.style.display = 'block';
       invalid.textContent =
-        '保存したフォルダが見つからないか、一式が揃っていません。フォルダを移動した場合は「フォルダを選択」し直してください。';
+        'The saved folder is missing or incomplete. Choose the folder again if you moved the project.';
     }
   } else if (invalid) {
     invalid.style.display = 'none';
@@ -271,14 +271,14 @@ async function handleProjectPathPick(prefix) {
     if (picked.canceled) return;
     const result = await api.setSavedProjectRoot(picked.path);
     if (!result.ok) {
-      alert(result.error || 'フォルダの保存に失敗しました');
+      alert(result.error || 'Failed to save folder');
       return;
     }
     await refreshAllProjectPathUis();
     initOverlayImages();
     api.setOverlayStatus('idle');
   } catch (e) {
-    alert('フォルダの選択に失敗しました: ' + e.message);
+    alert('Failed to pick folder: ' + e.message);
   } finally {
     const cfg = await api.getLauncherConfig();
     pickBtn.disabled = cfg.usesEnvOverride;
@@ -302,7 +302,7 @@ document.getElementById('help-modal').addEventListener('click', (e) => {
   if (el) {
     navigator.clipboard.writeText(el.textContent).then(() => {
       const orig = btn.textContent;
-      btn.textContent = 'コピー済';
+      btn.textContent = 'Copied';
       setTimeout(() => { btn.textContent = orig; }, 1500);
     });
   }
@@ -318,7 +318,7 @@ document.getElementById('settings-save-btn').addEventListener('click', async () 
   const ffmpegOutputPreset = document.getElementById('settings-ffmpeg-output').value;
   
   if (!clientId || !clientSecret) {
-    alert('Discord Client ID と Client Secret を入力してください。');
+    alert('Enter Discord Client ID and Client Secret.');
     return;
   }
   
@@ -335,16 +335,16 @@ document.getElementById('settings-save-btn').addEventListener('click', async () 
       ffmpegOutputPreset,
     });
     if (result.ok) {
-      btn.textContent = '保存しました';
-      setTimeout(() => { btn.textContent = '設定を保存する'; }, 1500);
+      btn.textContent = 'Saved';
+      setTimeout(() => { btn.textContent = 'Save settings'; }, 1500);
       if (isServerRunning) {
-        alert('保存しました。メイン画面の「再起動」で反映されます。');
+        alert('Saved. Use Restart on the main screen to apply.');
       }
     } else {
-      alert(result.error || '保存に失敗しました');
+      alert(result.error || 'Save failed');
     }
   } catch (e) {
-    alert('保存に失敗しました: ' + e.message);
+    alert('Save failed: ' + e.message);
   } finally {
     btn.disabled = false;
   }
@@ -353,7 +353,7 @@ document.getElementById('settings-save-btn').addEventListener('click', async () 
 startServerBtn.addEventListener('click', async () => {
   if (isServerRunning) {
     window.isRestarting = true;
-    statusText.textContent = '再起動中...';
+    statusText.textContent = 'Restarting…';
     statusText.classList.remove('stopped');
     startServerBtn.disabled = true;
     logArea.textContent = '';
@@ -363,7 +363,7 @@ startServerBtn.addEventListener('click', async () => {
       const result = await api.startServer();
       if (!result.ok) {
         api.setOverlayStatus('error');
-        statusText.textContent = result.error || '再起動に失敗しました';
+        statusText.textContent = result.error || 'Restart failed';
         statusText.classList.add('stopped');
         return;
       }
@@ -373,7 +373,7 @@ startServerBtn.addEventListener('click', async () => {
       showRunningState(url);
     } catch (e) {
       api.setOverlayStatus('error');
-      statusText.textContent = '再起動に失敗しました';
+      statusText.textContent = 'Restart failed';
       statusText.classList.add('stopped');
     } finally {
       window.isRestarting = false;
@@ -389,5 +389,5 @@ stopServerBtn.addEventListener('click', async () => {
   window.isIntentionalStop = true;
   api.setOverlayStatus('idle');
   await api.stopServer();
-  statusText.textContent = '停止中...';
+  statusText.textContent = 'Stopping…';
 });

@@ -1,30 +1,33 @@
-# Windows 起動スクリプト
+# Windows startup scripts
 
-## 構成
+## Layout
 
-| ファイル | 説明 |
-|----------|------|
-| **run.ps1** | メイン起動（PostgreSQL/MinIO/sync-server + Next.js） |
-| **reset-services.ps1** | 全サービス停止 |
-| **sync-env-tailscale.ps1** | Tailscale HTTPS 用 .env.local 更新 |
-| **setup-auto-start.ps1** | ログオン時自動起動のタスク登録 |
+| File | Purpose |
+|------|---------|
+| **run.ps1** | Main startup (PostgreSQL / MinIO / sync-server + Next.js) |
+| **reset-services.ps1** | Stop all services |
+| **sync-env-tailscale.ps1** | Update `.env.local` for Tailscale HTTPS |
+| **setup-auto-start.ps1** | Register logon task for `scripts/entry/start.bat` |
 
-## 入り口
+## Entry point
 
-**start.bat**（プロジェクトルート）から起動する。
+Double-click **`scripts/entry/start.bat`**.
 
-| 番号 | 内容 |
-|------|------|
-| 1 | ローカル起動 (localhost) |
-| 2 | Tailscale HTTPS 起動 |
-| 3 | リセットして再起動 |
-| 0 | 終了 |
+| Key | Mode |
+|-----|------|
+| 1 | Tailscale production (default) |
+| 2 | Localhost production |
+| 3 | Build only |
+| 4 | Tailscale development |
+| 5 | Local development |
+| 6 | Reset and restart |
+| 0 | Exit |
 
-## 直接実行
+## Direct run
 
-`start.bat 1` のように番号を渡すとメニューをスキップして実行できます。
+`scripts/entry/start.bat` forwards arguments; the menu reads optional 2nd/3rd args if you extend the batch.
 
-## 自動起動
+## Auto-start
 
 ```powershell
 .\scripts\win\setup-auto-start.ps1

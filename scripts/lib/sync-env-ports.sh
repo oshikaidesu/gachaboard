@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
-# ポート変数（PORT, POSTGRES_HOST_PORT 等）から派生する値を .env に同期
-# ユーザーはポートだけ編集すればよい。DATABASE_URL, S3_*, NEXT_PUBLIC_SYNC_WS_URL 等は自動反映
+# Sync derived vars (DATABASE_URL, S3_*, etc.) from port keys in nextjs-web/.env.local
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
-# 正本は nextjs-web/.env.local。プロジェクトルートの .env はそのシンボリックリンク
-ENV_FILE="${ROOT_DIR}/.env"
-[[ -f "$ENV_FILE" ]] || ENV_FILE="${ROOT_DIR}/nextjs-web/.env.local"
+ENV_FILE="${ROOT_DIR}/nextjs-web/.env.local"
 [[ ! -f "$ENV_FILE" ]] && exit 0
 
 # ポート変数を読み取り（デフォルト値付き）

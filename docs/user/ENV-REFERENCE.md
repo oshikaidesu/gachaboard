@@ -1,6 +1,6 @@
 # 環境変数リファレンス
 
-> Gachaboard で使う環境変数の一覧です。`cp .env.example .env` して先頭4項目を編集し、`npm run setup:env` を実行すると、ポート・DB・S3 等が自動で設定されます。
+> Gachaboard で使う環境変数は **`nextjs-web/.env.local`** に置きます。ルートの `.env.example` がテンプレートです。`npm run setup:env` で `.env.local` を作成し、ポート・DB・S3 派生値を同期できます。
 
 ---
 
@@ -22,12 +22,12 @@
 
 | 変数 | 設定場所 | デフォルト | 説明 |
 |------|----------|------------|------|
-| `HOST_BIND` | `.env`（プロジェクトルート） | `127.0.0.1` | 各サービスの待機IPアドレス（バインド先）。**Tailscale で他端末からアクセスする場合は `0.0.0.0` に設定**。`127.0.0.1` のままではローカル以外から接続できない。 |
+| `HOST_BIND` | `nextjs-web/.env.local` | `127.0.0.1` | 各サービスの待機 IP（バインド先）。**Tailscale で他端末から直に届けたい場合は `0.0.0.0`**。テンプレはルートの `.env.example`（`npm run setup:env` で `.env.local` にコピー）。 |
 | `PORT` | `nextjs-web/.env.local` | `18580` | Next.js のポート |
-| `POSTGRES_HOST_PORT` | `.env`（プロジェクトルート） | `18581` | PostgreSQL。`DATABASE_URL` のポートと一致させる |
-| `SYNC_SERVER_HOST_PORT` | `.env`（プロジェクトルート） | `18582` | sync-server。`NEXT_PUBLIC_SYNC_WS_URL` のポートと一致させる |
-| `MINIO_API_HOST_PORT` | `.env`（プロジェクトルート） | `18583` | MinIO。`S3_ENDPOINT` / `S3_PUBLIC_URL` のポートと一致させる |
-| `MINIO_CONSOLE_HOST_PORT` | `.env`（プロジェクトルート） | `18584` | MinIO 管理UI |
+| `POSTGRES_HOST_PORT` | `nextjs-web/.env.local` | `18581` | PostgreSQL。`DATABASE_URL` のポートと一致させる |
+| `SYNC_SERVER_HOST_PORT` | `nextjs-web/.env.local` | `18582` | sync-server。`NEXT_PUBLIC_SYNC_WS_URL` のポートと一致させる |
+| `MINIO_API_HOST_PORT` | `nextjs-web/.env.local` | `18583` | MinIO。`S3_ENDPOINT` / `S3_PUBLIC_URL` のポートと一致させる |
+| `MINIO_CONSOLE_HOST_PORT` | `nextjs-web/.env.local` | `18584` | MinIO 管理 UI |
 
 他サービス（AE、他プロジェクト等）とポートが衝突する場合、上記ポート変数で変更できます。
 
@@ -54,7 +54,7 @@
 
 ### S3 / MinIO（必須）
 
-ファイルアップロードには S3/MinIO が必須です。`env.local.template` にデフォルト値が入っています。MinIO は `start.bat` / `start.sh` 実行時に自動で起動します。
+ファイルアップロードには S3/MinIO が必須です。`nextjs-web/env.local.template` およびルートの `.env.example` にデフォルト値があります。MinIO は `scripts/entry/start.bat` / `scripts/entry/start.sh` 実行時に自動で起動します。
 
 | 変数名 | デフォルト | 説明 |
 |--------|------------|------|

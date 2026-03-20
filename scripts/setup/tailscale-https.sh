@@ -54,17 +54,15 @@ HOST=$(get_hostname) || {
 
 echo ">>> ホスト名: $HOST"
 
-# ポートを .env と nextjs-web/.env.local の両方から読み取り（Next.js が使う値と一致させる）
-# デフォルト: 18580 (Next.js), 18582 (sync), 18583 (MinIO)
+# Ports from nextjs-web/.env.local (same file Next.js loads)
+# Defaults: 18580 (Next.js), 18582 (sync), 18583 (MinIO)
 APP_PORT="18580"
 SYNC_PORT="18582"
 MINIO_PORT="18583"
 
 env_local="${ROOT_DIR}/nextjs-web/.env.local"
-env_root="${ROOT_DIR}/.env"
 
-# PORT: nextjs-web/.env.local を優先（Next.js が読み込むファイル）
-for f in "$env_local" "$env_root"; do
+for f in "$env_local"; do
   [[ -f "$f" ]] || continue
   p=$(grep -E '^PORT=' "$f" 2>/dev/null | cut -d= -f2- | tr -d '"\r')
   if [[ -n "$p" ]]; then
@@ -74,7 +72,7 @@ for f in "$env_local" "$env_root"; do
 done
 
 # Sync: SYNC_SERVER_HOST_PORT
-for f in "$env_local" "$env_root"; do
+for f in "$env_local"; do
   [[ -f "$f" ]] || continue
   p=$(grep -E '^SYNC_SERVER_HOST_PORT=' "$f" 2>/dev/null | cut -d= -f2- | tr -d '"\r')
   if [[ -n "$p" ]]; then
@@ -84,7 +82,7 @@ for f in "$env_local" "$env_root"; do
 done
 
 # MinIO: S3_ENDPOINT のポート、または MINIO_API_HOST_PORT
-for f in "$env_local" "$env_root"; do
+for f in "$env_local"; do
   [[ -f "$f" ]] || continue
   # S3_ENDPOINT=http://localhost:18583 からポート抽出
   s3=$(grep -E '^S3_ENDPOINT=' "$f" 2>/dev/null | cut -d= -f2- | tr -d '"\r')
@@ -157,7 +155,7 @@ echo "  アクセスURL: https://$HOST"
 echo "  Discord Redirect: https://$HOST/api/auth/callback/discord"
 echo ""
 echo "  起動手順:"
-echo "    1. start.sh または start.bat でアプリを起動"
+echo "    1. scripts/entry/start.sh または scripts/entry/start.bat でアプリを起動"
 echo "    2. 別ターミナルで: caddy run --config $CADDYFILE"
 echo ""
 echo "  または: npm run start:tailscale で起動後、別ターミナルで caddy run"

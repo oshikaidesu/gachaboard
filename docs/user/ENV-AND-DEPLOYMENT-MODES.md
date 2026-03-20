@@ -10,7 +10,7 @@
 |--------|------|--------------|----------|
 | **local** | 単一マシンの localhost のみ | `http://localhost:18580` | 開発・単一環境での利用 |
 | **tailscale** | スマートフォン・他端末から Tailscale 経由でアクセス | `https://<Tailscaleホスト名>`（Caddy 利用時） | 限定メンバーとの共有・リモートアクセス |
-| **production** | Linux 本番サーバー | `https://...` または `http://<IP または ドメイン>:3000` | サーバー運用 |
+| **production** | Linux 本番サーバー | `https://...` または `http://<IP または ドメイン>:<PORT>`（既定は `18580`、リバースプロキシなら 443 のみ公開でも可） | サーバー運用 |
 
 ---
 
@@ -18,7 +18,7 @@
 
 ### local（ローカルのみ）
 
-1. `NEXTAUTH_URL=http://localhost:18580` を `.env.local` に設定
+1. `NEXTAUTH_URL=http://localhost:18580` を `nextjs-web/.env.local` に設定
 2. Discord OAuth の Redirect に `http://localhost:18580/api/auth/callback/discord` を追加
 3. `npm run dev` で起動 → http://localhost:18580 でアクセス
 
@@ -95,7 +95,7 @@ tailscale status --json --peers=false | jq -r .Self.DNSName
 
 ## NEXTAUTH_URL の切り替えスクリプト
 
-`nextjs-web` で以下を実行すると `.env.local` の **NEXTAUTH_URL** を切り替えられます。
+`nextjs-web` で以下を実行すると **`nextjs-web/.env.local`** の **NEXTAUTH_URL** を切り替えられます。
 
 | 用途 | コマンド | 更新される変数 |
 |------|----------|----------------|
@@ -131,7 +131,7 @@ TAILSCALE_HOST=your-machine.tail12345.ts.net npm run env:tailscale
 `NEXTAUTH_URL` を Tailscale URL にすると、ブラウザは `ws://<Tailscaleホスト>:18580/ws/...`（または `.env` の `PORT` の値）に WebSocket 接続します。
 
 - **start スクリプトで起動している場合**: Next.js の rewrite が `/ws/*` を sync-server に転送するため、同一オリジン（Tailscale URL）経由で WebSocket も動作します。
-- **`npm run dev` のみで、PostgreSQL 等をまだ起動していない場合**: sync-server に届かず WebSocket が接続できないことがあります。`start.bat` / `start.sh` で依存サービスを起動してから `npm run dev` するか、`npm run env:local` で localhost 経由にし、sync-server を別途起動して `NEXT_PUBLIC_SYNC_WS_URL` を設定してください。
+- **`npm run dev` のみで、PostgreSQL 等をまだ起動していない場合**: sync-server に届かず WebSocket が接続できないことがあります。`scripts/entry/start.bat` / `scripts/entry/start.sh` で依存サービスを起動してから `npm run dev` するか、`npm run env:local` で localhost 経由にし、sync-server を別途起動して `NEXT_PUBLIC_SYNC_WS_URL` を設定してください。
 
 ## Tailscale 使用時の MinIO（ポート 9000）について
 

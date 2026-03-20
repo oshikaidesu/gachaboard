@@ -14,7 +14,7 @@
 | **sync-server** | 18582 | Yjs WebSocket サーバー（リアルタイム共同編集） |
 | **MinIO** | 18583 | S3 互換ストレージ（ファイル本体） |
 
-最小構成（アプリ + DB）に、リアルタイム同期とファイルストレージを足した構成。PostgreSQL・MinIO・sync-server は `start.bat` / `start.sh`（portable スクリプト）で起動。Next.js は同じ起動スクリプト内で `npm run dev` または `npm run start` で起動。
+最小構成（アプリ + DB）に、リアルタイム同期とファイルストレージを足した構成。PostgreSQL・MinIO・sync-server は `scripts/entry/start.bat` / `scripts/entry/start.sh`（portable スクリプト）で起動。Next.js は同じ起動スクリプト内で `npm run dev` または `npm run start` で起動。
 
 ---
 

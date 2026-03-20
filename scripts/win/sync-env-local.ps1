@@ -1,5 +1,5 @@
-﻿# Local モード用に .env.local の NEXTAUTH_URL を localhost に設定
-# run.ps1（-Tailscale なし、start.bat 1）から呼ばれる
+# Set nextjs-web/.env.local NEXTAUTH_URL (and related) for localhost mode
+# Called from run.ps1 without -Tailscale (scripts/entry/start.bat menu 2)
 param([string]$AppPort = "18580", [string]$MinioPort = "18583", [string]$SyncPort = "18582")
 
 $RootDir = if ($env:GACHABOARD_ROOT) { $env:GACHABOARD_ROOT } else { (Get-Location).Path }

@@ -12,7 +12,7 @@ echo "=== Gachaboard 本番サーバー起動 ==="
 
 check_required || exit 1
 check_env_exists "$ROOT_DIR" || exit 1
-ensure_env_symlink "$ROOT_DIR"
+drop_legacy_root_env "$ROOT_DIR"
 
 echo ">>> 1. ポート変数を同期"
 bash "$SCRIPTS_DIR/lib/sync-env-ports.sh" 2>/dev/null || true
@@ -28,8 +28,8 @@ npx prisma migrate deploy || { npx prisma migrate resolve --applied 202503181200
 
 echo ">>> 4. 本番サーバー起動（既存ビルド）"
 # ビルドが必要な場合: npm run build
-if [[ -f ../.env ]]; then
-  port_val=$(grep -E '^PORT=' ../.env 2>/dev/null | cut -d= -f2- | tr -d '"\r')
+if [[ -f .env.local ]]; then
+  port_val=$(grep -E '^PORT=' .env.local 2>/dev/null | cut -d= -f2- | tr -d '"\r')
   [[ -n "$port_val" ]] && export PORT="$port_val"
 fi
 APP_URL="http://localhost:${PORT:-18580}"

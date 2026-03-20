@@ -24,7 +24,7 @@ echo "=== Gachaboard 起動（ローカルモード）==="
 
 check_required || exit 1
 check_env_exists "$ROOT_DIR" || exit 1
-ensure_env_symlink "$ROOT_DIR"
+drop_legacy_root_env "$ROOT_DIR"
 check_discord_env "$ROOT_DIR" || exit 1
 
 if [[ ! -d "$ROOT_DIR/nextjs-web/node_modules" ]]; then
@@ -44,7 +44,6 @@ echo ">>> 2. env をローカル用に切り替え"
 cd nextjs-web
 bash scripts/switch-env.sh local
 cd "$ROOT_DIR"
-sync_env_to_root "$ROOT_DIR"
 
 echo ">>> 3. 依存サービス起動 (PostgreSQL, MinIO, Sync Server)"
 if [[ "$DO_RESET" == true ]]; then
@@ -70,8 +69,8 @@ if [[ "$DO_DEV" == true ]]; then
 else
   echo ">>> 4. アプリ起動（本番モード）"
 fi
-if [[ -f .env ]]; then
-  port_val=$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2- | tr -d '"\r')
+if [[ -f nextjs-web/.env.local ]]; then
+  port_val=$(grep -E '^PORT=' nextjs-web/.env.local 2>/dev/null | cut -d= -f2- | tr -d '"\r')
   [[ -n "$port_val" ]] && export PORT="$port_val"
 fi
 kill_app_port "${PORT:-18580}"

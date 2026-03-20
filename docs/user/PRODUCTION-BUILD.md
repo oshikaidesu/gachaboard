@@ -1,6 +1,6 @@
 # 本番ビルドの作成
 
-`start.command` や `npm start` で **ビルド済み**（本番モード）で起動するために、事前に本番ビルドを作成する手順です。
+`scripts/entry/start.command` や `npm start` で **ビルド済み**（本番モード）で起動するために、事前に本番ビルドを作成する手順です。
 
 ---
 
@@ -8,8 +8,8 @@
 
 | 起動方法 | 本番ビルド |
 |----------|------------|
-| `npm run dev` / `start.command`（開発モードで起動する場合） | 不要 |
-| `npm start` / `start.command`（本番モードで起動する場合） | **必要** |
+| `npm run dev` / `scripts/entry/start.command`（開発モードで起動する場合） | 不要 |
+| `npm start` / `scripts/entry/start.command`（本番モードで起動する場合） | **必要** |
 
 `.next/` に **本番用のビルド成果物** がないと `npm start` は動きません。開発中は `next dev` のキャッシュだけが入っているため、本番起動前にビルドが必要です。
 
@@ -26,7 +26,7 @@ cd ..
 ```
 
 - `npm run build` で Next.js の本番ビルドが実行され、`.next/` が本番用に上書きされます。
-- 完了後、`start.command` をダブルクリックするか `npm start` で本番モードで起動できます。
+- 完了後、`scripts/entry/start.command` をダブルクリックするか `npm start` で本番モードで起動できます。
 
 **初回および DB スキーマ変更後**は、ビルド前に Prisma の反映を推奨します。
 

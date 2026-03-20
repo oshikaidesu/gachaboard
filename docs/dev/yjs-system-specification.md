@@ -24,10 +24,10 @@
 [メンバーA ブラウザ]                    [ホスト 1 台]
        │                                      │
        ├──Tailscale P2P──┐                    │
-       │  (WireGuard)    │                    ├── nextjs-web :3000
-[メンバーB ブラウザ]     │                    ├── sync-server :5858
-       │                 └──────────────────►├── postgres :5432
-       │                                      └── MinIO (S3互換) :9000
+       │  (WireGuard)    │                    ├── nextjs-web :18580（既定 `PORT`）
+[メンバーB ブラウザ]     │                    ├── sync-server :18582
+       │                 └──────────────────►├── postgres :18581（ホスト）
+       │                                      └── MinIO (S3互換) :18583
        │
        └── WebSocket ──────────────────────► Y.Doc / Awareness 同期
 ```
@@ -380,7 +380,7 @@ tldraw 組み込み型: image, note, geo, text, arrow, draw, highlight, line, fr
 
 ## 15. 依存サービス（起動スクリプト）
 
-PostgreSQL・MinIO・sync-server はリポジトリに含まれる起動スクリプト（`start.bat` / `start.sh` → portable スクリプト）で起動する。docker-compose は使用しない。
+PostgreSQL・MinIO・sync-server はリポジトリに含まれる起動スクリプト（`scripts/entry/start.bat` / `scripts/entry/start.sh` → portable スクリプト）で起動する。docker-compose は使用しない。
 
 | サービス | ポート（ホスト） | 備考 |
 |----------|------------------|------|

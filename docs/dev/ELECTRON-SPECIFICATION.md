@@ -2,6 +2,8 @@
 
 Gachaboard を Electron でラップし、**ライトな層でもワンクリックで起動できる**デスクトップアプリの仕様を定義する。
 
+> **現行ランチャー（`launcher/`）** は **`http://localhost:18580`** を既定とする。本文中のポート表・シーケンスはリポジトリの **`PORT` / `SYNC_SERVER_HOST_PORT`（18580 / 18582 番台）** に揃えてある。
+
 ---
 
 ## 1. 目的・背景
@@ -52,7 +54,7 @@ Gachaboard を Electron でラップし、**ライトな層でもワンクリッ
 │             │ spawn                                                    │
 │  ┌──────────▼──────────┐  ┌──────────────────────────┐               │
 │  │  sync-server        │  │  Next.js (next start)     │               │
-│  │  :5858 (Yjs WS)     │  │  :3000                   │               │
+│  │  :18582 (Yjs WS)    │  │  :18580 (既定 PORT)      │               │
 │  └─────────────────────┘  └───────────┬──────────────┘               │
 │                                       │                               │
 │  ┌────────────────────────────────────▼───────────────────────────┐  │
@@ -67,7 +69,7 @@ Gachaboard を Electron でラップし、**ライトな層でもワンクリッ
 │                                                                       │
 │  ┌────────────────────────────────────────────────────────────────┐  │
 │  │  Renderer (BrowserWindow)                                       │  │
-│  │  loadURL(http://localhost:3000)                                 │  │
+│  │  loadURL(http://localhost:18580)                                │  │
 │  └────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────────┘
 ```
@@ -80,15 +82,15 @@ Main 起動
     ├─→ app.getPath('userData') 取得
     ├─→ data/, data/storage/* ディレクトリ作成
     │
-    ├─→ [1] sync-server 子プロセス起動 (PORT=5858)
-    │       └─→ 待機: ws://localhost:5858 応答確認
+    ├─→ [1] sync-server 子プロセス起動 (例: PORT=18582)
+    │       └─→ 待機: WebSocket 応答確認
     │
     ├─→ [2] 環境変数セット (DATABASE_URL, STORAGE_*, NEXT_PUBLIC_SYNC_WS_URL 等)
     │
     ├─→ [3] next start 子プロセス起動
-    │       └─→ 待機: http://localhost:3000 応答確認 (wait-on)
+    │       └─→ 待機: http://localhost:18580 応答確認 (wait-on 等)
     │
-    └─→ [4] BrowserWindow 作成・loadURL(localhost:3000)
+    └─→ [4] BrowserWindow 作成・loadURL(localhost:18580)
 ```
 
 ### 2.3 終了シーケンス
@@ -146,7 +148,7 @@ Main 起動
 |------|------|
 | 場所 | `nextjs-web/sync-server`（既存） |
 | 起動 | `child_process.spawn` で `node` または `npx y-websocket-server` |
-| ポート | 5858（固定） |
+| ポート | 既定 **18582**（`SYNC_SERVER_HOST_PORT`。他と衝突時は `.env.local` で変更） |
 | パッケージ時 | asarUnpack で sync-server を asar 外に配置し、node_modules を参照可能にする |
 
 ---
@@ -161,8 +163,8 @@ Main 起動
 | `DATABASE_PROVIDER` | `sqlite` |
 | `STORAGE_BACKEND` | `local` |
 | `STORAGE_LOCAL_PATH` | `{userData}/data/storage` |
-| `NEXT_PUBLIC_SYNC_WS_URL` | `ws://localhost:5858` |
-| `NEXTAUTH_URL` | `http://localhost:3000` |
+| `NEXT_PUBLIC_SYNC_WS_URL` | `ws://localhost:18582`（ポートは `.env.local` と一致） |
+| `NEXTAUTH_URL` | `http://localhost:18580`（`PORT` と一致） |
 | `NODE_ENV` | `production` |
 
 ### 4.2 ユーザーが設定する変数（引き続き必要）
@@ -227,7 +229,7 @@ Main 起動
 
 ### Phase 1: Electron ラッパーのみ（既存インフラ前提）
 
-- Electron main で `next start` を起動し、`http://localhost:3000` を BrowserWindow で表示
+- Electron main で `next start` を起動し、`http://localhost:18580` を BrowserWindow で表示（`PORT` に合わせる）
 - PostgreSQL, MinIO, sync-server は従来どおり Docker / 手動起動
 - **効果**: 既存コードへの影響なし。Electron 基盤を先行構築できる
 
@@ -255,8 +257,8 @@ Main 起動
 | **Discord OAuth** | 初回利用時に Discord Developer Portal でアプリ作成が必要。完全オフライン利用には「ローカル認証モード」の追加が必要 |
 | **ffmpeg** | 動画変換・波形生成に使用。ユーザーが別途インストールするか、Electron に同梱するか検討 |
 | **パッケージサイズ** | Electron + Next.js + Node でおよそ 150〜200MB 程度を想定 |
-| **マルチインスタンス** | 同一マシンで複数起動する場合、ポート競合（3000, 5858）に注意。1 インスタンス想定で設計 |
-| **開発モード** | `npm run dev` で Next.js を起動し、Electron は `ELECTRON_START_URL=http://localhost:3000` で接続する構成を検討 |
+| **マルチインスタンス** | 同一マシンで複数起動する場合、ポート競合（`PORT` / sync / DB 等）に注意。1 インスタンス想定で設計 |
+| **開発モード** | `npm run dev` で Next.js を起動し、Electron は `ELECTRON_START_URL=http://localhost:18580`（または使用中の `PORT`）で接続する構成を検討 |
 
 ---
 

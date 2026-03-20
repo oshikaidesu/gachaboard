@@ -1,47 +1,47 @@
-# Gachaboard ランチャー
+# Gachaboard launcher
 
-Electron 製のデスクトップランチャー。初回ウィザードで Discord 設定を入力し、Tailscale モードでサーバを起動します。トレイ常駐に対応しています。
+Electron desktop launcher: first-run wizard for Discord, starts the stack in Tailscale mode by default, system tray support.
 
-## 開発時の起動
+## Development
 
-プロジェクトルートで:
+From the repo root:
 
 ```bash
 npm run launcher
 ```
 
-または:
+Or:
 
 ```bash
 cd launcher && npm run start
 ```
 
-**注意**: ランチャーはプロジェクトルート（`launcher/` の親）をアプリルートとして認識します。`scripts/win/run.ps1` や `nextjs-web/` がその直下にある必要があります。
+**Note:** The launcher treats the project root (parent of `launcher/`) as the app root. `scripts/win/run.ps1`, `nextjs-web/`, etc. must live directly under that folder.
 
-## ビルド
+## Build
 
 ```bash
 cd launcher
-npm run build        # 全プラットフォーム
-npm run build:win    # Windows (portable + nsis)
-npm run build:mac    # Mac (dmg)
+npm run build        # all configured targets
+npm run build:win    # Windows portable
+npm run build:mac    # macOS (dmg)
 npm run build:linux  # Linux (AppImage)
 ```
 
-ビルド成果物は `launcher/dist/` に出力されます。
+Artifacts go to `launcher/dist/`.
 
-## 配布
+## Distribution
 
-ビルドした exe（例: `Gachaboard 0.1.0.exe`）を **プロジェクトフォルダのルート** に配置して配布。ユーザーはプロジェクトを clone または ZIP で取得し、そのフォルダに exe を置いて **exe をダブルクリック**で起動。exe のディレクトリがアプリルートとして使われます。cwd が合わない場合は run-launcher.bat を補助として使えます。
+Put the built portable exe (e.g. `Gachaboard 0.1.0.exe`) at the **project folder root**. Users clone or unzip the project, place the exe there, and **double-click** it. The exe directory is the app root when no project path is saved. If the working directory is wrong, use `scripts/entry/run-launcher.bat`.
 
-## リリース（GitHub Releases）
+## GitHub Releases
 
-`v*` タグを push すると `.github/workflows/release-build.yml` が実行され、以下が自動ビルド・アップロードされます:
+Pushing a `v*` tag runs `.github/workflows/release-build.yml`, which builds and uploads artifacts such as:
 
-- `gachaboard-dist.zip` … プロジェクト一式（node_modules 除く）
-- `Gachaboard 0.1.0.exe` … ポータブル版（インストール不要）
-- `Gachaboard Setup 0.1.0.exe` … NSIS インストーラー版
+- `gachaboard-dist.zip` — full tree (without `node_modules`)
+- `Gachaboard 0.1.0.exe` — portable (no installer)
+- `Gachaboard Setup 0.1.0.exe` — NSIS installer (if enabled in workflow)
 
-## 更新
+## Updates
 
-アプリ内の「最新版は Releases で確認」リンクから [Releases](https://github.com/oshikaidesu/gachaboard/releases) を開けます。新しいバージョンの exe をダウンロードして、既存のプロジェクトフォルダ内の exe を上書きすれば、`.env.local` や `data/` はそのまま保持されます。
+Use the in-app “Latest on Releases” link or open [Releases](https://github.com/oshikaidesu/gachaboard/releases). Replace the exe inside your existing project folder; `.env.local` and `data/` stay as-is.

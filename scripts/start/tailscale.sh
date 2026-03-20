@@ -25,8 +25,8 @@ echo "=== Gachaboard 起動（Tailscale モード）==="
 # ── 起動済みチェック（--reset の場合はスキップ）──
 if [[ "$DO_RESET" != true ]]; then
   CHECK_PORT="18580"
-  if [[ -f "$ROOT_DIR/.env" ]]; then
-    pv=$(grep -E '^PORT=' "$ROOT_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"\r')
+  if [[ -f "$ROOT_DIR/nextjs-web/.env.local" ]]; then
+    pv=$(grep -E '^PORT=' "$ROOT_DIR/nextjs-web/.env.local" 2>/dev/null | cut -d= -f2- | tr -d '"\r')
     [[ -n "$pv" ]] && CHECK_PORT="$pv"
   fi
   if curl -s -o /dev/null -w "%{http_code}" "http://localhost:${CHECK_PORT}" 2>/dev/null | grep -qE "200|302|307"; then
@@ -62,7 +62,7 @@ fi
 export GACHABOARD_ROOT="$ROOT_DIR"
 check_required tailscale || exit 1
 check_env_exists "$ROOT_DIR" || exit 1
-ensure_env_symlink "$ROOT_DIR"
+drop_legacy_root_env "$ROOT_DIR"
 check_discord_env "$ROOT_DIR" || exit 1
 
 if [[ ! -d "$ROOT_DIR/nextjs-web/node_modules" ]]; then
@@ -88,8 +88,8 @@ if [[ -z "${TAILSCALE_HOST:-}" ]]; then
   echo "    ブラウザが開いたら認証を完了してください。"
   echo ""
   AUTH_KEY=""
-  if [[ -f "$ROOT_DIR/.env" ]]; then
-    AUTH_KEY=$(grep -E '^TAILSCALE_AUTH_KEY=' "$ROOT_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"'\''\r' | head -1)
+  if [[ -f "$ROOT_DIR/nextjs-web/.env.local" ]]; then
+    AUTH_KEY=$(grep -E '^TAILSCALE_AUTH_KEY=' "$ROOT_DIR/nextjs-web/.env.local" 2>/dev/null | cut -d= -f2- | tr -d '"'\''\r' | head -1)
   fi
   sudo tailscale up 2>/dev/null || tailscale up 2>/dev/null || true
   echo ""
@@ -106,7 +106,7 @@ if [[ -z "${TAILSCALE_HOST:-}" ]]; then
   echo "  Tailscale ホスト名が取得できませんでした"
   echo "============================================"
   echo ""
-  echo "  ブラウザでログインを完了したら、start.bat を再度実行してください。"
+  echo "  ブラウザでログインを完了したら、scripts/entry/start.bat を再度実行してください。"
   echo "  手動でホスト名を指定する場合:"
   echo "    TAILSCALE_HOST=your-machine.tail12345.ts.net bash scripts/start/tailscale.sh"
   echo ""
@@ -122,7 +122,7 @@ echo ">>> ポート変数を同期"
 bash "$SCRIPTS_DIR/lib/sync-env-ports.sh" 2>/dev/null || true
 
 # .env / .env.local に残った NEXTAUTH_URL を削除（getBaseUrl がリクエスト Host から動的解決するため不要）
-for ef in "$ROOT_DIR/.env" "$ROOT_DIR/nextjs-web/.env.local"; do
+for ef in "$ROOT_DIR/nextjs-web/.env.local"; do
   if [[ -f "$ef" ]] && grep -q '^NEXTAUTH_URL=' "$ef" 2>/dev/null; then
     tmp=$(mktemp)
     grep -v '^NEXTAUTH_URL=' "$ef" > "$tmp" && mv "$tmp" "$ef"
@@ -159,8 +159,8 @@ if [[ "$DO_DEV" == true ]]; then
 else
   echo ">>> アプリ起動（本番モード）"
 fi
-if [[ -f .env ]]; then
-  port_val=$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2- | tr -d '"\r')
+if [[ -f nextjs-web/.env.local ]]; then
+  port_val=$(grep -E '^PORT=' nextjs-web/.env.local 2>/dev/null | cut -d= -f2- | tr -d '"\r')
   [[ -n "$port_val" ]] && export PORT="$port_val"
 fi
 kill_app_port "${PORT:-18580}"
@@ -193,7 +193,7 @@ fi
 # ── 7. Tailscale Serve を設定（HTTPS） ──
 if [[ "$READY" == true ]]; then
   APP_PORT="${PORT:-18580}"
-  SYNC_PORT=$(grep -E '^SYNC_SERVER_HOST_PORT=' "${ROOT_DIR}/.env" 2>/dev/null | cut -d= -f2- | tr -d '"\r')
+  SYNC_PORT=$(grep -E '^SYNC_SERVER_HOST_PORT=' "${ROOT_DIR}/nextjs-web/.env.local" 2>/dev/null | cut -d= -f2- | tr -d '"\r')
   SYNC_PORT="${SYNC_PORT:-18582}"
 
   if command -v tailscale >/dev/null 2>&1; then
@@ -222,7 +222,7 @@ echo "    $APP_URL/api/auth/callback/discord"
 echo ""
 echo "  よく使うコマンド:"
 echo "    本番ビルド: cd nextjs-web && npm run build && cd .. の後 npm start"
-echo "    リセット:   start.bat --reset （Windows） / bash scripts/start/tailscale.sh --reset"
+echo "    リセット:   scripts/entry/start.bat（メニュー 6）/ bash scripts/start/tailscale.sh --reset"
 echo "    状態確認:   cd nextjs-web && npm run status"
 echo ""
 if [[ "$DO_DEV" == true ]]; then

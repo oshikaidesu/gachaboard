@@ -101,7 +101,7 @@ function Start-Postgres {
     Start-Sleep -Seconds 2
   }
 
-  # プロジェクト移動後: postgresql.conf の data_directory が古いパスのままなら更新
+  # If the project folder moved, fix postgresql.conf data_directory if it still points elsewhere
   $conf = Join-Path $PgData "postgresql.conf"
   $pgDataNorm = $PgData.Replace('\', '/')
   if ((Test-Path $conf)) {
@@ -118,8 +118,7 @@ function Start-Postgres {
 
   Write-Host ">>> Starting PostgreSQL..."
   $logFile = Join-Path $DataDir "postgres.log"
-  # pg_ctl start を子プロセスで実行すると Windows でハングすることがあるため、
-  # Start-Job で非同期実行してブロックを回避する。Job は kill しない（kill すると postgres も終了する）
+  # pg_ctl start can hang when run synchronously on Windows; use Start-Job. Do not stop the job (would kill postgres).
   $null = Start-Job -ScriptBlock {
     param($ctlPath, $dataDir, $logPath, $port)
     $env:PATH = $ctlPath + ";" + $env:PATH

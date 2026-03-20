@@ -1,14 +1,14 @@
 # Windows native startup (no WSL/Docker)
-# 起動 = 再起動: 既に Next.js が動いている場合はアプリポートを解放してから起動する。
-# -Tailscale: Tailscale HTTPS 用に NEXTAUTH_URL を設定し、Tailscale Serve を有効化
-# -Dev: npm run dev で開発モード起動（ホットリロード）
-# -BuildOnly: ビルドまで実行して終了（アプリは起動しない）
+# Restart = stop app port if Next.js is already bound, then start again.
+# -Tailscale: set NEXTAUTH_URL for HTTPS, enable Tailscale Serve
+# -Dev: npm run dev (hot reload)
+# -BuildOnly: build and exit (no app process)
 param([switch]$Tailscale, [switch]$Dev, [switch]$BuildOnly)
 
-# リダイレクト・パイプ時もコードページを UTF-8 に（日本語 Windows で子プロセス出力が化けにくくなる）
+# UTF-8 code page so redirected/piped child output mojibakes less on localized Windows
 $null = cmd /c "chcp 65001 >nul 2>&1"
 
-# UTF-8 でコンソール出力（文字化け防止）
+# Console output encoding
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = 'Stop'
@@ -46,17 +46,17 @@ if (-not (Test-Path $envLocal)) {
     }
     Write-Host ''
     Write-Host '============================================' -ForegroundColor Yellow
-    Write-Host '  Discord ログイン用の設定が必要です' -ForegroundColor Yellow
+    Write-Host '  Configure Discord for sign-in' -ForegroundColor Yellow
     Write-Host '============================================' -ForegroundColor Yellow
     Write-Host ''
-    Write-Host '  1. https://discord.com/developers/applications でアプリを作成' -ForegroundColor Gray
-    Write-Host '  2. OAuth2 から Client ID / Client Secret を取得' -ForegroundColor Gray
-    Write-Host '  3. nextjs-web\.env.local を開き、以下を入力:' -ForegroundColor Gray
+    Write-Host '  1. Create an app at https://discord.com/developers/applications' -ForegroundColor Gray
+    Write-Host '  2. OAuth2: copy Client ID and Client Secret' -ForegroundColor Gray
+    Write-Host '  3. Edit nextjs-web\.env.local and set:' -ForegroundColor Gray
     Write-Host '     DISCORD_CLIENT_ID=(your value)' -ForegroundColor Gray
     Write-Host '     DISCORD_CLIENT_SECRET=(your value)' -ForegroundColor Gray
-    Write-Host '  4. 保存後、start.bat → 1 を再度実行' -ForegroundColor Gray
+    Write-Host '  4. Save, then run scripts\entry\start.bat again (option 1)' -ForegroundColor Gray
     Write-Host ''
-    Write-Host '  詳細: docs\user\WINDOWS-NATIVE-SETUP.md' -ForegroundColor Gray
+    Write-Host '  See: docs\user\WINDOWS-NATIVE-SETUP.md' -ForegroundColor Gray
     Write-Host '============================================' -ForegroundColor Yellow
     pause
     exit 0
@@ -79,17 +79,17 @@ if (-not $authSecret -or $authSecret -match 'REPLACE|^$') { $missing += 'NEXTAUT
 if ($missing.Count -gt 0) {
   Write-Host ''
   Write-Host '============================================' -ForegroundColor Red
-  Write-Host '  Discord ログインに必要な設定が未入力です' -ForegroundColor Red
+  Write-Host '  Missing values required for Discord sign-in' -ForegroundColor Red
   Write-Host '============================================' -ForegroundColor Red
   Write-Host ''
-  Write-Host "  未設定: $($missing -join ', ')" -ForegroundColor Gray
+  Write-Host "  Not set: $($missing -join ', ')" -ForegroundColor Gray
   Write-Host ''
-  Write-Host '  nextjs-web\.env.local を開いて入力してください:' -ForegroundColor Gray
+  Write-Host '  Edit nextjs-web\.env.local:' -ForegroundColor Gray
   Write-Host '    - DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET' -ForegroundColor Gray
-  Write-Host '      Discord Developer Portal でアプリ作成後、OAuth2 から取得' -ForegroundColor Gray
-  Write-Host '    - NEXTAUTH_SECRET が空なら、npm run setup:env で自動生成' -ForegroundColor Gray
+  Write-Host '      (from Discord Developer Portal → OAuth2)' -ForegroundColor Gray
+  Write-Host '    - If NEXTAUTH_SECRET is empty: npm run setup:env' -ForegroundColor Gray
   Write-Host ''
-  Write-Host '  詳細: docs\user\WINDOWS-NATIVE-SETUP.md' -ForegroundColor Gray
+  Write-Host '  See: docs\user\WINDOWS-NATIVE-SETUP.md' -ForegroundColor Gray
   Write-Host '============================================' -ForegroundColor Red
   pause
   exit 1
@@ -98,12 +98,12 @@ if ($missing.Count -gt 0) {
 # ffmpeg check (optional - for video/audio conversion)
 if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
   Write-Host ''
-  Write-Host '  [Optional] ffmpeg が未インストールです。動画・音声変換に必要。' -ForegroundColor DarkYellow
-  Write-Host '  インストール: winget install ffmpeg または https://ffmpeg.org/download.html' -ForegroundColor DarkYellow
+  Write-Host '  [Optional] ffmpeg not found (needed for video/audio transcoding).' -ForegroundColor DarkYellow
+  Write-Host '  Install: winget install ffmpeg  or  https://ffmpeg.org/download.html' -ForegroundColor DarkYellow
   Write-Host ''
 }
 
-# Read .env for port vars (already loaded above for Discord check)
+# Port vars from .env.local (already loaded above for Discord check)
 $PostgresPort = '18581'
 $SyncPort = '18582'
 $MinioPort = '18583'
@@ -117,7 +117,7 @@ $env:SYNC_SERVER_HOST_PORT = $SyncPort
 $env:MINIO_API_HOST_PORT = $MinioPort
 $env:GACHABOARD_DATA_DIR = Join-Path $RootDir 'data'
 
-# env をモードに合わせて更新（Local / Tailscale）
+# Sync .env.local URLs for Local vs Tailscale
 Write-Host ''
 if ($Tailscale) {
   & (Join-Path $RootDir 'scripts\win\sync-env-tailscale.ps1')
@@ -184,7 +184,7 @@ npx prisma generate
 npx prisma migrate deploy
 Set-Location $RootDir
 
-# Build（開発モードではスキップ、BuildOnly では常に実行）
+# Build (skipped in Dev unless BuildOnly)
 $needBuild = $BuildOnly -or (-not $Dev -and -not (Test-Path (Join-Path (Join-Path $nextDir '.next') 'BUILD_ID')))
 if ($needBuild) {
   Write-Host ''
@@ -213,7 +213,7 @@ if ($conn) { $conn.OwningProcess | Select-Object -Unique | ForEach-Object { Stop
 $env:PORT = $AppPort
 $AppUrl = 'http://localhost:' + $AppPort
 
-# Tailscale Serve（HTTPS 化）
+# Tailscale Serve (HTTPS)
 if ($Tailscale) {
   $tsExe = 'C:\Program Files\Tailscale\tailscale.exe'
   if (-not (Test-Path $tsExe)) { $tsExe = 'C:\Program Files (x86)\Tailscale\tailscale.exe' }
@@ -233,7 +233,7 @@ Write-Host ('URL: ' + $AppUrl) -ForegroundColor Green
 Write-Host ('Stop: Ctrl' + [char]43 + 'C') -ForegroundColor Gray
 Write-Host ''
 
-# Next.js の起動完了を待ってからブラウザを開く（バックグラウンドジョブ）
+# Open browser once Next.js responds (background job)
 $readyUrl = 'http://localhost:' + $AppPort
 $openUrl = $AppUrl
 Start-Job -ScriptBlock {

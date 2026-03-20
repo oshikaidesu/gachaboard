@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -205,50 +205,50 @@
   </style>
 </head>
 <body>
-  <button id="gear-btn" class="gear-btn" title="設定" type="button">
+  <button id="gear-btn" class="gear-btn" title="Settings" type="button">
     <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-2 13.5l103 78-110 190-118-50q-11 8-23 15t-24 12L590-80H370Zm70-80h79l14-106q31-8 57.5-23.5T639-327l99 41 39-68-86-65q5-14 7-29.5t2-31.5q0-16-2-31.5t-7-29.5l86-65-39-68-99 42q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 64q-5 15-7 30t-2 32q0 16 2 31t7 30l-86 65 39 68 99-42q22 23 48.5 38.5T427-266l13 106Zm42-180q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Zm-2-140Z"/></svg>
   </button>
 
   <div id="help-modal" class="help-modal">
     <div class="help-modal-inner">
-      <h2>設定と使い方</h2>
+      <h2>Settings &amp; usage</h2>
 
       <div id="settings-env-override-note" class="env-override-note" style="display:none"></div>
       <div id="settings-root-invalid" class="field-warning" style="display:none"></div>
 
-      <h3>Gachaboard フォルダパス</h3>
-      <p class="field-hint" style="margin-top:0;margin-bottom:10px">EXE だけではサーバーは起動しません。ZIP などで展開した<strong>プロジェクト一式が入ったフォルダ</strong>を指定してから「サーバを起動」してください。ドライブやフォルダの<strong>位置を移動したあとも</strong>、ここで指定し直してください。</p>
+      <h3>Gachaboard project folder</h3>
+      <p class="field-hint" style="margin-top:0;margin-bottom:10px">The EXE alone does not start the server. Choose the <strong>folder that contains the full project</strong> (e.g. unpacked ZIP), then click <strong>Start server</strong>. If you move the folder or drive, set it again here.</p>
       <div class="field-group">
-        <label for="settings-project-root">現在のプロジェクトルート</label>
+        <label for="settings-project-root">Current project root</label>
         <div class="path-row">
-          <input type="text" id="settings-project-root" readonly placeholder="フォルダを選択してください">
-          <button type="button" class="btn-secondary" id="settings-project-root-pick">フォルダを選択</button>
+          <input type="text" id="settings-project-root" readonly placeholder="Choose a folder…">
+          <button type="button" class="btn-secondary" id="settings-project-root-pick">Choose folder</button>
         </div>
       </div>
       
       <div class="info-card">
-        <p>Gachaboardは、自分のPCをサーバーにして動かす共有ホワイトボードです。データはすべて自分のPC内に保存されます。</p>
+        <p>Gachaboard runs on your PC as the server. All data stays on your machine.</p>
       </div>
 
-      <h3>1. ログインの準備</h3>
-      <p>Discordアカウントでログインするために、Discord側で「アプリ」を作成し、以下のURLを登録してください。</p>
+      <h3>1. Sign-in (Discord)</h3>
+      <p>Create a Discord application and register these redirect URLs.</p>
       <div class="copy-row">
         <code id="oauth-localhost-url">http://localhost:18580/api/auth/callback/discord</code>
-        <button type="button" class="btn-secondary copy-btn" data-copy="oauth-localhost-url">コピー</button>
+        <button type="button" class="btn-secondary copy-btn" data-copy="oauth-localhost-url">Copy</button>
       </div>
       <div id="oauth-tailscale-row" class="copy-row" style="display:none">
         <code id="oauth-tailscale-url"></code>
-        <button type="button" class="btn-secondary copy-btn" data-copy="oauth-tailscale-url">コピー</button>
+        <button type="button" class="btn-secondary copy-btn" data-copy="oauth-tailscale-url">Copy</button>
       </div>
-      <p id="oauth-tailscale-hint" style="display:none;font-size:0.8rem;color:#78716c;margin-top:4px">Tailscaleで起動すると表示されます</p>
+      <p id="oauth-tailscale-hint" style="display:none;font-size:0.8rem;color:#78716c;margin-top:4px">Shown after you start with Tailscale</p>
 
-      <h3>2. 離れた人と一緒に使う（Tailscale）</h3>
+      <h3>2. Remote access (Tailscale)</h3>
       <div class="info-card">
-        <p style="margin-bottom:8px">インターネット越しに参加してもらうときは、全員が <a href="https://tailscale.com/download" target="_blank">Tailscale</a> を入れて同じ仮想ネットに入ります。サーバーを立てたあと、メイン画面に出る<strong>共有用の URL</strong>（<code>https://…ts.net</code> など）を相手に渡してください。同じ Wi‑Fi だけなら、その URL の代わりに localhost の URL を共有しても構いません。</p>
-        <p style="margin:0;font-size:0.85rem;color:#57534e">※サーバー主は <a href="https://login.tailscale.com/admin/dns" target="_blank">Tailscale 管理画面</a> で「MagicDNS」と「HTTPS」を有効にしてください。Discord のリダイレクト用 URL も、上の「Tailscale 用」行が出たら同じ内容を Developer Portal に追加してください。</p>
+        <p style="margin-bottom:8px">For people outside your LAN, everyone installs <a href="https://tailscale.com/download" target="_blank">Tailscale</a> and joins the same tailnet. After the server is up, share the <strong>URL</strong> on the main screen (e.g. <code>https://….ts.net</code>). On the same Wi‑Fi only, you can share the localhost URL instead.</p>
+        <p style="margin:0;font-size:0.85rem;color:#57534e">Server admin: enable MagicDNS and HTTPS in the <a href="https://login.tailscale.com/admin/dns" target="_blank">Tailscale admin console</a>. When the Tailscale redirect line appears above, add the same URL in the Discord Developer Portal.</p>
       </div>
 
-      <h3>3. 基本設定</h3>
+      <h3>3. Basic</h3>
       <div class="field-group">
         <label for="settings-client-id">Discord Client ID</label>
         <input type="text" id="settings-client-id" placeholder="1234567890123456789">
@@ -258,125 +258,125 @@
         <input type="password" id="settings-client-secret" placeholder="abcdef123456...">
       </div>
       <div class="field-group">
-        <label for="settings-owner-id">オーナーのDiscord ID（任意）</label>
-        <input type="text" id="settings-owner-id" placeholder="空欄なら誰でも使えます">
+        <label for="settings-owner-id">Owner Discord ID (optional)</label>
+        <input type="text" id="settings-owner-id" placeholder="Leave empty to allow all members">
       </div>
 
-      <h3>4. 動作の調整</h3>
-      <p>動画や音声をアップロードした後の変換処理を調整します。</p>
+      <h3>4. Transcoding</h3>
+      <p>Tune how video/audio is processed after upload.</p>
       
       <div class="field-group">
-        <label>処理の方法</label>
+        <label>Encoder</label>
         <select id="settings-ffmpeg-backend">
-          <option value="gpu">CPU ＋ グラフィックボード（高速・推奨）</option>
-          <option value="cpu">CPU のみ</option>
+          <option value="gpu">CPU + GPU (faster, recommended)</option>
+          <option value="cpu">CPU only</option>
         </select>
       </div>
 
       <div class="field-group">
-        <label>PCへの負荷（CPU並列数）</label>
+        <label>Load (CPU parallelism)</label>
         <select id="settings-ffmpeg-intensity">
-          <option value="light">ひかえめ（他の作業を優先）</option>
-          <option value="medium" selected>標準（推奨）</option>
-          <option value="heavy">全力（変換を最速にする）</option>
+          <option value="light">Light (prefer other work)</option>
+          <option value="medium" selected>Balanced (recommended)</option>
+          <option value="heavy">Heavy (fastest transcoding)</option>
         </select>
       </div>
 
       <div class="field-group">
-        <label>OSの優先順位</label>
+        <label>OS process priority</label>
         <div class="radio-group" role="radiogroup">
           <label class="radio-item">
             <input type="radio" name="ffmpeg-os-priority" value="auto" checked>
-            <div class="radio-label">自動<span class="radio-desc">負荷が「ひかえめ」の時だけ優先度を下げます</span></div>
+            <div class="radio-label">Auto<span class="radio-desc">Lower priority only when load is “light”</span></div>
           </label>
           <label class="radio-item">
             <input type="radio" name="ffmpeg-os-priority" value="low">
-            <div class="radio-label">常に下げる<span class="recommended">推奨</span><span class="radio-desc">After Effects等と同時に使いやすくなります</span></div>
+            <div class="radio-label">Always lower<span class="recommended">Recommended</span><span class="radio-desc">Better when using with After Effects, etc.</span></div>
           </label>
           <label class="radio-item">
             <input type="radio" name="ffmpeg-os-priority" value="normal">
-            <div class="radio-label">下げない<span class="radio-desc">変換速度を優先します</span></div>
+            <div class="radio-label">Normal<span class="radio-desc">Prioritize transcoding speed</span></div>
           </label>
         </div>
       </div>
 
       <div class="field-group">
-        <label>プレビューの画質</label>
+        <label>Preview quality</label>
         <select id="settings-ffmpeg-output">
-          <option value="light">軽め（データ節約）</option>
-          <option value="medium" selected>標準（推奨）</option>
-          <option value="heavy">高品質（きれいに表示）</option>
+          <option value="light">Lighter (smaller data)</option>
+          <option value="medium" selected>Balanced (recommended)</option>
+          <option value="heavy">High quality</option>
         </select>
       </div>
 
-      <button id="settings-save-btn" class="btn-primary">設定を保存する</button>
+      <button id="settings-save-btn" class="btn-primary">Save settings</button>
       
       <div style="margin-top: 20px; text-align: center;">
-        <a href="https://github.com/oshikaidesu/gachaboard/blob/main/docs/user/SETUP.md" target="_blank" style="font-size: 0.8rem; margin: 0 8px;">ガイド</a>
+        <a href="https://github.com/oshikaidesu/gachaboard/blob/main/docs/user/SETUP.md" target="_blank" style="font-size: 0.8rem; margin: 0 8px;">Setup guide</a>
         <a href="https://github.com/oshikaidesu/gachaboard" target="_blank" style="font-size: 0.8rem; margin: 0 8px;">GitHub</a>
       </div>
 
-      <button id="help-modal-close" class="btn-outline">閉じる</button>
+      <button id="help-modal-close" class="btn-outline">Close</button>
     </div>
   </div>
 
   <div id="wizard-screen" class="screen">
     <img id="header-icon" class="screen-icon" src="" alt="" width="48" height="48" style="display:none">
-    <h1>Gachaboard 初回設定</h1>
-    <p class="tagline">音楽・映像・デザインファイルを貼り付けて、みんなで一緒に使えるホワイトボード</p>
-    <p class="sub">Discordアカウントでログインします。外部から参加してもらう場合はTailscaleをインストールし、URLを共有してください。</p>
+    <h1>Gachaboard — first-time setup</h1>
+    <p class="tagline">A shared whiteboard for audio, video, design files, and more</p>
+    <p class="sub">Sign in with Discord. For remote collaborators, install Tailscale and share the URL.</p>
 
     <div id="wizard-env-override-note" class="env-override-note" style="display:none;margin-bottom:12px;text-align:left"></div>
     <div id="wizard-root-invalid" class="field-warning" style="display:none;text-align:left"></div>
-    <label for="wizard-project-root" style="text-align:left">Gachaboard フォルダパス</label>
-    <p class="sub" style="font-size:0.8rem;margin-top:4px;margin-bottom:10px;line-height:1.5;text-align:left">EXE だけではサーバーは起動しません。ZIP などで展開した<strong>プロジェクト一式が入ったフォルダ</strong>を指定してから進んでください。ドライブやフォルダの<strong>位置を移動したあとも</strong>、設定（歯車）から指定し直せます。</p>
+    <label for="wizard-project-root" style="text-align:left">Gachaboard project folder</label>
+    <p class="sub" style="font-size:0.8rem;margin-top:4px;margin-bottom:10px;line-height:1.5;text-align:left">The EXE alone does not start the server. Choose the <strong>folder that contains the full project</strong> (e.g. unpacked ZIP). If you move the folder, set it again in Settings (gear).</p>
     <div class="path-row" style="margin-bottom:8px">
-      <input type="text" id="wizard-project-root" readonly placeholder="フォルダを選択してください">
-      <button type="button" class="btn-secondary" id="wizard-project-root-pick">フォルダを選択</button>
+      <input type="text" id="wizard-project-root" readonly placeholder="Choose a folder…">
+      <button type="button" class="btn-secondary" id="wizard-project-root-pick">Choose folder</button>
     </div>
 
     <div class="oauth-guide">
-      <p><strong>Discordでのアプリ作成手順:</strong></p>
+      <p><strong>Create a Discord application:</strong></p>
       <ol>
-        <li><a href="https://discord.com/developers/applications" target="_blank">Discord Developer Portal</a> で「New Application」を作成</li>
-        <li>「OAuth2」→「General」で Client ID と Client Secret を取得</li>
-        <li>「OAuth2」→「Redirects」に以下を追加:
+        <li>At the <a href="https://discord.com/developers/applications" target="_blank">Discord Developer Portal</a>, click <strong>New Application</strong></li>
+        <li>Under <strong>OAuth2 → General</strong>, copy <strong>Client ID</strong> and <strong>Client Secret</strong></li>
+        <li>Under <strong>OAuth2 → Redirects</strong>, add:
           <ul>
             <li><code>http://localhost:18580/api/auth/callback/discord</code></li>
-            <li><code>https://&lt;あなたのTailscaleホスト&gt;.ts.net/api/auth/callback/discord</code>（Tailscale 利用時。ホスト名は起動後に確認可能）</li>
+            <li><code>https://&lt;your-tailscale-host&gt;.ts.net/api/auth/callback/discord</code> (when using Tailscale; hostname is visible after startup)</li>
           </ul>
         </li>
       </ol>
       <p style="margin-top:12px;margin-bottom:0"><a href="https://github.com/oshikaidesu/gachaboard" target="_blank">GitHub</a> · <a href="https://github.com/oshikaidesu/gachaboard/releases" target="_blank">Releases</a> · <a href="https://github.com/oshikaidesu/gachaboard/blob/main/LICENSE" target="_blank">Apache 2.0</a></p>
     </div>
-    <p class="sub" style="font-size:0.8rem;margin-top:0;margin-bottom:16px;line-height:1.5">離れた場所の人と使う場合: <a href="https://tailscale.com/download" target="_blank">Tailscale を入手</a>。サーバ側は <a href="https://login.tailscale.com/admin/dns" target="_blank">管理画面</a>で MagicDNS と HTTPS をオンにしてください。</p>
-    <label for="client-id">Discord Client ID（必須）</label>
+    <p class="sub" style="font-size:0.8rem;margin-top:0;margin-bottom:16px;line-height:1.5">Remote use: get <a href="https://tailscale.com/download" target="_blank">Tailscale</a>. On the server machine, turn on MagicDNS and HTTPS in the <a href="https://login.tailscale.com/admin/dns" target="_blank">admin console</a>.</p>
+    <label for="client-id">Discord Client ID (required)</label>
     <input type="text" id="client-id" placeholder="1234567890123456789">
-    <label for="client-secret">Discord Client Secret（必須）</label>
+    <label for="client-secret">Discord Client Secret (required)</label>
     <input type="password" id="client-secret" placeholder="abcdef123456...">
-    <label for="owner-id">Discord オーナー ID（任意）</label>
-    <input type="text" id="owner-id" placeholder="このユーザーのみワークスペース作成可。空なら全員アクセス可">
-    <button id="wizard-submit" class="btn-primary">はじめる</button>
+    <label for="owner-id">Discord owner ID (optional)</label>
+    <input type="text" id="owner-id" placeholder="Only this user can create workspaces; empty = all members">
+    <button id="wizard-submit" class="btn-primary">Continue</button>
   </div>
 
   <div id="running-screen" class="screen">
     <img id="running-icon" class="screen-icon" src="" alt="" width="48" height="48" style="display:none">
     <h1>Gachaboard</h1>
-    <p class="tagline">音楽・映像・デザインなど、あらゆるファイルを自由に貼り付けて共有できるホワイトボード</p>
+    <p class="tagline">Paste and share audio, video, design files, and more on one board</p>
     <p class="sub status" id="status-text"></p>
-    <p class="sub" id="tailscale-hint" style="margin-bottom:8px">外部から参加してもらう場合は、Tailscaleをインストールし、起動後に表示されるURLを共有してください。</p>
-    <p class="sub" style="font-size:0.8rem;margin-top:0;margin-bottom:12px;line-height:1.5">Tailscale: <a href="https://tailscale.com/download" target="_blank">ダウンロード</a> · サーバ主は <a href="https://login.tailscale.com/admin/dns" target="_blank">MagicDNS・HTTPS の設定</a>（歯車の設定にも同じ案内があります）</p>
+    <p class="sub" id="tailscale-hint" style="margin-bottom:8px">For people joining from elsewhere: install Tailscale and share the URL shown after startup.</p>
+    <p class="sub" style="font-size:0.8rem;margin-top:0;margin-bottom:12px;line-height:1.5">Tailscale: <a href="https://tailscale.com/download" target="_blank">Download</a> · Server admin: <a href="https://login.tailscale.com/admin/dns" target="_blank">MagicDNS &amp; HTTPS</a> (same hints under Settings)</p>
     <div id="start-area">
-      <button id="start-server" class="btn-primary">サーバを起動</button>
+      <button id="start-server" class="btn-primary">Start server</button>
     </div>
     <div id="url-area" class="url-display" style="display:none">
-      <strong>アクセス URL:</strong><br>
+      <strong>URL:</strong><br>
       <span id="current-url">-</span>
     </div>
-    <button id="open-browser" class="btn-primary" style="display:none">ブラウザで開く</button>
-    <button id="stop-server" class="btn-secondary" style="display:none">停止</button>
+    <button id="open-browser" class="btn-primary" style="display:none">Open in browser</button>
+    <button id="stop-server" class="btn-secondary" style="display:none">Stop</button>
     <p class="sub" style="margin-top:24px">
-      <a href="https://github.com/oshikaidesu/gachaboard" target="_blank">GitHub</a> · <a href="https://github.com/oshikaidesu/gachaboard/releases" target="_blank">最新版は Releases で確認</a> · <a href="https://github.com/oshikaidesu/gachaboard/blob/main/LICENSE" target="_blank">Apache 2.0</a>
+      <a href="https://github.com/oshikaidesu/gachaboard" target="_blank">GitHub</a> · <a href="https://github.com/oshikaidesu/gachaboard/releases" target="_blank">Latest on Releases</a> · <a href="https://github.com/oshikaidesu/gachaboard/blob/main/LICENSE" target="_blank">Apache 2.0</a>
     </p>
     <div id="log-area" class="log"></div>
   </div>

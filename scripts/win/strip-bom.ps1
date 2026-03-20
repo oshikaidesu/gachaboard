@@ -1,6 +1,8 @@
 # Remove BOM and normalize line endings (CRLF only, no stray CR)
 $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-$path = Join-Path $root "start.bat"
+foreach ($rel in @('scripts\entry\start.bat')) {
+  $path = Join-Path $root $rel
+  if (-not (Test-Path $path)) { continue }
 $bytes = [System.IO.File]::ReadAllBytes($path)
 $i = 0
 if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
@@ -15,4 +17,5 @@ while ($i -lt $bytes.Length) {
   $i++
 }
 [System.IO.File]::WriteAllBytes($path, [byte[]]$list)
-Write-Host "start.bat normalized (BOM removed, CRLF only)"
+Write-Host "Normalized OK: $rel"
+}

@@ -8,8 +8,8 @@
 
 | プラットフォーム | 起動方法 | Postgres / MinIO / sync-server | Next.js |
 |------------------|----------|--------------------------------|---------|
-| **Windows**      | start.bat → run.ps1 | portable/scripts/start-services.ps1 | ホストで npm run start / dev |
-| **Mac / Linux**  | start.sh → launcher.sh | portable/scripts/start-services.sh | ホストで npm run start / dev |
+| **Windows**      | `scripts/entry/start.bat` → `run.ps1` | `portable/scripts/start-services.ps1` | ホストで npm run start / dev |
+| **Mac / Linux**  | `scripts/entry/start.sh` または `start.command` → `launcher.sh` | `portable/scripts/start-services.sh` | ホストで npm run start / dev |
 
 **Windows** は run.ps1 が `portable\scripts\start-services.ps1` を呼び出す。Postgres は `pg_ctl` が見つからなければ `portable\bin` にダウンロードして起動する。MinIO も同様に `portable\bin\minio.exe` をダウンロードして起動する。sync-server は `nextjs-web\sync-server` で `node server.mjs` として起動する。run.ps1 は docker を参照しない。
 
@@ -19,7 +19,7 @@
 
 ## Windows の起動の流れ
 
-1. **start.bat** → `scripts\win\run.ps1`（オプション: -Tailscale, -Dev, -BuildOnly）
+1. **`scripts/entry/start.bat`** → `scripts\win\run.ps1`（オプション: -Tailscale, -Dev, -BuildOnly）
 2. **run.ps1 Step 1** で `portable\scripts\start-services.ps1` を実行
    - Postgres: `pg_ctl` がなければ `portable\bin` にダウンロード → `data/postgres` で initdb / pg_ctl start
    - MinIO: `minio.exe` がなければダウンロード → `data/minio` で起動
@@ -32,7 +32,7 @@
 
 ## Mac / Linux の起動の流れ
 
-1. **start.sh** または **start.command** → `scripts/start/launcher.sh`
+1. **`scripts/entry/start.sh`** または **`scripts/entry/start.command`** → **`scripts/start/launcher.sh`**
 2. **launcher.sh** が条件に応じて分岐する
    - Node.js（npm）がない → インストール案内を表示して終了
    - node + npm + tailscale がある → モード選択（1: 本番 / 2: ビルドしてから本番 / 3: 開発）→ `scripts/start/tailscale.sh` を実行

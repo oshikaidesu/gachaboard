@@ -1,12 +1,12 @@
-﻿# Tailscale HTTPS 用に .env.local の NEXTAUTH_URL, S3_PUBLIC_URL, NEXT_PUBLIC_SYNC_WS_URL を更新
-# run.ps1 -Tailscale（start.bat 2）から呼ばれる
+# Update nextjs-web/.env.local for Tailscale HTTPS (NEXTAUTH_URL, S3_PUBLIC_URL, NEXT_PUBLIC_SYNC_WS_URL)
+# Called from run.ps1 -Tailscale (scripts/entry/start.bat menu 1)
 param([string]$TailscaleHost)
 
 $RootDir = if ($env:GACHABOARD_ROOT) { $env:GACHABOARD_ROOT } else { (Get-Location).Path }
 $EnvFile = Join-Path $RootDir "nextjs-web\.env.local"
 if (-not (Test-Path $EnvFile)) { return }
 
-# Tailscale ホスト取得
+# Resolve Tailscale host
 if (-not $TailscaleHost) {
   $tsExe = "C:\Program Files\Tailscale\tailscale.exe"
   if (-not (Test-Path $tsExe)) { $tsExe = "C:\Program Files (x86)\Tailscale\tailscale.exe" }

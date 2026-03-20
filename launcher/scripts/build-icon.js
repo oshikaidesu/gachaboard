@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// nextjs-web/public/icon.svg を 256x256 の PNG に変換して launcher/assets/icon.png に保存
+// Rasterize nextjs-web/public/icon.svg to 256x256 PNG → launcher/assets/icon.png
 const fs = require('fs');
 const path = require('path');
 
@@ -13,7 +13,7 @@ if (!fs.existsSync(svgPath)) {
 }
 
 let svg = fs.readFileSync(svgPath, 'utf8');
-// 256x256 にスケール（viewBox は維持）
+// Scale to 256x256 (keep viewBox)
 svg = svg.replace(/width="128" height="128"/, 'width="256" height="256"');
 
 const { Resvg } = require('@resvg/resvg-js');

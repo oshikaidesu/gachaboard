@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # NEXTAUTH_URL を local / tailscale で切り替える
-# 正本: nextjs-web/.env.local（プロジェクトルートの .env はそのシンボリックリンク）
+# Edits nextjs-web/.env.local only
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"

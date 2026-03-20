@@ -4,14 +4,18 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
+SCRIPTS_DIR="$(dirname "$SCRIPT_DIR")"
+ROOT_DIR="$(dirname "$SCRIPTS_DIR")"
+source "$SCRIPTS_DIR/lib/common.sh"
 cd "$ROOT_DIR"
+drop_legacy_root_env "$ROOT_DIR"
 mkdir -p "${ROOT_DIR}/.gachaboard"
 LOCK_FILE="${ROOT_DIR}/.gachaboard/start.lock"
 
 # ── 二重起動防止（起動 = 再起動: 既存があれば停止してから起動）──
 APP_PORT="18580"
-[[ -f ".env" ]] && [[ "$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2- | tr -d '\"\r')" =~ ^[0-9]+$ ]] && APP_PORT="$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2- | tr -d '\"\r')"
+ENV_LOCAL="${ROOT_DIR}/nextjs-web/.env.local"
+[[ -f "$ENV_LOCAL" ]] && [[ "$(grep -E '^PORT=' "$ENV_LOCAL" 2>/dev/null | cut -d= -f2- | tr -d '\"\r')" =~ ^[0-9]+$ ]] && APP_PORT="$(grep -E '^PORT=' "$ENV_LOCAL" 2>/dev/null | cut -d= -f2- | tr -d '\"\r')"
 
 take_lock() {
   if ( set -o noclobber; echo $$ > "$LOCK_FILE" ) 2>/dev/null; then
@@ -68,11 +72,12 @@ for arg in "$@"; do
   fi
 done
 
-# ── .env の存在チェック ──
-if [[ ! -f ".env" ]] && [[ -f ".env.example" ]]; then
-  cp .env.example .env
+# ── nextjs-web/.env.local の存在チェック ──
+if [[ ! -f "nextjs-web/.env.local" ]] && [[ -f ".env.example" ]]; then
+  mkdir -p nextjs-web
+  cp .env.example nextjs-web/.env.local
   echo ""
-  echo "  .env を .env.example から作成しました。"
+  echo "  nextjs-web/.env.local を .env.example から作成しました。"
   echo "  Discord OAuth 等を編集してから再度起動してください。"
   echo ""
   echo "Enter キーを押すと終了します..."
@@ -80,19 +85,16 @@ if [[ ! -f ".env" ]] && [[ -f ".env.example" ]]; then
   rm -f "$LOCK_FILE" 2>/dev/null || true
   exit 0
 fi
-if [[ ! -f ".env" ]]; then
+if [[ ! -f "nextjs-web/.env.local" ]]; then
   echo ""
   echo "============================================"
-  echo "  .env が未作成です（初回セットアップ）"
+  echo "  nextjs-web/.env.local が未作成です（初回セットアップ）"
   echo "============================================"
   echo ""
   echo "  ターミナルで以下を実行してください:"
   echo ""
   echo "    cd $ROOT_DIR"
-  echo "    cp .env.example .env"
-  echo "    # .env を開いて Discord OAuth 等を入力"
-  echo ""
-  echo "  Node.js がある場合: npm run setup:env"
+  echo "    npm run setup:env"
   echo ""
   echo "============================================"
   echo ""
@@ -168,7 +170,7 @@ echo "============================================"
 echo ""
 echo "  Mac:    brew install node"
 echo "  Linux:  https://nodejs.org/ または nvm でインストール"
-echo "  Windows: start.bat を使用"
+echo "  Windows: scripts/entry/start.bat を使用"
 echo ""
 echo "============================================"
 echo ""

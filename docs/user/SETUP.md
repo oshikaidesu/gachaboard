@@ -8,11 +8,11 @@ GitHub から clone して、自分のマシンで Gachaboard サーバーを構
 
 | 方法 | 対象 | 事前準備 |
 |------|------|----------|
-| **start.bat 1** | Windows（ローカル） | Node.js のみ。PostgreSQL・MinIO は自動ダウンロード |
-| **start.bat 2** | Windows（Tailscale） | Node.js + Tailscale |
-| **start.sh** / **start.command** | Mac / Linux | Node.js + PostgreSQL（同一スクリプト。MinIO はスクリプトで自動取得） |
+| **`scripts/entry/start.bat` → 1** | Windows（Tailscale・既定） | Node.js + Tailscale。PostgreSQL・MinIO は自動 |
+| **`scripts/entry/start.bat` → 2** | Windows（localhost のみ） | Node.js のみ。PostgreSQL・MinIO は自動 |
+| **`scripts/entry/start.sh`** / **`scripts/entry/start.command`** | Mac / Linux | Node.js + PostgreSQL（同一スクリプト。MinIO はスクリプトで自動取得） |
 
-**初めて利用する方は、start.bat を実行して 1 を選択する方法が最も簡単です。** → [WINDOWS-NATIVE-SETUP.md](WINDOWS-NATIVE-SETUP.md)
+**Windows で始める場合は** [WINDOWS-NATIVE-SETUP.md](WINDOWS-NATIVE-SETUP.md)（メニュー実体: `scripts/entry/start.bat`）。
 
 ---
 
@@ -21,7 +21,7 @@ GitHub から clone して、自分のマシンで Gachaboard サーバーを構
 ```
 あなた（サーバー主）             参加者（ブラウザだけ）
 ┌─────────────────────┐     ┌─────────────────────┐
-│ start.bat 2 実行      │     │ Tailscale インストール│
+│ scripts/entry/start.bat → 1 実行 │     │ Tailscale インストール│
 │  → PostgreSQL/MinIO   │     │  → Tailnet に参加     │
 │  → Next.js 起動       │     │  → URL をブラウザで開く│
 │  → Tailscale Serve    │     │  → Discord ログイン   │
@@ -66,19 +66,18 @@ cd gachaboard
 
 ## ステップ 3: 環境変数を設定
 
-**Windows（start.bat 1 または 2）の場合**:
-- `start.bat` → 1 を実行すると `.env.local` が自動作成される
+**Windows（`scripts/entry/start.bat` のメニューから起動した場合）**:
+- `run.ps1` 初回実行時に `nextjs-web/.env.local` が無ければ自動作成されることがあります
 - `nextjs-web\.env.local` を開き、`DISCORD_CLIENT_ID` と `DISCORD_CLIENT_SECRET` を入力
 - 詳細は [WINDOWS-NATIVE-SETUP.md](WINDOWS-NATIVE-SETUP.md)
 
 **Mac / Linux の場合**:
 
 ```bash
-cp .env.example .env
-npm run setup:env    # .env → nextjs-web/.env.local のリンクも作成
+npm run setup:env
 ```
 
-`.env`（実体は `nextjs-web/.env.local`）を開き、以下を入力:
+（`nextjs-web/.env.local` が無い場合は `.env.example` から作成されます。）`nextjs-web/.env.local` を開き、以下を入力:
 
 | 変数 | 取得元 | 必須 |
 |------|--------|:----:|
@@ -87,7 +86,7 @@ npm run setup:env    # .env → nextjs-web/.env.local のリンクも作成
 | `NEXTAUTH_SECRET` | `setup:env` で自動生成（空のままで OK） | ✅ |
 | `SERVER_OWNER_DISCORD_ID` | 管理者の Discord ID（空なら全員がワークスペース作成可） | - |
 
-> **`NEXTAUTH_URL` は設定不要です。** 起動スクリプトが Tailscale のホスト名を自動で取得し、設定に反映します。`.env` に書き込む必要はありません。
+> **`NEXTAUTH_URL` は通常は設定不要です。** 起動スクリプトが Tailscale のホスト名を自動で取得し、設定に反映します。`nextjs-web/.env.local` に手で書く必要はありません。
 
 それ以外の項目（ポート・DB・S3 等）はデフォルトのままで動きます。詳細は [ENV-REFERENCE.md](ENV-REFERENCE.md)。
 
@@ -107,9 +106,9 @@ npm run setup:env    # .env → nextjs-web/.env.local のリンクも作成
 
 | OS | 方法 |
 |:---|:---|
-| **Windows** | `start.bat` をダブルクリック → 1（ローカル）または 2（Tailscale）を選択 |
-| **Mac** | `start.command` をダブルクリック |
-| **Linux** | `./start.sh` または `bash start.sh` |
+| **Windows** | `scripts/entry/start.bat` をダブルクリック → メニューからモードを選択 |
+| **Mac** | `scripts/entry/start.command` をダブルクリック |
+| **Linux** | `./scripts/entry/start.sh` または `bash scripts/entry/start.sh` |
 
 起動が完了すると、ターミナルに以下が表示されます:
 
@@ -146,7 +145,7 @@ npm run setup:env    # .env → nextjs-web/.env.local のリンクも作成
 4. サーバー主から共有された URL をブラウザで開く
 5. Discord でログイン → 共同編集開始
 
-> **参加者は `start.bat` を実行する必要はありません。** ブラウザでアクセスするだけで完了です。
+> **参加者は起動スクリプトを実行する必要はありません。** ブラウザでアクセスするだけで完了です。
 
 ---
 
@@ -162,11 +161,7 @@ npm run setup:env    # .env → nextjs-web/.env.local のリンクも作成
 
 ### 起動オプション（Windows）
 
-| 番号 | 説明 |
-|------|------|
-| 1 | ローカル（localhost） |
-| 2 | Tailscale HTTPS（他端末からアクセス可） |
-| 3 | リセットして再起動 |
+`scripts/entry/start.bat` の番号は [WINDOWS-NATIVE-SETUP.md](WINDOWS-NATIVE-SETUP.md) を参照（例: 1 = Tailscale 本番、2 = localhost 本番、6 = リセット後再起動 など）。
 
 ### ポート一覧
 
@@ -194,6 +189,6 @@ npm run setup:env    # .env → nextjs-web/.env.local のリンクも作成
 | 「保護されていない通信」・混合コンテンツ | 起動時に Tailscale（2）を選んでいれば NEXTAUTH_URL は自動設定されます。Caddy なしのときも *.ts.net なら https に強制するため、Next.js を再起動すれば解消する想定です。 |
 | Discord ログイン後にエラー | Redirect URL が起動時に表示されたものと一致しているか確認 |
 | ERR_NAME_NOT_RESOLVED | Tailscale Admin Console で HTTPS Certificates が ON か確認 |
-| PostgreSQL 接続エラー | `start.bat` → 3（リセット）を選択して再起動 |
-| ポートが使用中 | `start.bat` → 3（リセット）を選択。手動: `fuser -k 18580/tcp` |
-| `.env` の変更が反映されない | `start.bat` → 3 でリセット後、1 または 2 で再起動 |
+| PostgreSQL 接続エラー | `scripts/entry/start.bat` → メニューの「Reset and restart」を選択して再起動 |
+| ポートが使用中 | 同上、または手動: `fuser -k 18580/tcp` |
+| `nextjs-web/.env.local` の変更が反映されない | 開発中は Next を再起動。スタック全体は `scripts/entry/start.bat` のリセット項で止めてから再起動 |

@@ -1,7 +1,7 @@
 {
   "name": "gachaboard-launcher",
   "version": "0.1.0",
-  "description": "Gachaboard デスクトップランチャー",
+  "description": "Gachaboard desktop launcher (Electron)",
   "main": "src/main/index.js",
   "scripts": {
     "start": "electron .",

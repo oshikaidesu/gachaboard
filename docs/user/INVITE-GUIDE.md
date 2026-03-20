@@ -64,9 +64,9 @@ https://your-machine.tailXXXXX.ts.net
 
 ## FAQ
 
-### Q: 参加者も start.bat を実行する必要がある？
+### Q: 参加者も起動スクリプトを実行する必要がある？
 
-**いいえ。** `start.bat` はサーバーを立てる人（1 または 2 を選択）だけが使います。参加者はブラウザでアクセスするだけです。
+**いいえ。** `scripts/entry/start.bat`（Windows）または同等のエントリはサーバーを立てる人だけが使います。参加者はブラウザでアクセスするだけです。
 
 ### Q: 参加者もコマンドラインが必要？
 
@@ -86,4 +86,4 @@ https://your-machine.tailXXXXX.ts.net
 
 ### Q: サーバー主の PC が落ちたらどうなる？
 
-アクセスできなくなります。サーバー主の PC が起動していて `start.bat` 1 または 2 が実行されている必要があります。常時稼働については [24-7-OPERATION.md](24-7-OPERATION.md) を参照。
+アクセスできなくなります。サーバー主の PC が起動していて、ホスト側の起動スクリプト（例: Windows なら `scripts/entry/start.bat` のメニュー 1 または 2）が実行されている必要があります。常時稼働については [24-7-OPERATION.md](24-7-OPERATION.md) を参照。

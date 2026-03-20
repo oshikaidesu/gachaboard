@@ -71,10 +71,10 @@ Gachaboard の設計の根底にある考え方。
 ```
 [ブラウザ A]                    [ホスト 1 台]
        │                              │
-       ├── Tailscale P2P ──────┐      ├── nextjs-web :3000
-       │                       │      ├── sync-server :5858
-[ブラウザ B]                   └─────►├── postgres :5432
-       │                              └── MinIO / uploads :9000
+       ├── Tailscale P2P ──────┐      ├── nextjs-web :18580（`PORT`）
+       │                       │      ├── sync-server :18582
+[ブラウザ B]                   └─────►├── postgres :18581（ホスト）
+       │                              └── MinIO :18583（API）
        └── WebSocket ─────────────────► Y.Doc / Awareness 同期
 ```
 
@@ -87,7 +87,7 @@ Gachaboard の設計の根底にある考え方。
 ## 5. ファイル保存の考え方
 
 - **S3/MinIO 必須**: ファイルは S3 互換ストレージにのみ保存
-- 開発・検証: `start.bat` / `start.sh` で MinIO を含む依存サービスを起動
+- 開発・検証: `scripts/entry/start.bat` / `scripts/entry/start.sh` で MinIO を含む依存サービスを起動
 - 本番: MinIO または AWS S3 で永続化
 
 ---
