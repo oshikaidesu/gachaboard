@@ -12,7 +12,16 @@ import type { ResourceIntensity, VideoBackend } from "./resource-intensity";
 
 const execFileAsync = promisify(execFile);
 
-const SCALE_VF = "scale=-2:min(ih\\,720)";
+/**
+ * 720p 高さ上限スケーリング。in_* はデコーダ/コンテナのメタを尊重し、out_* で web プレビュー用の
+ * BT.709 / TV range に揃える（メタ欠落の AVI・MPEG-4 Part 2 等で色が大きくずれるのを防ぐ）。
+ */
+const SCALE_VF =
+  "scale=-2:min(ih\\,720):flags=bicubic+accurate_rnd+full_chroma_int:in_color_matrix=auto:in_range=auto:out_color_matrix=bt709:out_range=tv:out_primaries=bt709:out_transfer=bt709";
+
+/** サムネイル用。解像度はそのまま、色だけ上記と同様に正規化 */
+export const THUMBNAIL_COLOR_VF =
+  "scale=iw:ih:flags=bicubic+accurate_rnd+full_chroma_int:in_color_matrix=auto:in_range=auto:out_color_matrix=bt709:out_range=tv:out_primaries=bt709:out_transfer=bt709";
 
 /** 旧 UI / env 互換用。gpu 強制時に限定 */
 export type HwEncoderId = "h264_nvenc" | "h264_qsv" | "h264_amf" | "h264_videotoolbox";
@@ -189,6 +198,24 @@ function applyThreadCap(intensity: ResourceIntensity, r: ResolvedVideoEncode): R
   };
 }
 
+/** MP4 の VUI / ストリームメタをプレビュー再生と一致させる（フィルタとセットで効く） */
+function withWebPreviewStreamMetadata(r: ResolvedVideoEncode): ResolvedVideoEncode {
+  return {
+    ...r,
+    outputOptions: [
+      ...r.outputOptions,
+      "-colorspace:v",
+      "bt709",
+      "-color_primaries:v",
+      "bt709",
+      "-color_trc:v",
+      "bt709",
+      "-color_range:v",
+      "tv",
+    ],
+  };
+}
+
 export type ResolveVideoOptionsInput = {
   videoBackend: VideoBackend;
   /** バックグラウンド占有（-threads のみ付与） */
@@ -222,5 +249,5 @@ export async function resolveVideoTranscodeOptions(input: ResolveVideoOptionsInp
     }
   }
 
-  return applyThreadCap(resourceIntensity, resolved);
+  return withWebPreviewStreamMetadata(applyThreadCap(resourceIntensity, resolved));
 }

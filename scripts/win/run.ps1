@@ -1,4 +1,4 @@
-# Windows native startup (no WSL/Docker)
+﻿# Windows native startup (no WSL/Docker)
 # Restart = stop app port if Next.js is already bound, then start again.
 # -Tailscale: set NEXTAUTH_URL for HTTPS, enable Tailscale Serve
 # -Dev: npm run dev (hot reload)

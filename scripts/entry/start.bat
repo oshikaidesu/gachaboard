@@ -1,10 +1,12 @@
-@echo off
+﻿@echo off
+setlocal
 set "DEVNUL=nul"
 chcp 65001 >%DEVNUL% 2>%DEVNUL%
 cd /d "%~dp0..\.."
+set "GACHABOARD_ROOT=%CD%"
 
 REM Fix smart quotes in PowerShell scripts (editor may corrupt them)
-powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\win\fix-quotes.ps1" >%DEVNUL% 2>%DEVNUL%
+powershell -NoProfile -ExecutionPolicy Bypass -File "%GACHABOARD_ROOT%\scripts\win\fix-quotes.ps1" >%DEVNUL% 2>%DEVNUL%
 
 set "ARG2=%~2"
 set "ARG3=%~3"
@@ -40,35 +42,35 @@ goto menu
 echo.
 echo [1] Tailscale production
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\win\run.ps1" -Tailscale %ARG2% %ARG3%
+powershell -NoProfile -ExecutionPolicy Bypass -File "%GACHABOARD_ROOT%\scripts\win\run.ps1" -Tailscale %ARG2% %ARG3%
 goto done
 
 :run_local_prod
 echo.
 echo [2] Localhost production
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\win\run.ps1" %ARG2% %ARG3%
+powershell -NoProfile -ExecutionPolicy Bypass -File "%GACHABOARD_ROOT%\scripts\win\run.ps1" %ARG2% %ARG3%
 goto done
 
 :run_build_only
 echo.
 echo [3] Build only
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\win\run.ps1" -BuildOnly %ARG2% %ARG3%
+powershell -NoProfile -ExecutionPolicy Bypass -File "%GACHABOARD_ROOT%\scripts\win\run.ps1" -BuildOnly %ARG2% %ARG3%
 goto done
 
 :run_tailscale_dev
 echo.
 echo [4] Tailscale development
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\win\run.ps1" -Tailscale -Dev %ARG2% %ARG3%
+powershell -NoProfile -ExecutionPolicy Bypass -File "%GACHABOARD_ROOT%\scripts\win\run.ps1" -Tailscale -Dev %ARG2% %ARG3%
 goto done
 
 :run_local_dev
 echo.
 echo [5] Local development
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\win\run.ps1" -Dev %ARG2% %ARG3%
+powershell -NoProfile -ExecutionPolicy Bypass -File "%GACHABOARD_ROOT%\scripts\win\run.ps1" -Dev %ARG2% %ARG3%
 goto done
 
 :run_reset
@@ -76,7 +78,7 @@ echo.
 echo [6] Reset and restart
 echo.
 echo Stopping all services...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\win\reset-services.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%GACHABOARD_ROOT%\scripts\win\reset-services.ps1"
 echo.
 if exist "data\postgres\postmaster.pid" (
   del "data\postgres\postmaster.pid"
@@ -88,7 +90,7 @@ if exist "data\sync" (
 )
 echo.
 echo Restarting...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%CD%\scripts\win\run.ps1" -Tailscale %ARG2% %ARG3%
+powershell -NoProfile -ExecutionPolicy Bypass -File "%GACHABOARD_ROOT%\scripts\win\run.ps1" -Tailscale %ARG2% %ARG3%
 goto done
 
 :done

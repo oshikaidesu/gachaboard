@@ -1,4 +1,4 @@
-# Update nextjs-web/.env.local for Tailscale HTTPS (NEXTAUTH_URL, S3_PUBLIC_URL, NEXT_PUBLIC_SYNC_WS_URL)
+﻿# Update nextjs-web/.env.local for Tailscale HTTPS (NEXTAUTH_URL, S3_PUBLIC_URL, NEXT_PUBLIC_SYNC_WS_URL)
 # Called from run.ps1 -Tailscale (scripts/entry/start.bat menu 1)
 param([string]$TailscaleHost)
 

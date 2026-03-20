@@ -2,7 +2,7 @@ import path from "path";
 import fs from "fs/promises";
 import { ensureLocalFromS3, uploadToS3 } from "@/lib/storage";
 import { s3KeyConverted, s3KeyThumbnail } from "@/lib/s3";
-import { resolveVideoTranscodeOptions } from "./encoder-strategy";
+import { resolveVideoTranscodeOptions, THUMBNAIL_COLOR_VF } from "./encoder-strategy";
 import { applyFfmpegOsPriorityToCommand, resolveFfmpegThreadArgs } from "./ffmpeg-tuning";
 import { deriveOutputPreset } from "./load-preset-behavior";
 import { getMergedMediaEncodingEffective } from "./media-encoding-prefs";
@@ -128,7 +128,15 @@ export async function generateThumbnailWithPath(srcPath: string, destPath: strin
     ffmpeg.ffprobe(srcPath, (err, meta) => (err ? reject(err) : resolve(meta?.format?.duration ?? 0)));
   });
   const seekSec = duration > 0 ? duration / 2 : 0;
-  const outOpts = [...resolveFfmpegThreadArgs(eff.resourceIntensity), "-vframes", "1", "-q:v", String(thumbnailJpegQ)];
+  const outOpts = [
+    ...resolveFfmpegThreadArgs(eff.resourceIntensity),
+    "-vf",
+    THUMBNAIL_COLOR_VF,
+    "-vframes",
+    "1",
+    "-q:v",
+    String(thumbnailJpegQ),
+  ];
   const cmd = ffmpeg(srcPath).inputOptions([`-ss ${seekSec}`]).outputOptions(outOpts).output(destPath);
   applyFfmpegOsPriorityToCommand(cmd, eff.resourceIntensity);
   await new Promise<void>((resolve, reject) => {

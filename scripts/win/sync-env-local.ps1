@@ -1,4 +1,4 @@
-# Set nextjs-web/.env.local NEXTAUTH_URL (and related) for localhost mode
+﻿# Set nextjs-web/.env.local NEXTAUTH_URL (and related) for localhost mode
 # Called from run.ps1 without -Tailscale (scripts/entry/start.bat menu 2)
 param([string]$AppPort = "18580", [string]$MinioPort = "18583", [string]$SyncPort = "18582")
 
