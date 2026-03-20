@@ -1,5 +1,5 @@
 diff --git a/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js b/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js
-index a589b0a..6b75033 100644
+index a589b0a..d07a974 100644
 --- a/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js
 +++ b/node_modules/@cmpd/editor/dist-cjs/lib/components/Canvas.js
 @@ -87,6 +87,18 @@ function Canvas({ className }) {
@@ -59,28 +59,18 @@ index a589b0a..6b75033 100644
    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Handles, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("g", { transform: import_Matrix2d.Matrix2d.toCssString(transform), children: handlesToDisplay.map((handle) => {
      return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
        HandleWrapper,
-@@ -291,7 +303,25 @@ function HandleWrapper({
+@@ -291,7 +303,15 @@ function HandleWrapper({
    const { Handle } = (0, import_useEditorComponents.useEditorComponents)();
    if (!Handle)
      return null;
 -  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("g", { "aria-label": "handle", transform: `translate(${handle.x}, ${handle.y})`, ...events, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Handle, { shapeId, handle, zoom, isCoarse }) });
-+  const attachPointerOnHandleGeometry = handle.id === "middle";
 +  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
 +    "g",
 +    {
 +      "aria-label": "handle",
 +      transform: `translate(${handle.x}, ${handle.y})`,
-+      ...attachPointerOnHandleGeometry ? {} : events,
-+      children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-+        Handle,
-+        {
-+          shapeId,
-+          handle,
-+          zoom,
-+          isCoarse,
-+          ...attachPointerOnHandleGeometry ? { handlePointerEvents: events } : {}
-+        }
-+      )
++      ...events,
++      children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Handle, { shapeId, handle, zoom, isCoarse })
 +    }
 +  );
  }
@@ -690,7 +680,7 @@ index 0b10d51..b93caf9 100644
  }
  //# sourceMappingURL=normalizeWheel.js.map
 diff --git a/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs b/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs
-index 9ac80d5..8d6a3a8 100644
+index 9ac80d5..d0ce830 100644
 --- a/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs
 +++ b/node_modules/@cmpd/editor/dist-esm/lib/components/Canvas.mjs
 @@ -50,6 +50,18 @@ function Canvas({ className }) {
@@ -750,25 +740,18 @@ index 9ac80d5..8d6a3a8 100644
    return /* @__PURE__ */ jsx(Handles, { children: /* @__PURE__ */ jsx("g", { transform: Matrix2d.toCssString(transform), children: handlesToDisplay.map((handle) => {
      return /* @__PURE__ */ jsx(
        HandleWrapper,
-@@ -254,7 +266,22 @@ function HandleWrapper({
+@@ -254,7 +266,15 @@ function HandleWrapper({
    const { Handle } = useEditorComponents();
    if (!Handle)
      return null;
 -  return /* @__PURE__ */ jsx("g", { "aria-label": "handle", transform: `translate(${handle.x}, ${handle.y})`, ...events, children: /* @__PURE__ */ jsx(Handle, { shapeId, handle, zoom, isCoarse }) });
-+  const attachPointerOnHandleGeometry = handle.id === "middle";
 +  return /* @__PURE__ */ jsx(
 +    "g",
 +    {
 +      "aria-label": "handle",
 +      transform: `translate(${handle.x}, ${handle.y})`,
-+      ...attachPointerOnHandleGeometry ? {} : events,
-+      children: /* @__PURE__ */ jsx(Handle, {
-+        shapeId,
-+        handle,
-+        zoom,
-+        isCoarse,
-+        ...attachPointerOnHandleGeometry ? { handlePointerEvents: events } : {}
-+      })
++      ...events,
++      children: /* @__PURE__ */ jsx(Handle, { shapeId, handle, zoom, isCoarse })
 +    }
 +  );
  }

@@ -3,24 +3,18 @@
 import classNames from "classnames";
 import { DefaultHandle, Matrix2d, useEditor } from "@cmpd/editor";
 import type { TLShapeId } from "@cmpd/editor";
-import type { ComponentProps, DOMAttributes } from "react";
-
-/** Canvas HandleWrapper が middle のみ円に付ける（親の空 g だとヒットが不安定なため） */
-type HandlePointerEvents = Pick<
-  DOMAttributes<SVGCircleElement>,
-  "onPointerDown" | "onPointerMove" | "onPointerUp"
->;
+import type { ComponentProps } from "react";
 
 type Props = ComponentProps<typeof DefaultHandle> & {
   shapeId: TLShapeId;
-  handlePointerEvents?: HandlePointerEvents;
 };
 
 /**
- * 画面上の一定半径（DefaultHandle よりやや小さめ）。表示＝判定は同一の r。
- * シェイプ→ページの線形スケール × zoom でシェイプローカルに換算。
+ * 画面上の一定半径（調整可）。シェイプ→ページスケール × zoom でローカル r に換算。
+ * pointer は Canvas の HandleWrapper が付与する親 g に載る（compound 既定と同じ）。
  */
-const BEND_HANDLE_RADIUS_SCREEN_PX = { coarse: 16, fine: 9 } as const;
+const BEND_HANDLE_RADIUS_SCREEN_PX = { coarse: 20, fine: 12 } as const;
+const BEND_HANDLE_MIN_RADIUS_SCREEN_PX = 8;
 
 function shapeLocalRadiusFromFixedScreenRadius(
   radiusScreenPx: number,
@@ -32,16 +26,14 @@ function shapeLocalRadiusFromFixedScreenRadius(
 }
 
 /**
- * 矢印の曲げ（middle）。表示＝判定は同一円（globals の .tl-arrow-bend-handle__disk）。
- * pointer リスナーは handlePointerEvents で円に直接付ける（patch 済み Canvas HandleWrapper）。
+ * 矢印の曲げ（middle）。1 円＋globals の .tl-arrow-bend-handle__disk。
  */
 export function ArrowBendFriendlyHandle(props: Props) {
   const editor = useEditor();
-  const { handle, isCoarse, className, zoom, shapeId, handlePointerEvents } = props;
+  const { handle, isCoarse, className, zoom, shapeId } = props;
 
   if (handle.id !== "middle") {
-    const { handlePointerEvents: _omit, ...forDefault } = props;
-    return <DefaultHandle {...forDefault} />;
+    return <DefaultHandle {...props} />;
   }
 
   const transform = editor.getShapePageTransform(shapeId);
@@ -51,7 +43,13 @@ export function ArrowBendFriendlyHandle(props: Props) {
   const radiusPx = isCoarse
     ? BEND_HANDLE_RADIUS_SCREEN_PX.coarse
     : BEND_HANDLE_RADIUS_SCREEN_PX.fine;
-  const r = shapeLocalRadiusFromFixedScreenRadius(radiusPx, shapeToPageScale, zoom);
+  const rDesired = shapeLocalRadiusFromFixedScreenRadius(radiusPx, shapeToPageScale, zoom);
+  const rFloor = shapeLocalRadiusFromFixedScreenRadius(
+    BEND_HANDLE_MIN_RADIUS_SCREEN_PX,
+    shapeToPageScale,
+    zoom
+  );
+  const r = Math.max(rDesired, rFloor);
 
   return (
     <g
@@ -65,11 +63,7 @@ export function ArrowBendFriendlyHandle(props: Props) {
         className
       )}
     >
-      <circle
-        className="tl-arrow-bend-handle__disk"
-        r={r}
-        {...handlePointerEvents}
-      />
+      <circle className="tl-arrow-bend-handle__disk" r={r} />
     </g>
   );
 }

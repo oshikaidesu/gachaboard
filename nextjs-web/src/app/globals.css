@@ -199,8 +199,16 @@ button[data-testid="rich-text.link"] {
 }
 
 /*
+ * tl-overlays 内では協作者カーソル等が z-index 130 まである。
+ * シェイプハンドルをその手前（かつ選択枠 100 より上）に載せ、掴み取りを優先する。
+ */
+.tl-user-handles {
+  z-index: 200;
+}
+
+/*
  * 矢印の曲げハンドル: compound の二重円は半径差でホバーを出す設計のため、同一 r では表示とフィードバックが崩れる。
- * 1 円にし、塗り・ストローク・pointer-events を同一要素に載せて表示とヒットを一致させる。
+ * 1 円にする。pointer は HandleWrapper の親 g（compound 既定）で受ける。
  */
 .tl-arrow-bend-handle__disk {
   fill: var(--color-background);

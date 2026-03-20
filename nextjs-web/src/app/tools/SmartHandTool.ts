@@ -1,5 +1,6 @@
 import {
   HIT_TEST_MARGIN,
+  Matrix2d,
   SelectTool,
   StateNode,
   TLClickEventInfo,
@@ -23,6 +24,44 @@ import { PointingShapeArrowAware } from "./PointingShapeArrowAware";
 
 /** 範囲選択モードのグローバルフラグ（UI から読み書きする） */
 export const brushModeAtom = atom("brushMode", false);
+
+const ARROW_BEND_HANDLE_RADIUS_SCREEN_PX = { coarse: 20, fine: 12 } as const;
+const ARROW_BEND_HANDLE_MIN_RADIUS_SCREEN_PX = 8;
+
+function getSelectedArrowMiddleHandleHit(editor: StateNode["editor"]) {
+  const selectedArrow = editor.getOnlySelectedShape();
+  if (!selectedArrow || !editor.isShapeOfType(selectedArrow, "arrow")) {
+    return null;
+  }
+
+  const middleHandle = editor.getShapeHandles(selectedArrow)?.find((handle) => handle.id === "middle");
+  if (!middleHandle) {
+    return null;
+  }
+
+  const transform = editor.getShapePageTransform(selectedArrow);
+  const { scaleX, scaleY } = Matrix2d.Decompose(transform);
+  const shapeToPageScale = Math.max(Math.abs(scaleX), Math.abs(scaleY), 1e-9);
+  const zoom = editor.getZoomLevel();
+  const radiusPx = editor.getInstanceState().isCoarsePointer
+    ? ARROW_BEND_HANDLE_RADIUS_SCREEN_PX.coarse
+    : ARROW_BEND_HANDLE_RADIUS_SCREEN_PX.fine;
+  const combinedScale = Math.max(shapeToPageScale * zoom, 1e-9);
+  const radius = Math.max(radiusPx / combinedScale, ARROW_BEND_HANDLE_MIN_RADIUS_SCREEN_PX / combinedScale);
+
+  const pointInShapeSpace = editor.getPointInShapeSpace(
+    selectedArrow,
+    editor.inputs.currentPagePoint
+  );
+  const dx = pointInShapeSpace.x - middleHandle.x;
+  const dy = pointInShapeSpace.y - middleHandle.y;
+
+  if (dx * dx + dy * dy > radius * radius) {
+    return null;
+  }
+
+  return { shape: selectedArrow, handle: middleHandle };
+}
 
 // ---- SmartHandIdle ----
 // SelectTool の Idle を上書きして、カーソルとパン動作を変更する
@@ -52,6 +91,21 @@ class SmartHandIdle extends StateNode {
   };
 
   override onPointerDown = (info: TLPointerEventInfo) => {
+    const middleHandleHit =
+      !this.editor.getInstanceState().isReadonly && !this.editor.inputs.altKey
+        ? getSelectedArrowMiddleHandleHit(this.editor)
+        : null;
+
+    if (middleHandleHit) {
+      this.parent.transition("pointing_handle", {
+        ...info,
+        target: "handle",
+        shape: middleHandleHit.shape,
+        handle: middleHandleHit.handle,
+      });
+      return;
+    }
+
     switch (info.target) {
       case "canvas": {
         // シェイプがあれば shape として処理
