@@ -13,6 +13,7 @@ import { createBoardOverrides } from "./boardOverrides";
 import { CollaboratorCursorWithName } from "@/app/components/collaboration/CollaboratorCursor";
 import { ArrowBendFriendlyHandle } from "@/app/components/board/ArrowBendFriendlyHandle";
 import { BrushModeToolbarSync } from "./BrushModeToolbarSync";
+import { EraserLockToolbarSync } from "./EraserLockToolbarSync";
 import { BoardContext } from "./BoardContext";
 import { BoardReactionProvider } from "./BoardReactionProvider";
 import { BoardCommentProvider } from "./BoardCommentProvider";
@@ -292,6 +293,7 @@ export default function CompoundBoard({
                 />
                 <DarkModeButton portalTarget={headerActionsEl} />
                 <BrushModeToolbarSync />
+                <EraserLockToolbarSync skipLockUi={isE2eMode} />
                 {useSync && yjsStore.provider && (
                   <AwarenessSync
                     provider={yjsStore.provider}

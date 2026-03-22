@@ -2,7 +2,7 @@
  * compound 用 UI overrides。
  * SmartHandTool (id="select") を select / brush-select の 2 ボタンで制御。
  * draw・eraser は再クリックで select に戻るトグル動作。
- * 消しゴムは有効化時のみ window.confirm（E2E ではスキップ可）。
+ * 消しゴムはデフォルトロック（ツール右上に表示）。2 回タップで解除して有効化（2 回目に時間制限なし）。E2E ではスキップ可。
  * geo ツールはツールバークリックで即配置。
  */
 
@@ -14,6 +14,7 @@ import {
   Box2d,
 } from "@cmpd/editor";
 import { brushModeAtom } from "@/app/tools/SmartHandTool";
+import { eraserLockAtom, eraserSecondTapPendingAtom } from "@/app/tools/eraserLockAtom";
 import {
   GEO_SIZES,
   GEO_DEFAULT_SIZE,
@@ -25,7 +26,7 @@ import {
 
 export type BoardOverridesOptions = {
   onFileUploadAll: () => void;
-  /** true のとき消しゴムの確認ダイアログを出さない（E2E 用） */
+  /** true のとき消しゴムのロックを使わない（E2E 用） */
   skipEraserConfirm?: boolean;
 };
 
@@ -96,6 +97,7 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
         kbd: undefined,
         onSelect() {
           brushModeAtom.set(false);
+          eraserSecondTapPendingAtom.set(false);
           editor.setCurrentTool("select");
         },
       };
@@ -109,6 +111,7 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
       readonlyOk: true,
       onSelect() {
         brushModeAtom.set(true);
+        eraserSecondTapPendingAtom.set(false);
         editor.setCurrentTool("select");
       },
     };
@@ -125,8 +128,8 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
       },
     };
 
-    // ── draw / eraser トグル ──
-    for (const toggleId of ["draw", "eraser"] as const) {
+    // ── draw トグル ──
+    for (const toggleId of ["draw"] as const) {
       if (next[toggleId]) {
         const orig = next[toggleId];
         let lastTime = 0;
@@ -144,19 +147,60 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
               return;
             }
 
-            if (
-              toggleId === "eraser" &&
-              !skipEraserConfirm &&
-              typeof window !== "undefined" &&
-              !window.confirm("消しゴムでドラッグした線・図形が消えます。続けますか？")
-            ) {
-              return;
-            }
-
             orig.onSelect(source);
           },
         };
       }
+    }
+
+    // ── eraser トグル（ロック中は 2 回タップで解除してから有効化。2 回目に時間制限なし）──
+    if (next["eraser"]) {
+      const orig = next["eraser"];
+      let lastTime = 0;
+      next["eraser"] = {
+        ...orig,
+        onSelect(source: TLUiEventSource) {
+          if (brushModeAtom.get()) brushModeAtom.set(false);
+
+          if (editor.getCurrentToolId() === "eraser") {
+            editor.setCurrentTool("select");
+            if (!skipEraserConfirm) {
+              eraserLockAtom.set(true);
+              eraserSecondTapPendingAtom.set(false);
+            }
+            return;
+          }
+
+          if (skipEraserConfirm) {
+            const now = Date.now();
+            if (now - lastTime < 300) return;
+            lastTime = now;
+            eraserLockAtom.set(false);
+            eraserSecondTapPendingAtom.set(false);
+            orig.onSelect(source);
+            return;
+          }
+
+          const now = Date.now();
+
+          if (!eraserLockAtom.get()) {
+            if (now - lastTime < 300) return;
+            lastTime = now;
+            eraserSecondTapPendingAtom.set(false);
+            orig.onSelect(source);
+            return;
+          }
+
+          if (eraserSecondTapPendingAtom.get()) {
+            eraserLockAtom.set(false);
+            eraserSecondTapPendingAtom.set(false);
+            lastTime = now;
+            orig.onSelect(source);
+            return;
+          }
+          eraserSecondTapPendingAtom.set(true);
+        },
+      };
     }
 
     // ── geo ツール: 再クリックで select、ツールバーから即配置 ──

@@ -1,0 +1,43 @@
+name: 不具合報告
+description: バグや期待と異なる動作を報告する（GIF・動画の添付推奨）
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### メディアの貼り方（GitHub 上）
+        Issue の入力欄に **GIF・PNG・JPEG・MP4** を **ドラッグ＆ドロップ**するか、欄をフォーカスして **Ctrl+V** で貼り付けできます。短い録画なら **MP4 の方が GIF より容量が小さく**なりやすいです（10MB 未満が扱いやすいです）。
+  - type: textarea
+    id: summary
+    attributes:
+      label: 概要
+      description: 何が起きているか、期待していた動きは何か（簡潔に）
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      description: 1. … 2. … のように番号付きで
+      placeholder: |
+        1. …
+        2. …
+        3. このとき ○○ になる
+    validations:
+      required: true
+  - type: textarea
+    id: media
+    attributes:
+      label: スクリーン録画・GIF・スクショ
+      description: |
+        上と同じく、この欄にファイルをドロップするか貼り付けてください。貼れない場合は外部 URL（例：動画ホスト）を記載してください。
+      placeholder: （ここにメディアを貼る、またはリンクを書く）
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: 環境
+      description: OS・ブラウザ・Gachaboard の版（分かる範囲で）
+      placeholder: 例：Windows 11 / Chrome 134 / リリース v0.1.0
+    validations:
+      required: false

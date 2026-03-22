@@ -1,0 +1,29 @@
+name: 機能要望
+description: 新機能や改善のアイデアを提案する（モックの GIF・画像も歓迎）
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### メディアの貼り方
+        下の欄に **GIF・画像・短い MP4** をドラッグ＆ドロップ、または **Ctrl+V** で貼り付けできます。動きや UI のイメージがあると議論が早くなります。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 背景・課題
+      description: 何をしたいか、今何が不便か
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 提案内容
+      description: どうなればよいか（箇条書きでも可）
+    validations:
+      required: true
+  - type: textarea
+    id: media
+    attributes:
+      label: 参考 GIF・画像・モック
+      description: あれば貼り付け、またはリンク
+    validations:
+      required: false
