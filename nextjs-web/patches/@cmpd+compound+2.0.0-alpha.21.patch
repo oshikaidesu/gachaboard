@@ -34,6 +34,42 @@ index e963623..1fae82a 100644
        "data-hastext": !isEmpty,
        "data-isediting": isEditing,
        "data-textwrap": !!wrap,
+diff --git a/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/default-shape-constants.js b/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/default-shape-constants.js
+index 28e44dd..d263225 100644
+--- a/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/default-shape-constants.js
++++ b/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/default-shape-constants.js
+@@ -43,22 +43,22 @@ const STROKE_SIZES = {
+   xl: 10
+ };
+ const FONT_SIZES = {
+-  s: 18,
+-  m: 24,
++  s: 12,
++  m: 18,
+   l: 36,
+-  xl: 44
++  xl: 54
+ };
+ const LABEL_FONT_SIZES = {
+-  s: 18,
+-  m: 22,
++  s: 11,
++  m: 18,
+   l: 26,
+-  xl: 32
++  xl: 40
+ };
+ const ARROW_LABEL_FONT_SIZES = {
+-  s: 18,
+-  m: 20,
++  s: 11,
++  m: 18,
+   l: 24,
+-  xl: 28
++  xl: 34
+ };
+ const FONT_FAMILIES = {
+   draw: "var(--tl-font-draw)",
 diff --git a/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/useEditableText.js b/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/useEditableText.js
 index 704c08d..3d45d85 100644
 --- a/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/useEditableText.js
@@ -255,6 +291,42 @@ index dc1ff57..d40c9f6 100644
          "data-hastext": !isEmpty,
          "data-isediting": isEditing,
          "data-textwrap": !!wrap,
+diff --git a/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/default-shape-constants.mjs b/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/default-shape-constants.mjs
+index 865399b..dd6f655 100644
+--- a/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/default-shape-constants.mjs
++++ b/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/default-shape-constants.mjs
+@@ -12,22 +12,22 @@ const STROKE_SIZES = {
+   xl: 10
+ };
+ const FONT_SIZES = {
+-  s: 18,
+-  m: 24,
++  s: 12,
++  m: 18,
+   l: 36,
+-  xl: 44
++  xl: 54
+ };
+ const LABEL_FONT_SIZES = {
+-  s: 18,
+-  m: 22,
++  s: 11,
++  m: 18,
+   l: 26,
+-  xl: 32
++  xl: 40
+ };
+ const ARROW_LABEL_FONT_SIZES = {
+-  s: 18,
+-  m: 20,
++  s: 11,
++  m: 18,
+   l: 24,
+-  xl: 28
++  xl: 34
+ };
+ const FONT_FAMILIES = {
+   draw: "var(--tl-font-draw)",
 diff --git a/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/useEditableText.mjs b/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/useEditableText.mjs
 index 80f042c..93fb7cc 100644
 --- a/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/useEditableText.mjs

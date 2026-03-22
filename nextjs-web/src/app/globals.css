@@ -169,18 +169,13 @@ button[data-testid="rich-text.link"] {
 
 /*
  * geo 編集:
- * editor.css の既定では .tl-text-content（opacity:0）がサイズ基準を持ち、
- * textarea は position:absolute でそれに完全に重なる。
- * この重なりを維持したまま、以下だけカスタマイズする:
- * - __inner の幅をシェイプいっぱいに広げて横の編集領域を確保
- * - text-align を親 data-align（横揃え）から継承
- * - cloud 等の bounds を打ち消してシェイプ枠いっぱいに
- * .tl-text-content を潰さず、textarea も absolute のままにすることで
- * 表示⇔編集でテキスト位置がピクセル単位で一致する。
+ * - 縦スクロールは __inner（シェイプ高いっぱい）。textarea は内容高さ（field-sizing: content）で
+ *   flex の justify-content と data-vertical-align に合わせて縦位置を揃える。
+ * - textarea を全面 absolute + overflow-y:auto にすると短文は上付きになるためやめる。
+ * - .tl-text-content は flex 寸法を食わないよう編集時だけ 0 に。
  */
 .tl-shape[data-shape-type='geo'] .tl-text-label[data-isediting='true'] {
   touch-action: manipulation;
-  /* cloud 等で TextLabel に付く bounds のインライン矩形を打ち消し、シェイプ枠いっぱいに */
   top: 0 !important;
   left: 0 !important;
   width: 100% !important;
@@ -190,13 +185,69 @@ button[data-testid="rich-text.link"] {
 }
 .tl-shape[data-shape-type='geo'] .tl-text-label[data-isediting='true'] .tl-text-label__inner {
   touch-action: manipulation;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
   width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
   max-width: none !important;
+  max-height: none !important;
+  align-self: stretch !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+.tl-shape[data-shape-type='geo']
+  .tl-text-label[data-isediting='true'][data-vertical-align='middle']
+  .tl-text-label__inner {
+  justify-content: center !important;
+}
+.tl-shape[data-shape-type='geo']
+  .tl-text-label[data-isediting='true'][data-vertical-align='start']
+  .tl-text-label__inner {
+  justify-content: flex-start !important;
+}
+.tl-shape[data-shape-type='geo']
+  .tl-text-label[data-isediting='true'][data-vertical-align='end']
+  .tl-text-label__inner {
+  justify-content: flex-end !important;
+}
+.tl-shape[data-shape-type='geo'] .tl-text-label[data-isediting='true'] .tl-text-content {
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 .tl-shape[data-shape-type='geo'] .tl-text-label[data-isediting='true'] textarea.tl-text-input {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  width: 100% !important;
+  flex: 0 0 auto !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  padding: 16px !important;
   font-size: inherit !important;
   line-height: inherit !important;
   text-align: inherit !important;
+  box-sizing: border-box !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  field-sizing: content !important;
+  resize: none !important;
+  border: 0 !important;
+  outline: none !important;
+  background: transparent !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
 }
 @media (max-width: 768px) {
   .tl-shape[data-shape-type='geo'] .tl-text-label[data-isediting='true'] textarea {
