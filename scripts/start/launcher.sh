@@ -136,7 +136,7 @@ if [[ "$CAN_RUN_TAILSCALE" == true ]]; then
   if [[ "$choice" == "2" ]]; then
     echo ""
     echo ">>> ビルドを再生成しています..."
-    (cd nextjs-web && npx prisma generate && npm run build) || { echo "ビルドに失敗しました"; rm -f "$LOCK_FILE" 2>/dev/null; exit 1; }
+    (cd nextjs-web && npx patch-package && npx prisma generate && npm run build) || { echo "ビルドに失敗しました"; rm -f "$LOCK_FILE" 2>/dev/null; exit 1; }
     echo ""
     exec bash scripts/start/tailscale.sh "$@"
   elif [[ "$choice" == "3" ]]; then

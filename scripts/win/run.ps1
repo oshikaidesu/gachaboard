@@ -206,6 +206,44 @@ if (-not (Test-Path (Join-Path $syncDir 'node_modules'))) {
   Set-Location $RootDir
 }
 
+# patch-package: npm install がスキップされると postinstall 未実行のままになり得る
+if (Test-Path (Join-Path $nextDir 'node_modules')) {
+  Write-Host ''
+  Write-Host ('Step 3c. patch-package (nextjs-web @cmpd patches)') -ForegroundColor Cyan
+  Set-Location $nextDir
+  npx patch-package
+  if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) {
+    Write-Host 'patch-package failed' -ForegroundColor Red
+    Set-Location $RootDir
+    pause
+    exit 1
+  }
+  # webpack persistent cache はパッチ前のコンパイル結果を保持し得る。
+  # patches/*.patch のハッシュをダイジェストファイルと比較し、変化していたらキャッシュを削除。
+  $patchDir = Join-Path $nextDir 'patches'
+  $digestFile = Join-Path $nextDir '.next\.patches-digest'
+  if (Test-Path $patchDir) {
+    $patchFiles = Get-ChildItem -Path $patchDir -Filter '*.patch' -File -ErrorAction SilentlyContinue | Sort-Object Name
+    if ($patchFiles) {
+      $sha = [System.Security.Cryptography.SHA256]::Create()
+      $combined = ($patchFiles | ForEach-Object { $_.Name + ':' + $_.Length + ':' + $_.LastWriteTimeUtc.Ticks }) -join '|'
+      $bytes = [System.Text.Encoding]::UTF8.GetBytes($combined)
+      $hash = [BitConverter]::ToString($sha.ComputeHash($bytes)).Replace('-','')
+      $prevHash = if (Test-Path $digestFile) { (Get-Content $digestFile -Raw).Trim() } else { '' }
+      if ($hash -ne $prevHash) {
+        $wpCache = Join-Path $nextDir '.next\cache\webpack'
+        if (Test-Path $wpCache) {
+          Write-Host '    webpack cache をクリア（patches 変更検出）' -ForegroundColor DarkGray
+          Remove-Item -Recurse -Force $wpCache -ErrorAction SilentlyContinue
+        }
+        if (-not (Test-Path (Join-Path $nextDir '.next'))) { New-Item -ItemType Directory -Path (Join-Path $nextDir '.next') -Force | Out-Null }
+        $hash | Set-Content $digestFile -NoNewline
+      }
+    }
+  }
+  Set-Location $RootDir
+}
+
 # Prisma
 Write-Host ''
 Write-Host ('Step 4. prisma generate, migrate deploy') -ForegroundColor Cyan
@@ -215,10 +253,17 @@ npx prisma migrate deploy
 Set-Location $RootDir
 
 # Build (skipped in Dev unless BuildOnly)
-$needBuild = $BuildOnly -or (-not $Dev -and -not (Test-Path (Join-Path (Join-Path $nextDir '.next') 'BUILD_ID')))
+# webpack cache は patch-package ステップで patches 変更時に既にクリア済み。
+# webpack cache が無ければビルドバンドルも古い可能性があるため再ビルドする。
+$buildIdPath = Join-Path (Join-Path $nextDir '.next') 'BUILD_ID'
+$wpCacheMissing = -not (Test-Path (Join-Path $nextDir '.next\cache\webpack'))
+$needBuild = $BuildOnly -or (-not $Dev -and ((-not (Test-Path $buildIdPath)) -or $wpCacheMissing))
 if ($needBuild) {
   Write-Host ''
   Write-Host ('Step 5. Building Next.js') -ForegroundColor Cyan
+  if (-not $Dev -and -not $BuildOnly -and $wpCacheMissing) {
+    Write-Host '    webpack cache が無い／クリアされたため再ビルド' -ForegroundColor DarkGray
+  }
   Set-Location $nextDir
   $devTypes = Join-Path (Join-Path $nextDir '.next') 'dev'
   if (Test-Path $devTypes) { Remove-Item -Recurse -Force $devTypes -ErrorAction SilentlyContinue }

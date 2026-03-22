@@ -38,6 +38,8 @@ if [[ ! -d "$ROOT_DIR/nextjs-web/sync-server/node_modules" ]]; then
   echo ""
 fi
 
+apply_nextjs_web_patches "$ROOT_DIR" || exit 1
+
 echo ">>> 1. ポート変数を同期"
 bash "$SCRIPTS_DIR/lib/sync-env-ports.sh" 2>/dev/null || true
 echo ">>> 2. env をローカル用に切り替え"
@@ -58,8 +60,8 @@ fi
 wait_for_postgres || exit 1
 apply_prisma_schema "$ROOT_DIR"
 
-if [[ "$DO_DEV" != true ]] && [[ ! -f "nextjs-web/.next/BUILD_ID" ]]; then
-  echo ">>> 本番ビルドが見つかりません。ビルドを実行します..."
+if [[ "$DO_DEV" != true ]] && next_web_prod_build_needed "$ROOT_DIR/nextjs-web"; then
+  echo ">>> 本番ビルドを実行します（未作成、または patches/ が最終ビルドより新しいため）..."
   cd nextjs-web
   npm run build
   cd "$ROOT_DIR"

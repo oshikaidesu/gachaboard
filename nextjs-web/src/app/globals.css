@@ -249,6 +249,17 @@ button[data-testid="rich-text.link"] {
   appearance: none !important;
   -webkit-appearance: none !important;
 }
+
+/*
+ * field-sizing: content は Safari 系の対応が遅い／挙動差があり、本番(iOS)と dev(Chrome 等)で
+ * textarea の高さ・スクロール・縦中央が変わって見えることがある。
+ * 未対応時は最低高さを確保し、__inner 側の縦スクロールに寄せる。
+ */
+@supports not (field-sizing: content) {
+  .tl-shape[data-shape-type='geo'] .tl-text-label[data-isediting='true'] textarea.tl-text-input {
+    min-height: 8em !important;
+  }
+}
 @media (max-width: 768px) {
   .tl-shape[data-shape-type='geo'] .tl-text-label[data-isediting='true'] textarea {
     font-size: max(16px, 1em) !important;

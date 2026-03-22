@@ -301,6 +301,63 @@ wait_for_postgres() {
   return 1
 }
 
+# nextjs-web で patch-package を実行（npm postinstall と同等）。
+# 起動スクリプトが「node_modules が既にあると npm install をスキップ」するため、
+# Git で patches/ だけ更新した場合や postinstall が走らなかった環境でもパッチが当たるようにする。
+# 使用: apply_nextjs_web_patches "$ROOT_DIR"
+apply_nextjs_web_patches() {
+  local root_dir="${1:-.}"
+  local web_dir="${root_dir}/nextjs-web"
+  if [[ ! -d "$web_dir/node_modules" ]]; then
+    return 0
+  fi
+  echo ">>> nextjs-web: patch-package（@cmpd 等）"
+  (cd "$web_dir" && npx patch-package) || return 1
+
+  # webpack persistent cache はパッチ前のコンパイル結果を保持し得る。
+  # patches/*.patch のダイジェストが変化していたらキャッシュを削除して
+  # 次回ビルドでクリーンコンパイルを強制する。
+  local digest_file="${web_dir}/.next/.patches-digest"
+  local patch_dir="${web_dir}/patches"
+  if [[ -d "$patch_dir" ]]; then
+    shopt -s nullglob
+    local patches=( "$patch_dir"/*.patch )
+    shopt -u nullglob
+    if [[ ${#patches[@]} -gt 0 ]]; then
+      local combined=""
+      local f
+      for f in "${patches[@]}"; do
+        combined+="$(basename "$f"):$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null):$(stat -c%Y "$f" 2>/dev/null || stat -f%m "$f" 2>/dev/null)|"
+      done
+      local hash
+      hash=$(printf '%s' "$combined" | sha256sum 2>/dev/null | cut -d' ' -f1 || printf '%s' "$combined" | shasum -a 256 | cut -d' ' -f1)
+      local prev_hash=""
+      [[ -f "$digest_file" ]] && prev_hash=$(cat "$digest_file" 2>/dev/null | tr -d '[:space:]')
+      if [[ "$hash" != "$prev_hash" ]]; then
+        if [[ -d "${web_dir}/.next/cache/webpack" ]]; then
+          echo "    webpack cache をクリア（patches 変更検出）"
+          rm -rf "${web_dir}/.next/cache/webpack"
+        fi
+        mkdir -p "${web_dir}/.next"
+        printf '%s' "$hash" > "$digest_file"
+      fi
+    fi
+  fi
+}
+
+# nextjs-web の本番ビルドが必要か。
+# .next/BUILD_ID が無い、または webpack cache がクリアされている場合は必須。
+# webpack cache は apply_nextjs_web_patches 内で patches 変更時に削除済みのため、
+# cache が無い＝バンドルが古い可能性あり、として再ビルドを走らせる。
+# 使用: next_web_prod_build_needed "$ROOT_DIR/nextjs-web" || ...
+next_web_prod_build_needed() {
+  local web_dir="${1:?}"
+  local bid="${web_dir}/.next/BUILD_ID"
+  [[ -f "$bid" ]] || return 0
+  [[ -d "${web_dir}/.next/cache/webpack" ]] || return 0
+  return 1
+}
+
 # nextjs-web で Prisma スキーマを適用（generate + migrate deploy）
 # 既存 DB（スキーマあり・マイグレーション履歴なし）の場合は初回だけ baseline してから deploy
 # 使用: apply_prisma_schema "$ROOT_DIR"

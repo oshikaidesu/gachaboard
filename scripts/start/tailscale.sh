@@ -76,6 +76,8 @@ if [[ ! -d "$ROOT_DIR/nextjs-web/sync-server/node_modules" ]]; then
   echo ""
 fi
 
+apply_nextjs_web_patches "$ROOT_DIR" || exit 1
+
 # ── 1. Tailscale ホスト名を取得（未ログインなら tailscale up で誘導）──
 if [[ -z "${TAILSCALE_HOST:-}" ]]; then
   echo ">>> Tailscale ホスト名を取得中..."
@@ -146,8 +148,8 @@ wait_for_postgres || exit 1
 apply_prisma_schema "$ROOT_DIR"
 
 # ── 5. ビルド（本番のみ・既存ビルドがあればスキップ）──
-if [[ "$DO_DEV" != true ]] && [[ ! -f "nextjs-web/.next/BUILD_ID" ]]; then
-  echo ">>> 本番ビルドが見つかりません。ビルドを実行します..."
+if [[ "$DO_DEV" != true ]] && next_web_prod_build_needed "$ROOT_DIR/nextjs-web"; then
+  echo ">>> 本番ビルドを実行します（未作成、または patches/ が最終ビルドより新しいため）..."
   cd nextjs-web
   npm run build
   cd "$ROOT_DIR"
