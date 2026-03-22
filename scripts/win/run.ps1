@@ -103,6 +103,12 @@ if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
   Write-Host ''
 }
 
+# Optional: credential rotation (from .env.local)
+if ($envContent -match 'CREDENTIAL_ROTATION=(.+)') {
+  $rotVal = $Matches[1].Trim()
+  if ($rotVal -eq '1' -or $rotVal -eq 'true') { $env:CREDENTIAL_ROTATION = '1' }
+}
+
 # Port vars from .env.local (already loaded above for Discord check)
 $PostgresPort = '18581'
 $SyncPort = '18582'
@@ -116,6 +122,9 @@ $env:POSTGRES_HOST_PORT = $PostgresPort
 $env:SYNC_SERVER_HOST_PORT = $SyncPort
 $env:MINIO_API_HOST_PORT = $MinioPort
 $env:GACHABOARD_DATA_DIR = Join-Path $RootDir 'data'
+$s3Bucket = 'my-bucket'
+if ($envContent -match '(?m)^S3_BUCKET=(.+)$') { $s3Bucket = $Matches[1].Trim() }
+if (-not [string]::IsNullOrWhiteSpace($s3Bucket)) { $env:S3_BUCKET = $s3Bucket }
 
 # Sync .env.local URLs for Local vs Tailscale
 Write-Host ''
@@ -131,6 +140,22 @@ Write-Host ('Step 1. Starting PostgreSQL, MinIO, sync-server') -ForegroundColor 
 & (Join-Path $RootDir 'portable\scripts\start-services.ps1') $RootDir
 if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) { pause; exit 1 }
 
+# Load rotated DATABASE_URL if credential rotation was used
+$dataDirForRuntime = if ($env:GACHABOARD_DATA_DIR) { $env:GACHABOARD_DATA_DIR } else { Join-Path $RootDir 'data' }
+$runtimeUrlFile = Join-Path $dataDirForRuntime '.runtime-db-url'
+if ($env:CREDENTIAL_ROTATION -eq '1' -and (Test-Path $runtimeUrlFile)) {
+  $line = Get-Content $runtimeUrlFile -Raw
+  if ($line -match '^DATABASE_URL="?(.+?)"?$') { $env:DATABASE_URL = $Matches[1].Trim().Trim('"') }
+}
+
+$runtimeS3File = Join-Path $dataDirForRuntime '.runtime-s3-env'
+if ($env:CREDENTIAL_ROTATION -eq '1' -and (Test-Path $runtimeS3File)) {
+  Get-Content $runtimeS3File | ForEach-Object {
+    if ($_ -match '^AWS_ACCESS_KEY_ID="(.*)"\s*$') { $env:AWS_ACCESS_KEY_ID = $Matches[1] }
+    elseif ($_ -match '^AWS_SECRET_ACCESS_KEY="(.*)"\s*$') { $env:AWS_SECRET_ACCESS_KEY = $Matches[1] }
+  }
+}
+
 # Add PostgreSQL to PATH if downloaded
 $pgCtl = Get-Command pg_ctl -ErrorAction SilentlyContinue
 if (-not $pgCtl) {
@@ -139,6 +164,11 @@ if (-not $pgCtl) {
     $pgBin = Split-Path $found.FullName
     $env:PATH = $pgBin + ';' + $env:PATH
   }
+}
+
+# pg_isready は libpq 認証が必要な場合 PGPASSWORD を参照する（CREDENTIAL_ROTATION + scram-sha-256 対策）
+if ($env:DATABASE_URL -match 'postgresql://[^:]+:([^@]+)@') {
+  try { $env:PGPASSWORD = [uri]::UnescapeDataString($Matches[1]) } catch { $env:PGPASSWORD = $Matches[1] }
 }
 
 # Wait for PostgreSQL

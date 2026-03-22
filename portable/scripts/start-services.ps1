@@ -153,6 +153,60 @@ function Ensure-GachaboardDatabase {
   }
 }
 
+# Credential rotation: 起動毎に PostgreSQL パスワードを変更（CREDENTIAL_ROTATION=1 時）
+function Invoke-CredentialRotation {
+  $rotationEnabled = ($env:CREDENTIAL_ROTATION -eq "1" -or $env:CREDENTIAL_ROTATION -eq "true")
+  if (-not $rotationEnabled) { return }
+
+  $pgCtlPath = Get-PostgresCtlPath
+  if (-not $pgCtlPath) { return }
+  $env:PATH = $pgCtlPath + ";" + $env:PATH
+
+  $passwordFile = Join-Path $PgData ".db-password"
+  $runtimeUrlFile = Join-Path $DataDir ".runtime-db-url"
+  $hba = Join-Path $PgData "pg_hba.conf"
+
+  # 32 bytes -> base64-like, URL-safe (avoid +/= for SQL)
+  function New-RandomPassword {
+    $bytes = 1..32 | ForEach-Object { [byte](Get-Random -Maximum 256 -Minimum 0) }
+    $b64 = [Convert]::ToBase64String($bytes) -replace '\+','A' -replace '/','B' -replace '=',''
+    $b64
+  }
+
+  if (Test-Path $passwordFile) {
+    $current = (Get-Content $passwordFile -Raw).Trim()
+    $newPass = New-RandomPassword
+    $env:PGPASSWORD = $current
+    try {
+      & psql -h 127.0.0.1 -p $PostgresPort -U gachaboard -d postgres -c "ALTER USER gachaboard WITH PASSWORD '$newPass'" 2>&1 | Out-Null
+    } catch {}
+    if ($LASTEXITCODE -eq 0) {
+      Set-Content $passwordFile -Value $newPass -NoNewline
+      Write-Host ">>> Credential rotation: PostgreSQL password rotated" -ForegroundColor Cyan
+    } else {
+      Write-Host ">>> Credential rotation: failed (wrong current password?)" -ForegroundColor Yellow
+      $newPass = $current
+    }
+  } else {
+    $newPass = New-RandomPassword
+    & psql -h 127.0.0.1 -p $PostgresPort -U gachaboard -d postgres -c "ALTER USER gachaboard WITH PASSWORD '$newPass'" 2>&1 | Out-Null
+    if ((Test-Path $hba)) {
+      $content = Get-Content $hba -Raw
+      if ($content -match '127\.0\.0\.1/32\s+trust') {
+        $content = $content -replace '(127\.0\.0\.1/32)\s+trust', '$1 scram-sha-256'
+        Set-Content $hba -Value $content -NoNewline
+        & pg_ctl -D $PgData reload 2>&1 | Out-Null
+      }
+    }
+    Set-Content $passwordFile -Value $newPass -NoNewline
+    Write-Host ">>> Credential rotation: PostgreSQL password set (first run)" -ForegroundColor Cyan
+  }
+
+  $escaped = [uri]::EscapeDataString($newPass)
+  $dbUrl = "postgresql://gachaboard:$escaped@localhost:$PostgresPort/gachaboard"
+  Set-Content $runtimeUrlFile -Value "DATABASE_URL=`"$dbUrl`"" -NoNewline
+}
+
 # MinIO
 function Start-Minio {
   $minioExe = Join-Path $BinDir "minio.exe"
@@ -183,6 +237,79 @@ function Start-Minio {
     Start-Sleep -Seconds 1
   }
   return $true
+}
+
+# MinIO: アプリ用 IAM ユーザーを起動毎に作り直す（CREDENTIAL_ROTATION=1 時）
+# ルート minioadmin は既存データ互換のため維持。Next.js が使う AWS_* だけローテーション。
+function Invoke-MinioAppCredentialRotation {
+  $rotationEnabled = ($env:CREDENTIAL_ROTATION -eq "1" -or $env:CREDENTIAL_ROTATION -eq "true")
+  if (-not $rotationEnabled) { return }
+
+  $mcExe = Join-Path $BinDir "mc.exe"
+  if (-not (Test-Path $mcExe)) {
+    Write-Host ">>> Downloading MinIO Client (mc.exe) for S3 credential rotation..."
+    Invoke-WebRequest -Uri "https://dl.min.io/client/mc/release/windows-amd64/mc.exe" -OutFile $mcExe -UseBasicParsing
+  }
+
+  $bucket = if ($env:S3_BUCKET) { $env:S3_BUCKET.Trim() } else { "" }
+  if ([string]::IsNullOrWhiteSpace($bucket)) { $bucket = "my-bucket" }
+
+  $rootUser = "minioadmin"
+  $rootPass = "minioadmin"
+  $aliasName = "gacharb"
+  $endpoint = "http://127.0.0.1:$MinioApiPort"
+  $mcConfigDir = Join-Path $DataDir "mc-config"
+  New-Item -ItemType Directory -Force -Path $mcConfigDir | Out-Null
+  $env:MC_CONFIG_DIR = $mcConfigDir
+
+  $null = & $mcExe alias set $aliasName $endpoint $rootUser $rootPass 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host ">>> MinIO S3 rotation: mc alias failed (is MinIO running?)" -ForegroundColor Yellow
+    return
+  }
+
+  $null = & $mcExe mb --ignore-existing "${aliasName}/${bucket}" 2>&1
+
+  function New-MinioAccessKey {
+    "gba" + [Guid]::NewGuid().ToString("N").Substring(0, 17)
+  }
+  function New-MinioSecretKey {
+    $bytes = 1..24 | ForEach-Object { [byte](Get-Random -Maximum 256 -Minimum 0) }
+    [Convert]::ToBase64String($bytes)
+  }
+
+  $appUserFile = Join-Path $MinioData ".app-s3-user"
+  $runtimeS3File = Join-Path $DataDir ".runtime-s3-env"
+  $oldKey = $null
+  if (Test-Path $appUserFile) {
+    $oldKey = (Get-Content $appUserFile -Raw).Trim()
+  }
+
+  $newKey = New-MinioAccessKey
+  $newSecret = New-MinioSecretKey
+
+  $null = & $mcExe admin user add $aliasName $newKey $newSecret 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host ">>> MinIO S3 rotation: mc admin user add failed" -ForegroundColor Yellow
+    return
+  }
+
+  $null = & $mcExe admin policy attach $aliasName readwrite --user $newKey 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host ">>> MinIO S3 rotation: policy attach failed; removing new user" -ForegroundColor Yellow
+    $null = & $mcExe admin user remove $aliasName $newKey 2>&1
+    return
+  }
+
+  if ($oldKey -and $oldKey -ne $newKey) {
+    $null = & $mcExe admin user remove $aliasName $oldKey 2>&1
+  }
+
+  Set-Content $appUserFile -Value $newKey -NoNewline
+  $line1 = "AWS_ACCESS_KEY_ID=`"$newKey`""
+  $line2 = "AWS_SECRET_ACCESS_KEY=`"$newSecret`""
+  Set-Content $runtimeS3File -Value ($line1 + "`n" + $line2) -NoNewline
+  Write-Host ">>> MinIO S3 rotation: app access key rotated" -ForegroundColor Cyan
 }
 
 # sync-server
@@ -219,6 +346,8 @@ function Start-SyncServer {
 
 Set-Location $RootDir
 if (-not (Start-Postgres)) { exit 1 }
+Invoke-CredentialRotation
 Start-Minio | Out-Null
+Invoke-MinioAppCredentialRotation
 Start-SyncServer | Out-Null
 Write-Host ">>> Services ready: PostgreSQL, MinIO, sync-server"

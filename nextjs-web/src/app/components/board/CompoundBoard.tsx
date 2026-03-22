@@ -25,6 +25,7 @@ import { useAutoCreatedBy } from "@/app/hooks/useAutoCreatedBy";
 import { currentUserIdAtom } from "./currentUserAtom";
 import { useDoubleClickPreview } from "@/app/hooks/useDoubleClickPreview";
 import { useUrlPreviewAttacher } from "@/app/hooks/useUrlPreviewAttacher";
+import { useGeoEditOutsideDismiss } from "@/app/hooks/useGeoEditOutsideDismiss";
 import { useShapeDeletePositionCapture } from "@/app/hooks/useShapeDeletePositionCapture";
 import { useSnapshotSave } from "@/app/hooks/board/useSnapshotPersistence";
 import { BackupScheduler } from "./BackupScheduler";
@@ -136,6 +137,7 @@ export default function CompoundBoard({
   const { registerListener: registerCreatedByListener } = useAutoCreatedBy(currentUserId, userName, avatarUrl ?? null);
   const { registerHandler: registerDoubleClickHandler } = useDoubleClickPreview(setPreview);
   const { registerListener: registerUrlPreviewAttacher } = useUrlPreviewAttacher();
+  const { registerListener: registerGeoEditOutsideDismiss } = useGeoEditOutsideDismiss();
   const { registerListener: registerPositionCapture } = useShapeDeletePositionCapture();
   const { registerListener: registerCanvasExpansionToast } = useCanvasExpansionToast(useSync);
 
@@ -170,6 +172,7 @@ export default function CompoundBoard({
       registerCreatedByListener(editor);
       registerDoubleClickHandler(editor);
       registerUrlPreviewAttacher(editor);
+      registerGeoEditOutsideDismiss(editor);
       registerPositionCapture(editor);
       registerCanvasExpansionToast(editor);
       handleRestoreAsset(editor);
@@ -181,6 +184,7 @@ export default function CompoundBoard({
       registerCreatedByListener,
       registerDoubleClickHandler,
       registerUrlPreviewAttacher,
+      registerGeoEditOutsideDismiss,
       registerPositionCapture,
       registerCanvasExpansionToast,
       handleRestoreAsset,

@@ -45,6 +45,7 @@
 | 変数名 | デフォルト | 説明 |
 |--------|------------|------|
 | `SERVER_OWNER_DISCORD_ID` | （未設定） | サーバーオーナーの Discord ID。設定時はこのユーザーのみワークスペース一覧・作成が可能。未設定なら全ログインユーザーがアクセス可。詳細は [ownership-design.md](ownership-design.md) |
+| `CREDENTIAL_ROTATION` | （未設定） | `1` または `true` で起動毎に **PostgreSQL パスワード**と **MinIO 用アプリ IAM ユーザー**（`mc` で作成）をローテーション。`.env.local` の `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` は実行時に `data/.runtime-s3-env` が上書き。MinIO **ルート**（`minioadmin`）は既存データ互換のため据え置き（127.0.0.1 のみバインド）。`data/postgres/.db-password`・`data/minio/.app-s3-user` を参照。 |
 
 ### データベース・ストレージ
 

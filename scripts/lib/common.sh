@@ -258,6 +258,18 @@ _docker_engine_alive() {
 wait_for_postgres() {
   local max=300
   local port="${POSTGRES_HOST_PORT:-18581}"
+  # pg_isready がパスワード認証を要求する場合（CREDENTIAL_ROTATION 等）用
+  if [[ -n "${DATABASE_URL:-}" ]] && command -v node >/dev/null 2>&1; then
+    export PGPASSWORD
+    PGPASSWORD="$(DATABASE_URL="$DATABASE_URL" node -e "
+      try {
+        const u = process.env.DATABASE_URL || '';
+        const m = u.match(/^postgresql:\\/\\/[^:]+:([^@]+)@/);
+        process.stdout.write(m ? decodeURIComponent(m[1]) : '');
+      } catch { process.stdout.write(''); }
+    " 2>/dev/null)" || true
+    [[ -z "$PGPASSWORD" ]] && unset PGPASSWORD
+  fi
   echo "    PostgreSQL の起動を待機中..."
   for i in $(seq 1 "$max"); do
     [[ $((i % 10)) -eq 0 ]] && echo "    ... ${i}秒"
@@ -335,12 +347,30 @@ run_native_services() {
     export MINIO_API_HOST_PORT=$(grep -E '^MINIO_API_HOST_PORT=' "$env_file" 2>/dev/null | cut -d= -f2- | tr -d '"\r') || true
     export MINIO_CONSOLE_HOST_PORT=$(grep -E '^MINIO_CONSOLE_HOST_PORT=' "$env_file" 2>/dev/null | cut -d= -f2- | tr -d '"\r') || true
     export SYNC_SERVER_HOST_PORT=$(grep -E '^SYNC_SERVER_HOST_PORT=' "$env_file" 2>/dev/null | cut -d= -f2- | tr -d '"\r') || true
+    local rot_val
+    rot_val=$(grep -E '^CREDENTIAL_ROTATION=' "$env_file" 2>/dev/null | cut -d= -f2- | tr -d '"\r') || true
+    [[ "$rot_val" == "1" || "$rot_val" == "true" ]] && export CREDENTIAL_ROTATION=1
+    _gb_s3=$(grep -E '^S3_BUCKET=' "$env_file" 2>/dev/null | cut -d= -f2- | tr -d '"\r') || true
+    [[ -n "$_gb_s3" ]] && export S3_BUCKET="$_gb_s3"
   fi
   export POSTGRES_HOST_PORT="${POSTGRES_HOST_PORT:-18581}"
   export MINIO_API_HOST_PORT="${MINIO_API_HOST_PORT:-18583}"
   export MINIO_CONSOLE_HOST_PORT="${MINIO_CONSOLE_HOST_PORT:-18584}"
   export SYNC_SERVER_HOST_PORT="${SYNC_SERVER_HOST_PORT:-18582}"
   bash "$root/portable/scripts/start-services.sh" "$root"
+  # Load rotated DATABASE_URL if credential rotation was used
+  if [[ "${CREDENTIAL_ROTATION:-}" == "1" ]] && [[ -f "${GACHABOARD_DATA_DIR:-$root/data}/.runtime-db-url" ]]; then
+    # shellcheck disable=SC1090
+    set -a
+    source "${GACHABOARD_DATA_DIR:-$root/data}/.runtime-db-url"
+    set +a
+  fi
+  if [[ "${CREDENTIAL_ROTATION:-}" == "1" ]] && [[ -f "${GACHABOARD_DATA_DIR:-$root/data}/.runtime-s3-env" ]]; then
+    # shellcheck disable=SC1090
+    set -a
+    source "${GACHABOARD_DATA_DIR:-$root/data}/.runtime-s3-env"
+    set +a
+  fi
 }
 
 # ネイティブ起動したサービスを停止（--reset 用）

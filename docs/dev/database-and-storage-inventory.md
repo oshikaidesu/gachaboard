@@ -5,7 +5,43 @@
 
 ---
 
-## 0. サービス構成（起動するもの）
+## 0. DB・ストレージ種別（一覧表）
+
+「DB」に近い永続化レイヤーを種類ごとに整理したクイックリファレンスです。詳細は各セクション（§1 以降）を参照。
+
+### サーバー側
+
+| 種別 | 実体 | 主な保存内容 | 備考 |
+|------|------|--------------|------|
+| **リレーショナル DB** | PostgreSQL（既定ポート 18581） | User / Workspace / WorkspaceMember / Board / BoardSnapshotHistory / Asset / S3UploadSession / AuditLog | Prisma。接続は `DATABASE_URL` |
+| **ルーム用 DB** | SQLite（sync-server 内） | ボード（ルーム）単位の Y.Doc | 環境変数 `YPERSISTENCE`。ローカルでは `data/sync` 配下など |
+| **オブジェクトストレージ** | S3 互換（MinIO 等、既定 API 18583） | アップロードファイル本体・派生データ（サムネ・波形等） | PostgreSQL の `Asset` はメタのみ。`storageKey` で対応 |
+
+### クライアント側（ブラウザ）
+
+| 種別 | 実体 | 主な保存内容 | 備考 |
+|------|------|--------------|------|
+| **IndexedDB** | `y-indexeddb` | Y.Doc のローカルコピー（ルーム ID キー） | リロード・オフライン編集の補助 |
+| **IndexedDB** | `gachaboard-s3-uploads` | S3 マルチパート再開用セッション | `uploadId` を keyPath |
+| **localStorage** | キー値 | ユーザー UI 設定（`COMPOUND_USER_DATA_v3`）、カメラ状態（`gachaboard-camera:{roomId}`） | 容量小・同一オリジン |
+| **メモリ（Map）** | プロセス内 | OGP キャッシュ等 | 再起動・タブ閉じで消える（§6.3） |
+
+### PostgreSQL テーブル対応（Prisma モデル）
+
+| モデル（テーブル） | 保存する内容の要約 |
+|--------------------|-------------------|
+| **User** | Discord 連携ユーザー（`discordId` 一意） |
+| **Workspace** | ワークスペース（所有者・招待トークン・ソフト削除） |
+| **WorkspaceMember** | メンバー所属（workspace + user のユニーク） |
+| **Board** | ボード名・`snapshotData`（スナップショット JSON）・ソフト削除 |
+| **BoardSnapshotHistory** | ボードの履歴スナップショット・サムネ SVG |
+| **Asset** | アップロード資産のメタ（`storageKey`、種別、ゴミ箱等） |
+| **S3UploadSession** | 未完了マルチパートアップロードの再開情報 |
+| **AuditLog** | 監査ログ（action / target / metadata） |
+
+---
+
+## 1. サービス構成（起動するもの）
 
 | サービス | ポート | 役割 |
 |----------|--------|------|
@@ -18,7 +54,7 @@
 
 ---
 
-## 1. 全体マップ
+## 2. 全体マップ
 
 ```mermaid
 flowchart TB
@@ -45,11 +81,11 @@ flowchart TB
 
 ---
 
-## 2. PostgreSQL（Prisma）
+## 3. PostgreSQL（Prisma）
 
 **接続**: `DATABASE_URL`（例: `postgresql://gachaboard:gachaboard@localhost:18581/gachaboard`）
 
-### 2.1 スキーマ一覧
+### 3.1 スキーマ一覧
 
 | モデル | 主用途 | 備考 |
 |--------|--------|------|
@@ -57,8 +93,10 @@ flowchart TB
 | **Workspace** | プロジェクト単位 | `ownerUserId`, `inviteToken`, ソフト削除 |
 | **WorkspaceMember** | 招待メンバー | `workspaceId` + `userId` のユニーク |
 | **Board** | ホワイトボード | `snapshotData`（records + reactions + comments + reactionEmojiPreset） |
+| **BoardSnapshotHistory** | スナップショット履歴 | `snapshotData` + `thumbnailSvg`。ボード単位で時系列 |
 | **Asset** | アップロードファイルメタ | `workspaceId` + `boardId?`。`storageKey` で実体参照 |
 | **S3UploadSession** | S3 マルチパート再開用 | `uploadId` 一意。完了後に削除 |
+| **AuditLog** | 監査ログ | `action`, `target`, `metadata` |
 
 #### Asset trash と Undo 対応
 
@@ -67,22 +105,20 @@ flowchart TB
 - **Undo 対応**: trash 済みアセットへの file/thumbnail アクセス要求があった場合、API が自動で復元してから配信する。そのため Undo 時に 404 にならない
 - **実装**: `useShapeDeletePositionCapture`（即時 trash）、`api/assets/[assetId]/file` および `thumbnail`（アクセス時の自動復元）
 
-| **AuditLog** | 監査ログ | `action`, `target`, `metadata` |
-
 **注**: リアクション・コメントは Y.Doc に統合済み（ObjectReaction, MediaComment テーブルは削除）。Connector も削除（アローは tldraw shape で Y.Doc 内）。
 
-### 2.2 冗長フィールド
+### 3.2 冗長フィールド
 
 - `Asset` に `workspaceId` を冗長保持（未配置アセット一覧用）
 
-### 2.3 認証
+### 3.3 認証
 
 - NextAuth: **JWT 戦略**（`session: { strategy: "jwt" }`）
 - `db.user.upsert` は JWT コールバック内で実行。DB には User のみ、Account/Session テーブルは使っていない
 
 ---
 
-## 3. sync-server（Y.Doc）
+## 4. sync-server（Y.Doc）
 
 **プロセス**: Hocuspocus（@hocuspocus/server）+ SQLite 拡張  
 **ポート**: 18582（デフォルト）
@@ -95,48 +131,48 @@ flowchart TB
 
 ---
 
-## 4. ファイルストレージ（S3/MinIO）
+## 5. ファイルストレージ（S3/MinIO）
 
-### 4.1 バケット構造・環境変数
+### 5.1 バケット構造・環境変数
 
 - バケット内パス: `assets/`, `converted/`, `thumbnails/`, `waveforms/` 等
 - 環境変数: `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_ENDPOINT`, `S3_REGION`, `S3_PUBLIC_URL`
 
-### 4.2 配信フロー（Presigned URL）
+### 5.2 配信フロー（Presigned URL）
 
 - **アップロード**: クライアント → init API（認可）→ Presigned PUT URL → S3 に直接アップロード
 - **配信**: クライアント → file/thumbnail API（認可）→ 302 リダイレクト → Presigned GET URL → S3 から直接取得
 - **波形**: waveform API は fetch が CORS で弾かれるため Next.js 経由でプロキシ（データは小さい）
 - Next.js は認可と Presigned URL の発行のみ。実データの送受信は S3 とクライアントが直接やりとりする
 
-### 4.3 MinIO CORS
+### 5.3 MinIO CORS
 
 MinIO を別オリジン（例: localhost:18583）で使う場合、バケットに CORS を設定する必要があります。`mc` または MinIO Console で、アプリのオリジン（例: `http://localhost:18580`）を許可してください。
 
-### 4.4 参照
+### 5.4 参照
 
 - `Asset.storageKey`: ファイル名（UUID + 拡張子）
 - `Asset.storageBackend`: `"s3"`（S3 のみ）
 
 ---
 
-## 5. クライアント側ストレージ
+## 6. クライアント側ストレージ
 
-### 5.1 IndexedDB
+### 6.1 IndexedDB
 
 | DB 名 | ストア | 用途 | 備考 |
 |-------|--------|------|------|
 | **y-indexeddb**（y-indexeddb が作成） | - | Y.Doc 永続化 | ルーム ID をキーに Y.Doc を保存。リロード即復元・オフライン編集 |
 | **gachaboard-s3-uploads** | sessions | S3 再開可能アップロード | `uploadId` を keyPath。FileSystemFileHandle も保存可 |
 
-### 5.2 localStorage
+### 6.2 localStorage
 
 | キー | 用途 |
 |------|------|
 | `COMPOUND_USER_DATA_v3` | compound ユーザー設定（ダークモード等） |
 | `gachaboard-camera:{roomId}` | ボードごとのカメラ位置・instance_page_state |
 
-### 5.3 メモリキャッシュ（Map）
+### 6.3 メモリキャッシュ（Map）
 
 | 場所 | 用途 | 上限・TTL |
 |------|------|-----------|
@@ -145,7 +181,7 @@ MinIO を別オリジン（例: localhost:18583）で使う場合、バケット
 
 ---
 
-## 6. データフロー概要
+## 7. データフロー概要
 
 ```mermaid
 flowchart LR
@@ -153,6 +189,7 @@ flowchart LR
         User
         WS[Workspace]
         Board
+        Hist[BoardSnapshotHistory]
         Asset
         S3[S3UploadSession]
         Audit[AuditLog]
@@ -168,6 +205,7 @@ flowchart LR
     end
     User --> WS
     WS --> Board
+    Board --> Hist
     Board --> Snapshot[snapshotData]
     Snapshot --> Shapes
     Snapshot --> Reactions
@@ -187,25 +225,25 @@ flowchart LR
 
 ---
 
-## 7. 不整合・注意点
+## 8. 不整合・注意点
 
-### 7.1 スキーマと認証
+### 8.1 スキーマと認証
 
 - Account / Session テーブルは Prisma スキーマに**含まれていない**（JWT 戦略のため）
 - `@auth/prisma-adapter` は依存にあるが、auth.ts では使用していない
 
-### 7.2 冗長 workspaceId
+### 8.2 冗長 workspaceId
 
 - Asset の `workspaceId` は denormalized（未配置アセット一覧用）
 
 ---
 
-## 8. 関連ファイル
+## 9. 関連ファイル
 
 | 種類 | パス |
 |------|------|
 | Prisma スキーマ | `nextjs-web/prisma/schema.prisma` |
-| DB クライアント | `nextjs-web/src/lib/db.ts` |
+| DB クライアント | `nextjs-web/src/lib/db/db.ts`（`src/lib/db.ts` は再エクスポート） |
 | ストレージ操作 | `nextjs-web/src/lib/storage.ts`, `nextjs-web/src/lib/s3.ts` |
 | S3 セッション IndexedDB | `nextjs-web/src/lib/s3UploadSessionStore.ts` |
 | Y.Doc 永続化 | `nextjs-web/src/app/hooks/useYjsStore.ts`（y-indexeddb） |

@@ -167,6 +167,43 @@ button[data-testid="rich-text.link"] {
   display: none !important;
 }
 
+/*
+ * geo 編集:
+ * editor.css の既定では .tl-text-content（opacity:0）がサイズ基準を持ち、
+ * textarea は position:absolute でそれに完全に重なる。
+ * この重なりを維持したまま、以下だけカスタマイズする:
+ * - __inner の幅をシェイプいっぱいに広げて横の編集領域を確保
+ * - text-align を親 data-align（横揃え）から継承
+ * - cloud 等の bounds を打ち消してシェイプ枠いっぱいに
+ * .tl-text-content を潰さず、textarea も absolute のままにすることで
+ * 表示⇔編集でテキスト位置がピクセル単位で一致する。
+ */
+.tl-shape[data-shape-type='geo'] .tl-text-label[data-isediting='true'] {
+  touch-action: manipulation;
+  /* cloud 等で TextLabel に付く bounds のインライン矩形を打ち消し、シェイプ枠いっぱいに */
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+.tl-shape[data-shape-type='geo'] .tl-text-label[data-isediting='true'] .tl-text-label__inner {
+  touch-action: manipulation;
+  width: 100% !important;
+  max-width: none !important;
+}
+.tl-shape[data-shape-type='geo'] .tl-text-label[data-isediting='true'] textarea.tl-text-input {
+  font-size: inherit !important;
+  line-height: inherit !important;
+  text-align: inherit !important;
+}
+@media (max-width: 768px) {
+  .tl-shape[data-shape-type='geo'] .tl-text-label[data-isediting='true'] textarea {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
 /* 画像シェイプ: object-fit を contain に変更してクロップを防ぎ、背景リピートを無効化 */
 .tl-image {
   object-fit: contain !important;

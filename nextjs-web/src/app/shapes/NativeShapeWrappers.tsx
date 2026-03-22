@@ -273,6 +273,7 @@ export class WrappedImageShapeUtil extends ImageShapeUtil {
 
 export class WrappedNoteShapeUtil extends NoteShapeUtil {
   override component(shape: Parameters<NoteShapeUtil["component"]>[0]) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- ShapeUtil.component は tldraw のレンダ関数としてフック利用可
     const editor = useEditor();
     const base = super.component(shape);
     return renderWithExtras(shape, base, editor);
@@ -286,6 +287,7 @@ export class WrappedTextShapeUtil extends TextShapeUtil {
   });
 
   override component(shape: Parameters<TextShapeUtil["component"]>[0]) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- ShapeUtil.component は tldraw のレンダ関数としてフック利用可
     const editor = useEditor();
     const base = super.component(shape);
     return renderWithExtras(shape, base, editor);
@@ -335,7 +337,7 @@ export class WrappedGeoShapeUtil extends GeoShapeUtil {
   };
 
   override component(shape: TLGeoShape) {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- ShapeUtil.component は tldraw のレンダ関数としてフック利用可
     const editor = useEditor();
     const createdBy = getCreatedBy(shape);
     const strokeColor = shape.props.color;

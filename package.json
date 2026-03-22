@@ -25,6 +25,7 @@
     "setup:env": "node scripts/setup/run-env-setup.mjs",
     "env:sync": "bash scripts/lib/sync-env-ports.sh",
     "setup:tailscale-https": "bash scripts/setup/tailscale-https.sh",
+    "verify:ws-config": "bash scripts/verify-ws-config.sh",
     "reset:all": "bash scripts/setup/reset-all.sh"
   }
 }

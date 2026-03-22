@@ -22,6 +22,54 @@ index b8fcdf9..8c9ec25 100644
    };
    const assets = (0, import_assetUrls.useDefaultEditorAssetsWithOverrides)(rest.assetUrls);
    const { done: preloadingComplete, error: preloadingError } = (0, import_usePreloadAssets.usePreloadAssets)(assets);
+diff --git a/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/TextLabel.js b/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/TextLabel.js
+index e963623..1fae82a 100644
+--- a/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/TextLabel.js
++++ b/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/TextLabel.js
+@@ -75,6 +75,7 @@ const TextLabel = import_react.default.memo(function TextLabel2({
+       className: "tl-text-label",
+       "data-font": font,
+       "data-align": align,
++      "data-vertical-align": verticalAlign,
+       "data-hastext": !isEmpty,
+       "data-isediting": isEditing,
+       "data-textwrap": !!wrap,
+diff --git a/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/useEditableText.js b/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/useEditableText.js
+index 704c08d..3d45d85 100644
+--- a/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/useEditableText.js
++++ b/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/useEditableText.js
+@@ -47,11 +47,16 @@ function useEditableText(id, type, text) {
+       if (shape) {
+         elm.value = shape.props.text;
+         if (elm.value.length && !skipSelect) {
+-          elm.select();
++          if (type === "geo") {
++            const len = elm.value.length;
++            elm.setSelectionRange(len, len);
++          } else {
++            elm.select();
++          }
+         }
+       }
+     });
+-  }, [editor, id]);
++  }, [editor, id, type]);
+   const handleBlur = (0, import_react.useCallback)(() => {
+     const ranges = rSelectionRanges.current;
+     requestAnimationFrame(() => {
+diff --git a/node_modules/@cmpd/compound/dist-cjs/lib/tools/SelectTool/childStates/EditingShape.js b/node_modules/@cmpd/compound/dist-cjs/lib/tools/SelectTool/childStates/EditingShape.js
+index 8d30fac..fd42c36 100644
+--- a/node_modules/@cmpd/compound/dist-cjs/lib/tools/SelectTool/childStates/EditingShape.js
++++ b/node_modules/@cmpd/compound/dist-cjs/lib/tools/SelectTool/childStates/EditingShape.js
+@@ -90,6 +90,8 @@ class EditingShape extends import_editor.StateNode {
+                   this.parent.transition("pointing_shape", info);
+                   return;
+                 }
++              } else if (shape.id === editingShape.id && this.editor.isShapeOfType(shape, "geo")) {
++                return;
+               }
+             }
+           } else {
 diff --git a/node_modules/@cmpd/compound/dist-cjs/lib/ui/components/DebugPanel.js b/node_modules/@cmpd/compound/dist-cjs/lib/ui/components/DebugPanel.js
 index 640c07f..ddb659a 100644
 --- a/node_modules/@cmpd/compound/dist-cjs/lib/ui/components/DebugPanel.js
@@ -195,6 +243,54 @@ index ba5fdee..6dfcf77 100644
    };
    const assets = useDefaultEditorAssetsWithOverrides(rest.assetUrls);
    const { done: preloadingComplete, error: preloadingError } = usePreloadAssets(assets);
+diff --git a/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/TextLabel.mjs b/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/TextLabel.mjs
+index dc1ff57..d40c9f6 100644
+--- a/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/TextLabel.mjs
++++ b/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/TextLabel.mjs
+@@ -45,6 +45,7 @@ const TextLabel = React.memo(function TextLabel2({
+         className: "tl-text-label",
+         "data-font": font,
+         "data-align": align,
++        "data-vertical-align": verticalAlign,
+         "data-hastext": !isEmpty,
+         "data-isediting": isEditing,
+         "data-textwrap": !!wrap,
+diff --git a/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/useEditableText.mjs b/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/useEditableText.mjs
+index 80f042c..93fb7cc 100644
+--- a/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/useEditableText.mjs
++++ b/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/useEditableText.mjs
+@@ -30,11 +30,16 @@ function useEditableText(id, type, text) {
+       if (shape) {
+         elm.value = shape.props.text;
+         if (elm.value.length && !skipSelect) {
+-          elm.select();
++          if (type === "geo") {
++            const len = elm.value.length;
++            elm.setSelectionRange(len, len);
++          } else {
++            elm.select();
++          }
+         }
+       }
+     });
+-  }, [editor, id]);
++  }, [editor, id, type]);
+   const handleBlur = useCallback(() => {
+     const ranges = rSelectionRanges.current;
+     requestAnimationFrame(() => {
+diff --git a/node_modules/@cmpd/compound/dist-esm/lib/tools/SelectTool/childStates/EditingShape.mjs b/node_modules/@cmpd/compound/dist-esm/lib/tools/SelectTool/childStates/EditingShape.mjs
+index 8076054..6d4e553 100644
+--- a/node_modules/@cmpd/compound/dist-esm/lib/tools/SelectTool/childStates/EditingShape.mjs
++++ b/node_modules/@cmpd/compound/dist-esm/lib/tools/SelectTool/childStates/EditingShape.mjs
+@@ -69,6 +69,8 @@ class EditingShape extends StateNode {
+                   this.parent.transition("pointing_shape", info);
+                   return;
+                 }
++              } else if (shape.id === editingShape.id && this.editor.isShapeOfType(shape, "geo")) {
++                return;
+               }
+             }
+           } else {
 diff --git a/node_modules/@cmpd/compound/dist-esm/lib/ui/components/DebugPanel.mjs b/node_modules/@cmpd/compound/dist-esm/lib/ui/components/DebugPanel.mjs
 index 6de59f8..ec68c65 100644
 --- a/node_modules/@cmpd/compound/dist-esm/lib/ui/components/DebugPanel.mjs

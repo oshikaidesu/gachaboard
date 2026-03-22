@@ -82,30 +82,12 @@ export function useCanvasExpansionToast(enabled: boolean) {
     };
   }, [enabled, dismissAllExpansionToasts]);
 
-  const evaluateShapeExpansion = useCallback(
-    (editor: Editor, shapeId: TLShapeId, pageId: string) => {
+  const showExpansionToast = useCallback(
+    (editor: Editor, shapeId: TLShapeId, pageId: string, expansion: number) => {
       const shape = editor.getShape(shapeId);
       if (!shape || shape.parentId !== pageId) return;
 
-      const pageBounds = editor.getShapePageBounds(shape.id);
-      if (!pageBounds) return;
-
-      let known = knownMaxBoundsRef.current;
-      if (known === null) return;
-
-      const shapeBox = getBoundsBox(pageBounds);
-      const expansion = getExpansionAmount(known, shapeBox);
-      if (expansion < GREEN_THRESHOLD_PX) return;
-
-      knownMaxBoundsRef.current = Box2d.Common([known, shapeBox]);
-      known = knownMaxBoundsRef.current;
-
       const userId = getCreatedById(shape);
-      const now = Date.now();
-      expansionLogRef.current.push({ userId, amount: expansion, timestamp: now });
-      const cutoff = now - EXPANSION_LOG_WINDOW_MS;
-      expansionLogRef.current = expansionLogRef.current.filter((e) => e.timestamp > cutoff);
-
       const totalInWindow = expansionLogRef.current.reduce((s, e) => s + e.amount, 0);
       const userTotalInWindow = expansionLogRef.current
         .filter((e) => e.userId === userId)
@@ -113,17 +95,25 @@ export function useCanvasExpansionToast(enabled: boolean) {
       const userDominates =
         totalInWindow > 0 && userTotalInWindow / totalInWindow >= RED_USER_DOMINANCE_RATIO;
       const userReachedRed = userTotalInWindow >= RED_THRESHOLD_PX;
-
+      // createdById が空のシェイプは赤にしない（匿名・メタ未設定の誤検知を防ぐ）
       const isRed =
-        (expansion >= RED_THRESHOLD_PX || (userDominates && userReachedRed)) && userDominates;
+        userId !== "" &&
+        ((expansion >= RED_THRESHOLD_PX || (userDominates && userReachedRed)) && userDominates);
 
       const name = getCreatedBy(shape);
       const avatarUrl = getSafeHref(getCreatedByAvatarUrl(shape) ?? null);
-      const message = `${name}さんがキャンバスを広げました`;
+      const primaryLine = `${name}さん`;
+      const secondaryLine = "キャンバスを広げました";
       const duration = isRed ? Infinity : GREEN_TOAST_DURATION_MS;
       const boxClass = isRed
-        ? "flex w-fit min-w-0 max-w-[240px] items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-900 shadow dark:border-red-800 dark:bg-red-950/90 dark:text-red-100"
-        : "flex w-fit min-w-0 max-w-[240px] items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-100 px-2.5 py-1.5 text-xs text-zinc-700 shadow dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200";
+        ? "flex w-fit min-w-0 max-w-[min(92vw,20rem)] items-start gap-2 rounded-md border border-red-200 bg-red-50 px-2.5 py-2 text-xs shadow dark:border-red-800 dark:bg-red-950/90"
+        : "flex w-fit min-w-0 max-w-[min(92vw,20rem)] items-start gap-2 rounded-md border border-zinc-200 bg-zinc-100 px-2.5 py-2 text-xs shadow dark:border-zinc-700 dark:bg-zinc-800";
+      const primaryLineClass = isRed
+        ? "font-medium leading-snug text-red-900 dark:text-red-100"
+        : "font-medium leading-snug text-zinc-800 dark:text-zinc-200";
+      const secondaryLineClass = isRed
+        ? "leading-snug text-red-800 dark:text-red-200/90"
+        : "leading-snug text-zinc-600 dark:text-zinc-400";
       const closeBtnClass = isRed
         ? "ml-1 shrink-0 rounded p-0.5 text-red-600 hover:bg-red-100 hover:text-red-900 dark:text-red-300 dark:hover:bg-red-900/60 dark:hover:text-red-50"
         : "ml-1 shrink-0 rounded p-0.5 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200";
@@ -135,10 +125,13 @@ export function useCanvasExpansionToast(enabled: boolean) {
               <img
                 src={avatarUrl}
                 alt=""
-                className="h-4 w-4 shrink-0 rounded-full"
+                className="mt-0.5 h-4 w-4 shrink-0 rounded-full"
               />
             )}
-            <span className="min-w-0 flex-1 truncate">{message}</span>
+            <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+              <span className={`${primaryLineClass} break-words`}>{primaryLine}</span>
+              <span className={`${secondaryLineClass} break-words`}>{secondaryLine}</span>
+            </div>
             <button
               type="button"
               onClick={() => {
@@ -150,7 +143,7 @@ export function useCanvasExpansionToast(enabled: boolean) {
                 toast.dismiss(id);
                 activeToastIdsRef.current.delete(id);
               }}
-              className={closeBtnClass}
+              className={`${closeBtnClass} self-start`}
               aria-label="閉じる"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -176,27 +169,89 @@ export function useCanvasExpansionToast(enabled: boolean) {
     []
   );
 
+  /** known を更新しログに積む。閾値以上なら { expansion, shapeId } を返す。 */
+  const tryExpandAndLog = useCallback(
+    (editor: Editor, shapeId: TLShapeId, pageId: string): { expansion: number; shapeId: TLShapeId } | null => {
+      const shape = editor.getShape(shapeId);
+      if (!shape || shape.parentId !== pageId) return null;
+
+      const pageBounds = editor.getShapePageBounds(shape.id);
+      if (!pageBounds) return null;
+
+      let known = knownMaxBoundsRef.current;
+      if (known === null) return null;
+
+      const shapeBox = getBoundsBox(pageBounds);
+      const expansion = getExpansionAmount(known, shapeBox);
+      if (expansion < GREEN_THRESHOLD_PX) return null;
+
+      knownMaxBoundsRef.current = Box2d.Common([known, shapeBox]);
+
+      const userId = getCreatedById(shape);
+      const now = Date.now();
+      expansionLogRef.current.push({ userId, amount: expansion, timestamp: now });
+      const cutoff = now - EXPANSION_LOG_WINDOW_MS;
+      expansionLogRef.current = expansionLogRef.current.filter((e) => e.timestamp > cutoff);
+
+      return { expansion, shapeId };
+    },
+    []
+  );
+
+  const evaluateShapeExpansion = useCallback(
+    (editor: Editor, shapeId: TLShapeId, pageId: string) => {
+      const result = tryExpandAndLog(editor, shapeId, pageId);
+      if (result) showExpansionToast(editor, result.shapeId, pageId, result.expansion);
+    },
+    [tryExpandAndLog, showExpansionToast]
+  );
+
+  /** 複数シェイプを評価し、最大拡大量の1件のみトースト表示。 */
+  const evaluateBatchExpansion = useCallback(
+    (editor: Editor, shapeIds: TLShapeId[], pageId: string) => {
+      let max: { expansion: number; shapeId: TLShapeId } | null = null;
+      for (const shapeId of shapeIds) {
+        const result = tryExpandAndLog(editor, shapeId, pageId);
+        if (result && (!max || result.expansion > max.expansion)) {
+          max = result;
+        }
+      }
+      if (max) showExpansionToast(editor, max.shapeId, pageId, max.expansion);
+    },
+    [tryExpandAndLog, showExpansionToast]
+  );
+
   const registerListener = useCallback(
     (editor: Editor) => {
       if (!enabled) return;
 
+      // 既存のリスナを解除（二重登録防止: Strict Mode / エディタ再 mount）
+      if (storeListenerCleanupRef.current) {
+        storeListenerCleanupRef.current();
+        storeListenerCleanupRef.current = null;
+      }
+      if (pointerEventCleanupRef.current) {
+        pointerEventCleanupRef.current();
+        pointerEventCleanupRef.current = null;
+      }
       if (boundsRecalcIntervalRef.current) {
         clearInterval(boundsRecalcIntervalRef.current);
       }
       boundsRecalcIntervalRef.current = setInterval(() => {
         const shapes = editor.getCurrentPageShapes();
-        const hash = shapes
-          .map((s) => `${s.id}:${(s as { x?: number }).x ?? 0}:${(s as { y?: number }).y ?? 0}`)
+        const bounds = shapes
+          .map((s) => ({ id: s.id, b: editor.getShapePageBounds(s.id) }))
+          .filter((x): x is { id: TLShapeId; b: NonNullable<typeof x.b> } => x.b != null);
+        if (bounds.length === 0) return;
+        // リサイズのみの変更も検知するため pageBounds (x,y,w,h) を含める
+        const hash = bounds
+          .map(({ id, b }) => `${id}:${b.x}:${b.y}:${b.w}:${b.h}`)
           .sort()
           .join(",");
         if (hash === lastRecalcHashRef.current) return;
         lastRecalcHashRef.current = hash;
 
-        const bounds = shapes
-          .map((s) => editor.getShapePageBounds(s.id))
-          .filter((b): b is NonNullable<typeof b> => b != null);
-        if (bounds.length === 0) return;
-        knownMaxBoundsRef.current = Box2d.Common(bounds.map(getBoundsBox));
+        knownMaxBoundsRef.current = Box2d.Common(bounds.map(({ b }) => getBoundsBox(b)));
       }, BOUNDS_RECALC_INTERVAL_MS);
 
       // pointerdown/pointerup を監視してドラッグ中かどうかを判定
@@ -222,11 +277,7 @@ export function useCanvasExpansionToast(enabled: boolean) {
         const pendingIds = Array.from(pendingShapeIdsRef.current);
         pendingShapeIdsRef.current.clear();
 
-        // 最初の1つだけ判定（既存の break ロジックに合わせる）
-        for (const shapeId of pendingIds) {
-          evaluateShapeExpansion(editor, shapeId, pageId);
-          break;
-        }
+        evaluateBatchExpansion(editor, pendingIds, pageId);
       };
 
       container.addEventListener("pointerdown", handlePointerDown, { passive: true });
@@ -269,25 +320,21 @@ export function useCanvasExpansionToast(enabled: boolean) {
 
           if (Date.now() < readyAtRef.current) return;
 
-          for (const rec of changedShapes) {
-            const shapeId = rec.id as TLShapeId;
-
+          if (isPointerDownRef.current) {
             // pointerdown 中なら pending に追加（pointerup 時に判定）
-            // これにより、ドラッグ中の連続更新やペン描画の完了を pointerup 時にまとめて判定できる
-            if (isPointerDownRef.current) {
-              pendingShapeIdsRef.current.add(shapeId);
-              continue;
+            for (const rec of changedShapes) {
+              pendingShapeIdsRef.current.add(rec.id as TLShapeId);
             }
-
+          } else {
             // pointerdown 中でない場合は即座に判定（リモートの更新など）
-            evaluateShapeExpansion(editor, shapeId, pageId);
-            break;
+            const shapeIds = changedShapes.map((r) => r.id as TLShapeId);
+            evaluateBatchExpansion(editor, shapeIds, pageId);
           }
         },
         { source: "user", scope: "document" }
       );
     },
-    [enabled, evaluateShapeExpansion]
+    [enabled, evaluateBatchExpansion]
   );
 
   return { registerListener };

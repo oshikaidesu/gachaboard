@@ -1,0 +1,15 @@
+{
+  "groups": {
+    "group:gachaboard-users": ["user1@example.com", "user2@example.com"]
+  },
+  "acls": [
+    {
+      "action": "accept",
+      "src": ["group:gachaboard-users"],
+      "dst": ["tag:gachaboard-server:*"]
+    }
+  ],
+  "tagOwners": {
+    "tag:gachaboard-server": ["group:gachaboard-users"]
+  }
+}
