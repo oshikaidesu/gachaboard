@@ -123,8 +123,12 @@ export default function CompoundBoard({
   } = useFileDropHandler(boardId, userName, avatarUrl ?? null);
 
   const boardOverrides = useMemo(
-    () => createBoardOverrides({ onFileUploadAll: openAllFilesPickerAndUpload }),
-    [openAllFilesPickerAndUpload]
+    () =>
+      createBoardOverrides({
+        onFileUploadAll: openAllFilesPickerAndUpload,
+        skipEraserConfirm: isE2eMode,
+      }),
+    [openAllFilesPickerAndUpload, isE2eMode]
   );
 
   const components = useMemo(
@@ -318,6 +322,7 @@ export default function CompoundBoard({
               onClose={() => setPreview(null)}
             />
           )}
+
         </div>
         </BoardCommentProvider>
       </BoardReactionProvider>

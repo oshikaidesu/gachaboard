@@ -2,6 +2,7 @@
  * compound 用 UI overrides。
  * SmartHandTool (id="select") を select / brush-select の 2 ボタンで制御。
  * draw・eraser は再クリックで select に戻るトグル動作。
+ * 消しゴムは有効化時のみ window.confirm（E2E ではスキップ可）。
  * geo ツールはツールバークリックで即配置。
  */
 
@@ -24,10 +25,12 @@ import {
 
 export type BoardOverridesOptions = {
   onFileUploadAll: () => void;
+  /** true のとき消しゴムの確認ダイアログを出さない（E2E 用） */
+  skipEraserConfirm?: boolean;
 };
 
 export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverrides {
-  const { onFileUploadAll } = options;
+  const { onFileUploadAll, skipEraserConfirm } = options;
   return {
   actions(editor, actions) {
     const next = { ...actions };
@@ -140,6 +143,16 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
               editor.setCurrentTool("select");
               return;
             }
+
+            if (
+              toggleId === "eraser" &&
+              !skipEraserConfirm &&
+              typeof window !== "undefined" &&
+              !window.confirm("消しゴムでドラッグした線・図形が消えます。続けますか？")
+            ) {
+              return;
+            }
+
             orig.onSelect(source);
           },
         };
