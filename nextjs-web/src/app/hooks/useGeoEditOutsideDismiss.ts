@@ -1,8 +1,17 @@
 import { useCallback } from "react";
 import type { Editor, TLShapeId } from "@cmpd/editor";
 
-/** これ以上動いたらドラッグ扱いにし、編集解除しない（パン・範囲選択と競合させない） */
+/** これ以上動いたらドラッグ扱いにし、編集解除しない（パン・テキスト選択ドラッグと競合させない） */
 const MOVE_THRESHOLD_PX = 10;
+
+function isInsideEditingGeoTextChrome(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    !!target.closest(
+      ".tl-shape[data-shape-type='geo'] .tl-text-label[data-isediting='true']"
+    )
+  );
+}
 
 /**
  * geo シェイプのテキスト編集中に、シェイプ外を「タップ」したら編集を終了する。
@@ -28,6 +37,9 @@ export function useGeoEditOutsideDismiss() {
       const shape = editor.getShape(editingId);
       if (!shape || shape.type !== "geo") return;
 
+      /* textarea 上のドラッグ選択などはヒットテストの取りこぼしがあっても dismiss 対象にしない */
+      if (isInsideEditingGeoTextChrome(e.target)) return;
+
       const pagePoint = editor.screenToPage({ x: e.clientX, y: e.clientY });
       const margin = 2 / editor.getZoomLevel();
 
@@ -44,6 +56,10 @@ export function useGeoEditOutsideDismiss() {
     };
 
     const tryDismissOnUp = (e: PointerEvent) => {
+      if (isInsideEditingGeoTextChrome(e.target)) {
+        pendingByPointer.delete(e.pointerId);
+        return;
+      }
       const pending = pendingByPointer.get(e.pointerId);
       pendingByPointer.delete(e.pointerId);
       if (!pending) return;

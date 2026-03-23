@@ -248,6 +248,10 @@ button[data-testid="rich-text.link"] {
   background: transparent !important;
   appearance: none !important;
   -webkit-appearance: none !important;
+  touch-action: auto !important;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default !important;
 }
 
 /*
@@ -260,7 +264,8 @@ button[data-testid="rich-text.link"] {
     min-height: 8em !important;
   }
 }
-@media (max-width: 768px) {
+/* 狭い幅またはタッチ端末: フォーカス時の iOS オートズーム回避（useMobileCenterCameraOnTextEdit の coarse 判定と揃える） */
+@media (max-width: 768px), (pointer: coarse) {
   .tl-shape[data-shape-type='geo'] .tl-text-label[data-isediting='true'] textarea {
     font-size: max(16px, 1em) !important;
   }

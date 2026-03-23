@@ -71,20 +71,16 @@ index 28e44dd..d263225 100644
  const FONT_FAMILIES = {
    draw: "var(--tl-font-draw)",
 diff --git a/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/useEditableText.js b/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/useEditableText.js
-index 704c08d..3d45d85 100644
+index 704c08d..d68587e 100644
 --- a/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/useEditableText.js
 +++ b/node_modules/@cmpd/compound/dist-cjs/lib/shapes/shared/useEditableText.js
-@@ -47,11 +47,16 @@ function useEditableText(id, type, text) {
+@@ -46,12 +46,12 @@ function useEditableText(id, type, text) {
+       const shape = editor.getShape(id);
        if (shape) {
          elm.value = shape.props.text;
-         if (elm.value.length && !skipSelect) {
--          elm.select();
-+          if (type === "geo") {
-+            const len = elm.value.length;
-+            elm.setSelectionRange(len, len);
-+          } else {
-+            elm.select();
-+          }
+-        if (elm.value.length && !skipSelect) {
++        if (elm.value.length && !skipSelect && type !== "geo") {
+           elm.select();
          }
        }
      });
@@ -93,6 +89,26 @@ index 704c08d..3d45d85 100644
    const handleBlur = (0, import_react.useCallback)(() => {
      const ranges = rSelectionRanges.current;
      requestAnimationFrame(() => {
+@@ -152,6 +152,10 @@ function useEditableText(id, type, text) {
+   }, [isEditing]);
+   const handleInputPointerDown = (0, import_react.useCallback)(
+     (e) => {
++      if (type === "geo") {
++        (0, import_editor.stopEventPropagation)(e);
++        return;
++      }
+       editor.dispatch({
+         ...(0, import_editor.getPointerInfo)(e),
+         type: "pointer",
+@@ -161,7 +165,7 @@ function useEditableText(id, type, text) {
+       });
+       (0, import_editor.stopEventPropagation)(e);
+     },
+-    [editor, id]
++    [editor, id, type]
+   );
+   const handleDoubleClick = import_editor.stopEventPropagation;
+   return {
 diff --git a/node_modules/@cmpd/compound/dist-cjs/lib/tools/SelectTool/childStates/EditingShape.js b/node_modules/@cmpd/compound/dist-cjs/lib/tools/SelectTool/childStates/EditingShape.js
 index 8d30fac..fd42c36 100644
 --- a/node_modules/@cmpd/compound/dist-cjs/lib/tools/SelectTool/childStates/EditingShape.js
@@ -328,20 +344,16 @@ index 865399b..dd6f655 100644
  const FONT_FAMILIES = {
    draw: "var(--tl-font-draw)",
 diff --git a/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/useEditableText.mjs b/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/useEditableText.mjs
-index 80f042c..93fb7cc 100644
+index 80f042c..0f778de 100644
 --- a/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/useEditableText.mjs
 +++ b/node_modules/@cmpd/compound/dist-esm/lib/shapes/shared/useEditableText.mjs
-@@ -30,11 +30,16 @@ function useEditableText(id, type, text) {
+@@ -29,12 +29,12 @@ function useEditableText(id, type, text) {
+       const shape = editor.getShape(id);
        if (shape) {
          elm.value = shape.props.text;
-         if (elm.value.length && !skipSelect) {
--          elm.select();
-+          if (type === "geo") {
-+            const len = elm.value.length;
-+            elm.setSelectionRange(len, len);
-+          } else {
-+            elm.select();
-+          }
+-        if (elm.value.length && !skipSelect) {
++        if (elm.value.length && !skipSelect && type !== "geo") {
+           elm.select();
          }
        }
      });
@@ -350,6 +362,26 @@ index 80f042c..93fb7cc 100644
    const handleBlur = useCallback(() => {
      const ranges = rSelectionRanges.current;
      requestAnimationFrame(() => {
+@@ -135,6 +135,10 @@ function useEditableText(id, type, text) {
+   }, [isEditing]);
+   const handleInputPointerDown = useCallback(
+     (e) => {
++      if (type === "geo") {
++        stopEventPropagation(e);
++        return;
++      }
+       editor.dispatch({
+         ...getPointerInfo(e),
+         type: "pointer",
+@@ -144,7 +148,7 @@ function useEditableText(id, type, text) {
+       });
+       stopEventPropagation(e);
+     },
+-    [editor, id]
++    [editor, id, type]
+   );
+   const handleDoubleClick = stopEventPropagation;
+   return {
 diff --git a/node_modules/@cmpd/compound/dist-esm/lib/tools/SelectTool/childStates/EditingShape.mjs b/node_modules/@cmpd/compound/dist-esm/lib/tools/SelectTool/childStates/EditingShape.mjs
 index 8076054..6d4e553 100644
 --- a/node_modules/@cmpd/compound/dist-esm/lib/tools/SelectTool/childStates/EditingShape.mjs

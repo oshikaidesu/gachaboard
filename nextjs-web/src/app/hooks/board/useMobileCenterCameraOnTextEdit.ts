@@ -5,8 +5,11 @@ import { useEditor, useValue } from "@cmpd/compound";
 import { EASINGS } from "@cmpd/editor";
 import type { TLShapeId } from "@cmpd/tlschema";
 
+/** 編集開始時のカメラ寄せの長さ（ms） */
 const CAMERA_ANIM_MS = 280;
+/** visualViewport 変化後の再寄せ（ms）。キーボードアニメに合わせ短め */
 const CAMERA_ANIM_MS_VV = 220;
+/** visualViewport の resize/scroll 連打をまとめる（ms） */
 const VV_RESIZE_DEBOUNCE_MS = 90;
 
 // ---------------------------------------------------------------------------
@@ -20,9 +23,15 @@ const OFFSET_FOCUS_SCREEN_PX_X = 0;
  */
 const OFFSET_FOCUS_SCREEN_PX_Y = 200;
 
-/** レイアウト下端付近が隠れているとみなす最大（異常値の抑制） */
+/**
+ * innerHeight − visualViewport.height のうち、キーボード起因とみなす上限比。
+ * 大きすぎると誤検知でカメラが跳ぶため抑える。
+ */
 const MAX_OBSCURED_RATIO = 0.65;
-/** innerHeight − visualViewport.height をページシフトに換算するときの係数（0〜1） */
+/**
+ * 推定「隠れた下端」高さのうち、ページ座標へ反映する割合。
+ * 1 に近いほどキーボード分だけカメラを上げる。端末で見切れる場合は上げ、過剰なら下げる。
+ */
 const KEYBOARD_SHIFT_FRACTION = 0.88;
 
 function getMobileMatch() {
@@ -145,4 +154,29 @@ export function useMobileCenterCameraOnTextEdit() {
       window.clearTimeout(timeoutId);
     };
   }, [editingId, editor, centerGeoOnKeyboardAwarePoint]);
+}
+
+/**
+ * スマホ相当時、geo の .tl-text-input にフォーカスが入ったら scrollIntoView(nearest)。
+ * iOS 等でキーボード表示後に入力欄が見切れる場合の補助（ページ全体は動かしにくい nearest）。
+ */
+export function useGeoTextareaFocusScrollIntoView() {
+  useEffect(() => {
+    const root = document.getElementById("compound-editor");
+    if (!root) return;
+
+    const onFocusIn = (e: FocusEvent) => {
+      if (!getMobileMatch()) return;
+      const t = e.target;
+      if (!(t instanceof HTMLTextAreaElement)) return;
+      if (!t.classList.contains("tl-text-input")) return;
+      if (!t.closest(".tl-shape[data-shape-type='geo']")) return;
+      queueMicrotask(() => {
+        t.scrollIntoView({ block: "nearest", inline: "nearest" });
+      });
+    };
+
+    root.addEventListener("focusin", onFocusIn, true);
+    return () => root.removeEventListener("focusin", onFocusIn, true);
+  }, []);
 }
