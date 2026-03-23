@@ -59,11 +59,6 @@ export function ShapeReactionPanel({ shapeId, containerStyle }: Props) {
     closePicker();
   };
 
-  const stopAll = (e: React.SyntheticEvent) => {
-    e.stopPropagation();
-    // preventDefault は passive な touch でエラーになるため呼ばない
-  };
-
   const active = reactions.filter((r) => !r.deletedAt);
   const grouped = active.reduce<Record<string, { count: number; reacted: boolean }>>((acc, r) => {
     if (!acc[r.emoji]) acc[r.emoji] = { count: 0, reacted: false };
@@ -99,8 +94,9 @@ export function ShapeReactionPanel({ shapeId, containerStyle }: Props) {
           {emojiList.map((emoji) => (
             <button
               key={emoji}
+              type="button"
               onClick={() => toggle(emoji)}
-              onTouchEnd={(e) => { stopAll(e); toggle(emoji); }}
+              onPointerDown={(e) => e.stopPropagation()}
               style={{
                 width: 28,
                 height: 28,
@@ -152,8 +148,9 @@ export function ShapeReactionPanel({ shapeId, containerStyle }: Props) {
         {Object.entries(grouped).map(([emoji, { count, reacted }]) => (
           <button
             key={emoji}
+            type="button"
             onClick={() => toggle(emoji)}
-            onTouchEnd={(e) => { stopAll(e); toggle(emoji); }}
+            onPointerDown={(e) => e.stopPropagation()}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -178,8 +175,9 @@ export function ShapeReactionPanel({ shapeId, containerStyle }: Props) {
 
         <button
           ref={plusBtnRef}
+          type="button"
           onClick={() => (showPicker ? closePicker() : openPicker())}
-          onTouchEnd={(e) => { stopAll(e); showPicker ? closePicker() : openPicker(); }}
+          onPointerDown={(e) => e.stopPropagation()}
           style={{
             display: "inline-flex",
             alignItems: "center",
