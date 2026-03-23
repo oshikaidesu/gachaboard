@@ -1,8 +1,8 @@
 /**
  * compound 用 UI overrides。
  * SmartHandTool (id="select") を select / brush-select の 2 ボタンで制御。
- * draw・eraser は再クリックで select に戻るトグル動作。
- * 消しゴムはデフォルトロック（ツール右上に表示）。2 回タップで解除して有効化（2 回目に時間制限なし）。E2E ではスキップ可。
+ * draw は再クリックで select に戻るトグル動作。
+ * 消しゴムはツールバーから非表示（`tools.eraser` は削除しない — compound 内部参照で落ちるため）。範囲選択で削除可能。
  * geo ツールはツールバークリックで即配置。
  */
 
@@ -14,7 +14,6 @@ import {
   Box2d,
 } from "@cmpd/editor";
 import { brushModeAtom } from "@/app/tools/SmartHandTool";
-import { eraserLockAtom, eraserSecondTapPendingAtom } from "@/app/tools/eraserLockAtom";
 import {
   GEO_SIZES,
   GEO_DEFAULT_SIZE,
@@ -26,12 +25,10 @@ import {
 
 export type BoardOverridesOptions = {
   onFileUploadAll: () => void;
-  /** true のとき消しゴムのロックを使わない（E2E 用） */
-  skipEraserConfirm?: boolean;
 };
 
 export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverrides {
-  const { onFileUploadAll, skipEraserConfirm } = options;
+  const { onFileUploadAll } = options;
   return {
   actions(editor, actions) {
     const next = { ...actions };
@@ -97,7 +94,6 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
         kbd: undefined,
         onSelect() {
           brushModeAtom.set(false);
-          eraserSecondTapPendingAtom.set(false);
           editor.setCurrentTool("select");
         },
       };
@@ -111,7 +107,6 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
       readonlyOk: true,
       onSelect() {
         brushModeAtom.set(true);
-        eraserSecondTapPendingAtom.set(false);
         editor.setCurrentTool("select");
       },
     };
@@ -151,56 +146,6 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
           },
         };
       }
-    }
-
-    // ── eraser トグル（ロック中は 2 回タップで解除してから有効化。2 回目に時間制限なし）──
-    if (next["eraser"]) {
-      const orig = next["eraser"];
-      let lastTime = 0;
-      next["eraser"] = {
-        ...orig,
-        onSelect(source: TLUiEventSource) {
-          if (brushModeAtom.get()) brushModeAtom.set(false);
-
-          if (editor.getCurrentToolId() === "eraser") {
-            editor.setCurrentTool("select");
-            if (!skipEraserConfirm) {
-              eraserLockAtom.set(true);
-              eraserSecondTapPendingAtom.set(false);
-            }
-            return;
-          }
-
-          if (skipEraserConfirm) {
-            const now = Date.now();
-            if (now - lastTime < 300) return;
-            lastTime = now;
-            eraserLockAtom.set(false);
-            eraserSecondTapPendingAtom.set(false);
-            orig.onSelect(source);
-            return;
-          }
-
-          const now = Date.now();
-
-          if (!eraserLockAtom.get()) {
-            if (now - lastTime < 300) return;
-            lastTime = now;
-            eraserSecondTapPendingAtom.set(false);
-            orig.onSelect(source);
-            return;
-          }
-
-          if (eraserSecondTapPendingAtom.get()) {
-            eraserLockAtom.set(false);
-            eraserSecondTapPendingAtom.set(false);
-            lastTime = now;
-            orig.onSelect(source);
-            return;
-          }
-          eraserSecondTapPendingAtom.set(true);
-        },
-      };
     }
 
     // ── geo ツール: 再クリックで select、ツールバーから即配置 ──
@@ -286,6 +231,7 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
     const filtered = schema
       .map((item) => {
         const id = item.toolItem?.id;
+        if (id === "eraser") return null;
         if (!id || !TOOLBAR_ALLOWED_IDS.includes(id)) return null;
         if (id === "select") return toolbarItem(selectTool);
         return item;
@@ -302,7 +248,7 @@ export function createBoardOverrides(options: BoardOverridesOptions): TLUiOverri
     if (fileUploadAllTool) {
       const drawIdx = filtered.findIndex((i) => i.toolItem?.id === "draw");
       if (drawIdx >= 0) {
-        filtered.splice(drawIdx + 2, 0, toolbarItem(fileUploadAllTool)); // draw, eraser の後に挿入
+        filtered.splice(drawIdx + 1, 0, toolbarItem(fileUploadAllTool)); // draw の直後
       } else {
         filtered.push(toolbarItem(fileUploadAllTool));
       }

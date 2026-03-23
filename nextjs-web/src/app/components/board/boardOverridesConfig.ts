@@ -20,7 +20,8 @@ export const GEO_SIZES: Record<string, { w: number; h: number }> = {
 export const GEO_DEFAULT_SIZE = { w: 200, h: 120 } as const;
 
 /** ツールバーに表示するツール ID */
-export const TOOLBAR_ALLOWED_IDS: readonly string[] = ["select", "draw", "eraser", "file-upload-all", "rectangle"];
+/** 消しゴムはツールバー非表示（範囲選択で削除可能）。eraser ツール定義は残す（ランタイム前提）。 */
+export const TOOLBAR_ALLOWED_IDS: readonly string[] = ["select", "draw", "file-upload-all", "rectangle"];
 
 /** アクションメニューから非表示にする ID */
 export const HIDE_ACTION_IDS: readonly string[] = ["rotate-cw", "rotate-ccw", "toggle-dark-mode"];
