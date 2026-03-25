@@ -37,9 +37,6 @@ const TEXT_FILE_DEFAULT_H = 240;
 const TEXT_FILE_MAX_W = TEXT_FILE_DEFAULT_W * 4;
 const TEXT_FILE_MAX_H = TEXT_FILE_DEFAULT_H * 4;
 
-/** タッチで変換した直後の click 二重実行を防ぐため */
-const lastTouchEndByShapeId = new Map<string, number>();
-
 export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
   static override type = SHAPE_TYPE.TEXT_FILE;
 
@@ -142,19 +139,10 @@ export class TextFileShapeUtil extends BaseBoxShapeUtil<TextFileShape> {
               title="アイコンで表示"
               onClick={(e) => {
                 e.stopPropagation();
-                if (lastTouchEndByShapeId.has(shape.id) && Date.now() - (lastTouchEndByShapeId.get(shape.id) ?? 0) < 400) {
-                  lastTouchEndByShapeId.delete(shape.id);
-                  return;
-                }
                 convertToFileIcon(editor, shape.id);
               }}
               onPointerDown={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
-              onTouchEnd={(e) => {
-                e.stopPropagation();
-                convertToFileIcon(editor, shape.id);
-                lastTouchEndByShapeId.set(shape.id, Date.now());
-              }}
               style={{
                 width: 20,
                 height: 20,

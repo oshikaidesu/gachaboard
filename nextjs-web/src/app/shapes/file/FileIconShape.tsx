@@ -37,9 +37,6 @@ const FILE_ICON_DEFAULT_H = 96;
 const FILE_ICON_MAX_W = FILE_ICON_DEFAULT_W * 4;
 const FILE_ICON_MAX_H = FILE_ICON_DEFAULT_H * 4;
 
-/** タッチで変換した直後の click 二重実行を防ぐため */
-const lastTouchEndByShapeId = new Map<string, number>();
-
 export function getFileEmoji(fileName: string, kind: string): string {
   if (kind === "image" || kind === "gif") return "🖼️";
   if (kind === "video") return "🎬";
@@ -284,19 +281,10 @@ function FileIconShapeInner({ shape }: { shape: FileIconShape }) {
                 title={shape.props.kind === "file" ? "テキストで表示" : "プレイヤーで表示"}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (lastTouchEndByShapeId.has(shape.id) && Date.now() - (lastTouchEndByShapeId.get(shape.id) ?? 0) < 400) {
-                    lastTouchEndByShapeId.delete(shape.id);
-                    return;
-                  }
                   convertFromFileIcon(editor, shape.id);
                 }}
                 onPointerDown={(e) => e.stopPropagation()}
                 onTouchStart={(e) => e.stopPropagation()}
-                onTouchEnd={(e) => {
-                  e.stopPropagation();
-                  convertFromFileIcon(editor, shape.id);
-                  lastTouchEndByShapeId.set(shape.id, Date.now());
-                }}
                 style={{
                   width: 20,
                   height: 20,
