@@ -64,9 +64,6 @@ export type { VideoShape } from "@shared/shapeDefs";
 export { MIN_COMMENT_LIST_H } from "@/app/hooks/media/useMediaPlayerComments";
 export { VIDEO_UI_OVERHEAD } from "./mediaConstants";
 
-/** タッチで変換した直後の click 二重実行を防ぐため */
-const lastTouchEndByShapeId = new Map<string, number>();
-
 // ---------- メインプレイヤー ----------
 
 function VideoPlayer({ shape }: { shape: VideoShape }) {
@@ -533,19 +530,10 @@ export class VideoShapeUtil extends BaseBoxShapeUtil<VideoShape & TLBaseBoxShape
               title="アイコンで表示"
               onClick={(e) => {
                 e.stopPropagation();
-                if (lastTouchEndByShapeId.has(shape.id) && Date.now() - (lastTouchEndByShapeId.get(shape.id) ?? 0) < 400) {
-                  lastTouchEndByShapeId.delete(shape.id);
-                  return;
-                }
                 convertToFileIcon(editor, shape.id);
               }}
               onPointerDown={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
-              onTouchEnd={(e) => {
-                e.stopPropagation();
-                convertToFileIcon(editor, shape.id);
-                lastTouchEndByShapeId.set(shape.id, Date.now());
-              }}
               style={{
                 width: 20,
                 height: 20,
